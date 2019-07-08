@@ -2,6 +2,7 @@ package com.winllc.acme.server.service.acme;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.jwk.JWK;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.text.ParseException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -178,11 +180,17 @@ public class AccountService extends BaseService {
     public ResponseEntity<?> keyRollover(HttpServletRequest httpRequest) throws Exception {
 
         PayloadAndAccount<JWSObject> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(httpRequest, JWSObject.class);
+        AccountData accountData = payloadAndAccount.getAccountData();
 
-
-        if(validateJWSForKeyChange(payloadAndAccount.getPayload())){
+        if(validateJWSForKeyChange(payloadAndAccount, payloadAndAccount.getPayload())){
             //TODO
-            return ResponseEntity.ok().build();
+            String newKey = payloadAndAccount.getPayload().getHeader().getJWK().toString();
+            accountData.setJwk(newKey);
+
+            accountPersistence.save(accountData);
+
+            return buildBaseResponseEntity(200)
+                    .body(accountData.getObject());
         } else {
             HttpHeaders headers = new HttpHeaders();
             headers.add("Location", payloadAndAccount.getAccountData().buildUrl());
@@ -190,6 +198,7 @@ public class AccountService extends BaseService {
             //TODO
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
 
+            //TODO, only for conflict
             return buildBaseResponseEntity(409)
                     .headers(headers)
                     .body(problemDetails);
@@ -205,16 +214,20 @@ public class AccountService extends BaseService {
 
     //Section 7.3.5
     //Must verify the inner JWS Object before updating account key
-    private boolean validateJWSForKeyChange(JWSObject jwsObject){
+    private boolean validateJWSForKeyChange(PayloadAndAccount<JWSObject> payloadAndAccount, JWSObject innerJws){
+        AccountData accountData = payloadAndAccount.getAccountData();
+        JWSObject outerJws = payloadAndAccount.getPayload();
+
         boolean valid = true;
+        KeyChangeRequest keyChangeRequest = null;
         //Check that the JWS protected header of the inner JWS has a “jwk” field.
-        if(jwsObject.getHeader().getJWK() == null){
+        if(innerJws.getHeader().getJWK() == null){
             valid = false;
         }
 
         //Check that the inner JWS verifies using the key in its “jwk” field.
         try {
-            valid = AppUtil.verifyJWS(jwsObject);
+            valid = AppUtil.verifyJWS(innerJws);
         } catch (AcmeServerException e) {
             e.printStackTrace();
             valid = false;
@@ -222,15 +235,37 @@ public class AccountService extends BaseService {
 
         //Check that the payload of the inner JWS is a well-formed keyChange object (as described above).
         try {
-            KeyChangeRequest keyChangeRequest = AppUtil.getPayloadFromJWSObject(jwsObject, KeyChangeRequest.class);
+            keyChangeRequest = AppUtil.getPayloadFromJWSObject(innerJws, KeyChangeRequest.class);
         } catch (AcmeServerException e) {
             e.printStackTrace();
+            return false;
         }
 
         //Check that the “url” parameters of the inner and outer JWSs are the same.
+        if(!outerJws.getHeader().getCustomParam("url").toString()
+                .contentEquals(innerJws.getHeader().getCustomParam("url").toString())){
+            valid = false;
+        }
+
         //Check that the “account” field of the keyChange object contains the URL for the account matching the old key (i.e., the “kid” field in the outer JWS).
+        if(!outerJws.getHeader().getKeyID()
+                .contentEquals(keyChangeRequest.getAccount())){
+            valid = false;
+        }
+
         //Check that the “oldKey” field of the keyChange object is the same as the account key for the account in question.
+        try {
+            if(!keyChangeRequest.getOldKey().equals(JWK.parse(accountData.getJwk()))){
+                valid = false;
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+            valid = false;
+        }
+
         //Check that no account exists whose account key is the same as the key in the “jwk” header parameter of the inner JWS.
+        Optional<AccountData> existing = accountPersistence.getByJwk(innerJws.getHeader().getJWK().toString());
+        if(existing.isPresent()) valid = false;
 
         return valid;
     }
