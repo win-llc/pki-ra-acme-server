@@ -44,4 +44,6 @@ public class CertificateAuthorityImpl implements CertificateAuthority {
     public List<CAValidationRule> getValidationRules() {
         return null;
     }
+
+
 }

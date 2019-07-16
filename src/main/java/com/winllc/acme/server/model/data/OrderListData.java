@@ -1,7 +1,7 @@
 package com.winllc.acme.server.model.data;
 
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.model.OrderList;
+import com.winllc.acme.server.model.acme.OrderList;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,8 +11,8 @@ import java.util.List;
 public class OrderListData extends DataObject<OrderList> {
     private String[] orderIds;
 
-    public OrderListData(OrderList obj) {
-        super(obj);
+    public OrderListData(OrderList obj, DirectoryData directoryData) {
+        super(obj, directoryData);
     }
 
     public void addOrder(OrderData order){

@@ -1,4 +1,4 @@
-package com.winllc.acme.server.model;
+package com.winllc.acme.server.model.acme;
 
 //RFC8555 Section 8
 public class Challenge extends BaseAcmeObject {

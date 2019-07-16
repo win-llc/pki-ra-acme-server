@@ -3,7 +3,7 @@ package com.winllc.acme.server.model.requestresponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.server.external.ExternalAccount;
-import com.winllc.acme.server.model.Account;
+import com.winllc.acme.server.model.AcmeJWSObject;
 
 import java.io.IOException;
 
@@ -17,7 +17,7 @@ public class AccountRequest {
     //optional
     private Boolean onlyReturnExisting;
     //optional
-    private JWSObject externalAccountBinding;
+    private AcmeJWSObject externalAccountBinding;
 
     public String getStatus() {
         return status;
@@ -51,11 +51,11 @@ public class AccountRequest {
         this.onlyReturnExisting = onlyReturnExisting;
     }
 
-    public JWSObject getExternalAccountBinding() {
+    public AcmeJWSObject getExternalAccountBinding() {
         return externalAccountBinding;
     }
 
-    public void setExternalAccountBinding(JWSObject externalAccountBinding) {
+    public void setExternalAccountBinding(AcmeJWSObject externalAccountBinding) {
         this.externalAccountBinding = externalAccountBinding;
     }
 

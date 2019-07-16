@@ -1,6 +1,7 @@
 package com.winllc.acme.server.model.data;
 
 import com.winllc.acme.server.Application;
+import com.winllc.acme.server.model.acme.Directory;
 
 public class CertData extends DataObject<String[]> {
 
@@ -9,13 +10,13 @@ public class CertData extends DataObject<String[]> {
     private String issuerDn;
     private Long serialNumber;
 
-    public CertData(String[] obj) {
-        super(obj);
+    public CertData(String[] obj, DirectoryData directoryData) {
+        super(obj, directoryData);
     }
 
     @Override
     public String buildUrl() {
-        return Application.baseURL + "cert/" + getId();
+        return buildBaseUrl() + "cert/" + getId();
     }
 
     @Override

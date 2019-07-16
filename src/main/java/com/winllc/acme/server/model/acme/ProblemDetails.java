@@ -1,4 +1,4 @@
-package com.winllc.acme.server.model;
+package com.winllc.acme.server.model.acme;
 
 import com.winllc.acme.server.contants.ProblemType;
 

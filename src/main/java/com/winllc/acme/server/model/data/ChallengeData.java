@@ -1,14 +1,15 @@
 package com.winllc.acme.server.model.data;
 
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.model.Challenge;
+import com.winllc.acme.server.model.acme.Challenge;
+import com.winllc.acme.server.model.acme.Directory;
 
 public class ChallengeData extends DataObject<Challenge> {
 
     private String authorizationId;
 
-    public ChallengeData(Challenge obj) {
-        super(obj);
+    public ChallengeData(Challenge obj, DirectoryData directoryData) {
+        super(obj, directoryData);
     }
 
     @Override

@@ -1,4 +1,4 @@
-package com.winllc.acme.server.model;
+package com.winllc.acme.server.model.acme;
 
 import java.util.Arrays;
 import java.util.List;

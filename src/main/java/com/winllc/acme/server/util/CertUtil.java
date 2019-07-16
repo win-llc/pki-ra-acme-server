@@ -1,10 +1,7 @@
 package com.winllc.acme.server.util;
 
 import com.winllc.acme.server.contants.ProblemType;
-import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.Order;
-import com.winllc.acme.server.model.data.CertData;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.DERIA5String;
 import org.bouncycastle.asn1.pkcs.Attribute;
@@ -15,9 +12,6 @@ import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
-import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequest;
-import org.bouncycastle.util.encoders.Base64Encoder;
-import org.bouncycastle.util.io.pem.PemReader;
 
 import java.io.*;
 import java.security.cert.CertificateEncodingException;
@@ -45,8 +39,7 @@ public class CertUtil {
             try (PEMParser pemParser = new PEMParser(csrReader)) {
                 Object pemObj = pemParser.readObject();
                 if (pemObj instanceof PKCS10CertificationRequest) {
-                    PKCS10CertificationRequest csr = (PKCS10CertificationRequest) pemObj;
-                    return csr;
+                    return (PKCS10CertificationRequest) pemObj;
                 }
             }
         } catch (IOException ex) {
@@ -84,7 +77,7 @@ public class CertUtil {
         return full;
     }
 
-    protected static String convertToPem(X509Certificate cert) throws CertificateEncodingException {
+    public static String convertToPem(X509Certificate cert) throws CertificateEncodingException {
         Base64.Encoder encoder = Base64.getEncoder();
         String cert_begin = "-----BEGIN CERTIFICATE-----\n";
         String end_cert = "-----END CERTIFICATE-----";

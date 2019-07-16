@@ -3,7 +3,6 @@ package com.winllc.acme.server.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
-import com.nimbusds.jose.crypto.Ed25519Verifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
@@ -13,18 +12,16 @@ import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.MalformedRequest;
-import com.winllc.acme.server.model.Account;
+import com.winllc.acme.server.model.AcmeJWSObject;
+import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.lang.model.type.ErrorType;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.security.cert.X509Certificate;
-import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -47,21 +44,21 @@ public class AppUtil {
     }
 
     public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest, Class<T> clazz) throws AcmeServerException {
-        JWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
+        AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
 
         //Should contain account URL
-        String kid = jwsObject.getHeader().getKeyID();
+        AcmeURL kid = new AcmeURL(jwsObject.getHeader().getKeyID());
 
-        return verifyJWSAndReturnPayloadForExistingAccount(httpServletRequest, getObjectIdFromURL(kid), clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(httpServletRequest, kid.getObjectId().get(), clazz);
     }
 
     public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,
                                                                                        String accountId, Class<T> clazz) throws AcmeServerException {
-        JWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
+        AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
 
         //The URL must match the URL in the JWS Header
         //Section 6.4
-        String headerUrl = (String) jwsObject.getHeader().getCustomParam("url");
+        String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
         if(!headerUrl.contentEquals(httpServletRequest.getRequestURL())){
             throw new AcmeServerException(ProblemType.UNAUTHORIZED);
         }
@@ -95,7 +92,7 @@ public class AppUtil {
                 throw new AcmeServerException(ProblemType.UNAUTHORIZED);
             }
 
-            String nonce = (String) jwsObject.getHeader().getCustomParam("nonce");
+            String nonce = jwsObject.getNonce();
             //Verify nonce has not been used
             if (Application.unUsedNonces.contains(nonce) && !Application.usedNonces.contains(nonce)) {
                 Application.usedNonces.add(nonce);
@@ -104,8 +101,6 @@ public class AppUtil {
                 //Section 6.5.2
                 throw new MalformedRequest();
             }
-
-            ObjectMapper objectMapper = new ObjectMapper();
 
             T obj = getPayloadFromJWSObject(jwsObject, clazz);
 
@@ -124,7 +119,7 @@ public class AppUtil {
         }
     }
 
-    public static JWSObject getJWSObjectFromHttpRequest(HttpServletRequest httpServletRequest) throws AcmeServerException {
+    public static AcmeJWSObject getJWSObjectFromHttpRequest(HttpServletRequest httpServletRequest) throws AcmeServerException {
         String body;
         try {
             body = httpServletRequest.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
@@ -132,9 +127,9 @@ public class AppUtil {
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Unable to read HTTP request data");
         }
 
-        JWSObject jwsObject;
+        AcmeJWSObject jwsObject;
         try {
-            jwsObject = JWSObject.parse(body);
+            jwsObject = AcmeJWSObject.parse(body);
         } catch (ParseException e) {
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Unable to parse request JWK");
         }
@@ -152,11 +147,6 @@ public class AppUtil {
         return false;
     }
 
-    //Return last section of URL as id
-    public static String getObjectIdFromURL(String url){
-        String[] splitUrl = url.split("/");
-        return splitUrl[splitUrl.length - 1];
-    }
 
     //TODO better understand this
     public static JWSVerifier buildVerifierFromJWS(JWSObject jwsObject) throws JOSEException, AcmeServerException {

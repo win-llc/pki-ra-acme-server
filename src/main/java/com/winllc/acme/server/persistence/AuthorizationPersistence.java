@@ -1,6 +1,5 @@
 package com.winllc.acme.server.persistence;
 
-import com.winllc.acme.server.model.Authorization;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.OrderData;
 

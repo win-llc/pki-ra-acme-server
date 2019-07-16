@@ -1,7 +1,7 @@
 package com.winllc.acme.server.model.data;
 
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.model.Authorization;
+import com.winllc.acme.server.model.acme.Authorization;
 
 public class AuthorizationData extends DataObject<Authorization> {
 
@@ -12,12 +12,12 @@ public class AuthorizationData extends DataObject<Authorization> {
         return Application.baseURL + "authz/" + getId();
     }
 
-    public AuthorizationData(Authorization authorization){
-        super(authorization);
+    public AuthorizationData(Authorization authorization, DirectoryData directoryData){
+        super(authorization, directoryData);
     }
 
-    public AuthorizationData(Authorization authorization, OrderData orderData){
-        this(authorization);
+    public AuthorizationData(Authorization authorization, DirectoryData directoryData, OrderData orderData){
+        this(authorization, directoryData);
         this.orderId = orderData.getId();
     }
 

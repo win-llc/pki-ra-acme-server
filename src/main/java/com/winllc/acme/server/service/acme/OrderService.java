@@ -1,16 +1,16 @@
 package com.winllc.acme.server.service.acme;
 
-import com.fasterxml.jackson.databind.util.JSONPObject;
-import com.nimbusds.jose.util.JSONObjectUtils;
-import com.sun.org.apache.xpath.internal.operations.Or;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.external.CAValidationRule;
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.server.model.*;
+import com.winllc.acme.server.model.AcmeURL;
+import com.winllc.acme.server.model.acme.Directory;
+import com.winllc.acme.server.model.acme.Identifier;
+import com.winllc.acme.server.model.acme.Order;
+import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.*;
 import com.winllc.acme.server.model.requestresponse.CertificateRequest;
 import com.winllc.acme.server.model.requestresponse.OrderRequest;
@@ -19,14 +19,11 @@ import com.winllc.acme.server.persistence.CertificatePersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
 import com.winllc.acme.server.process.AuthorizationProcessor;
-import com.winllc.acme.server.process.ChallengeProcessor;
 import com.winllc.acme.server.process.OrderProcessor;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.CertUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,6 +50,8 @@ public class OrderService extends BaseService {
 
         try {
             PayloadAndAccount<OrderRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, OrderRequest.class);
+            AcmeURL acmeURL = new AcmeURL(request);
+            DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
 
             OrderRequest orderRequest = payloadAndAccount.getPayload();
             AccountData accountData = payloadAndAccount.getAccountData();
@@ -60,7 +59,7 @@ public class OrderService extends BaseService {
             if(caCanFulfill(orderRequest)){
 
                 //CA can fulfill
-                OrderData orderData = orderProcessor.buildNew();
+                OrderData orderData = orderProcessor.buildNew(directoryData);
                 Order order = orderData.getObject();
 
                 generateAuthorizationsForOrder(order);
@@ -72,7 +71,8 @@ public class OrderService extends BaseService {
                 new OrderPersistence().save(orderData);
 
                 //Get order list ID from account
-                String orderListId = AppUtil.getObjectIdFromURL(accountData.getObject().getOrders());
+                Optional<String> objectId = new AcmeURL(accountData.getObject().getOrders()).getObjectId();
+                String orderListId = objectId.get();
                 OrderListData orderListData = new OrderListPersistence().getFromId(orderListId);
                 orderListData.addOrder(orderData);
 
@@ -104,8 +104,8 @@ public class OrderService extends BaseService {
             //TODO return exception
         }
 
-        OrderData orderData = new OrderPersistence().getFromId(id);
-        orderData = orderProcessor.buildCurrentOrder(orderData);
+        Optional<OrderData> optionalOrderData = new OrderPersistence().getById(id);
+        OrderData orderData = orderProcessor.buildCurrentOrder(optionalOrderData.get());
 
         //if order ready to be completed by passing authorization checks
         if(orderReadyForFinalize(orderData.getObject())){
@@ -115,7 +115,7 @@ public class OrderService extends BaseService {
                 if (validateCsr(csr, orderData.getObject())) {
                     //if checks pass, return
 
-                    finalizeOrder(orderData.getObject(), csr);
+                    finalizeOrder(orderData, csr);
 
                     //TODO update the Order object
                     orderPersistence.save(orderData);
@@ -188,26 +188,26 @@ public class OrderService extends BaseService {
         order.setAuthorizations(authorizationUrls.toArray(new String[0]));
     }
 
-    private void finalizeOrder(Order order, String csr){
+    private void finalizeOrder(OrderData order, String csr){
         /*
         “invalid”: The certificate will not be issued. Consider this order process abandoned.
-“pending”: The server does not believe that the client has fulfilled the requirements. Check the “authorizations” array for entries that are still pending.
-“ready”: The server agrees that the requirements have been fulfilled, and is awaiting finalization. Submit a finalization request.
-“processing”: The certificate is being issued. Send a POST-as-GET request after the time given in the Retry-After header field of the response, if any.
-“valid”: The server has issued the certificate and provisioned its URL to the “certificate” field of the order. Download the certificate.
+        “pending”: The server does not believe that the client has fulfilled the requirements. Check the “authorizations” array for entries that are still pending.
+        “ready”: The server agrees that the requirements have been fulfilled, and is awaiting finalization. Submit a finalization request.
+        “processing”: The certificate is being issued. Send a POST-as-GET request after the time given in the Retry-After header field of the response, if any.
+        “valid”: The server has issued the certificate and provisioned its URL to the “certificate” field of the order. Download the certificate.
          */
 
-        DirectoryData directoryData = Application.directoryData;
+        DirectoryData directoryData = Application.directoryDataMap.get(order.getDirectory());
         CertificateAuthority ca = new CertificateAuthorityService().getByDirectoryData(directoryData);
 
         try {
             X509Certificate certificate = ca.issueCertificate(CertUtil.csrBase64ToPKC10Object(csr));
             String[] certWithChains = CertUtil.certAndChainsToPemArray(certificate, ca.getTrustChain());
-            CertData certData = new CertData(certWithChains);
+            CertData certData = new CertData(certWithChains, directoryData);
             certData = certificatePersistence.save(certData);
 
-            order.setStatus(StatusType.VALID.toString());
-            order.setCertificate(certData.buildUrl());
+            order.getObject().setStatus(StatusType.VALID.toString());
+            order.getObject().setCertificate(certData.buildUrl());
 
         }catch (Exception e){
             //TODO, but should not fail from CSR parsing at this point

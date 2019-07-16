@@ -1,7 +1,6 @@
 package com.winllc.acme.server.service.internal;
 
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.server.model.Directory;
 import com.winllc.acme.server.model.data.DirectoryData;
 
 import java.util.HashMap;

@@ -1,7 +1,6 @@
 package com.winllc.acme.server.exceptions;
 
 import com.winllc.acme.server.contants.ProblemType;
-import com.winllc.acme.server.model.ProblemDetails;
 
 public class AcmeServerException extends Exception {
     protected ProblemType problemType;

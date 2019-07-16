@@ -1,22 +1,30 @@
 package com.winllc.acme.server.challenge;
 
 import com.winllc.acme.server.contants.StatusType;
-import com.winllc.acme.server.model.Challenge;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
+import com.winllc.acme.server.process.ChallengeProcessor;
 
 //Section 8.3
 public class HttpChallenge implements ChallengeVerification {
 
     private ChallengePersistence challengePersistence;
+    private ChallengeProcessor challengeProcessor;
 
     public void verify(ChallengeData challenge){
         //TODO run verification in separate thread
 
-        challenge.getObject().setStatus(StatusType.PROCESSING.toString());
-        challengePersistence.save(challenge);
+        try {
+            challengeProcessor.processing(challenge);
 
-        new VerificationRunner(challenge).run();
+            challenge.getObject().setStatus(StatusType.PROCESSING.toString());
+            challengePersistence.save(challenge);
+
+            new VerificationRunner(challenge).run();
+        }catch (InternalServerException e){
+            e.printStackTrace();
+        }
     }
 
     private class VerificationRunner implements Runnable {
@@ -32,12 +40,13 @@ public class HttpChallenge implements ChallengeVerification {
             //TODO
             boolean success = false;
 
-            if(success){
-                challenge.getObject().setStatus(StatusType.VALID.toString());
-            }else{
-                challenge.getObject().setStatus(StatusType.INVALID.toString());
+            try {
+                challenge = challengeProcessor.validation(challenge, success);
+
+                challengePersistence.save(challenge);
+            }catch (InternalServerException e){
+                e.printStackTrace();
             }
-            challengePersistence.save(challenge);
         }
     }
 }

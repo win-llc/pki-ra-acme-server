@@ -5,14 +5,10 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.external.CertificateAuthorityImpl;
 import com.winllc.acme.server.external.ExternalAccountProvider;
-import com.winllc.acme.server.model.Account;
-import com.winllc.acme.server.model.Directory;
-import com.winllc.acme.server.model.Meta;
-import com.winllc.acme.server.model.data.AccountData;
+import com.winllc.acme.server.model.acme.Directory;
+import com.winllc.acme.server.model.acme.Meta;
 import com.winllc.acme.server.model.data.DirectoryData;
 
-import java.security.KeyStore;
-import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,13 +17,14 @@ import java.util.Map;
 public class Application {
 
     private static String hostname = "acme.winllc.com";
-    public static String baseURL = "https://"+hostname+"/acme/";
+    public static String baseURL = "https://"+hostname+"/";
 
     public static List<ExternalAccountProvider> accountProviders = new ArrayList<>();
     public static List<String> usedNonces = new ArrayList<>();
     public static List<String> unUsedNonces = new ArrayList<>();
 
     public static DirectoryData directoryData;
+    public static Map<String, DirectoryData> directoryDataMap;
     public static Directory directory;
     public static CertificateAuthority ca;
     public static Map<String, CertificateAuthority> availableCAs;
@@ -36,6 +33,7 @@ public class Application {
 
     static {
         availableCAs = new HashMap<>();
+        directoryDataMap = new HashMap<>();
         ca = new CertificateAuthorityImpl("ca1");
         availableCAs.put(ca.getName(), ca);
 

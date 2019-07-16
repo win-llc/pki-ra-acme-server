@@ -9,10 +9,12 @@ import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.ExternalAccount;
 import com.winllc.acme.server.external.ExternalAccountProvider;
-import com.winllc.acme.server.model.Account;
-import com.winllc.acme.server.model.Directory;
-import com.winllc.acme.server.model.ProblemDetails;
+import com.winllc.acme.server.model.AcmeJWSObject;
+import com.winllc.acme.server.model.acme.Account;
+import com.winllc.acme.server.model.acme.Directory;
+import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.AccountData;
+import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.model.requestresponse.AccountRequest;
 import com.winllc.acme.server.model.requestresponse.KeyChangeRequest;
 import com.winllc.acme.server.persistence.AccountPersistence;
@@ -20,6 +22,7 @@ import com.winllc.acme.server.process.AccountProcessor;
 import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,6 +39,7 @@ import java.util.stream.Collectors;
 public class AccountService extends BaseService {
 
     private AccountPersistence accountPersistence = new AccountPersistence();
+    private AccountProcessor accountProcessor;
 
     //Section 7.3
     @RequestMapping(value = "new-account", method = RequestMethod.POST, consumes = "application/jose+json")
@@ -44,7 +48,7 @@ public class AccountService extends BaseService {
         HttpHeaders headers = new HttpHeaders();
 
         String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-        JWSObject jwsObject = JWSObject.parse(body);
+        AcmeJWSObject jwsObject = AcmeJWSObject.parse(body);
 
         if (AppUtil.verifyJWS(jwsObject)) {
             //TODO only proceed if true
@@ -78,21 +82,30 @@ public class AccountService extends BaseService {
         //Not an account lookup at this point, create a new account
         if (!accountRequest.getOnlyReturnExisting()) {
 
-            Directory directory = Application.directory;
+            DirectoryData directory = Application.directoryDataMap.get(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
 
             //If terms of service exist, ensure client has agreed
-            if (directory.getMeta().getTermsOfService() != null) {
+            if (directory.getObject().getMeta().getTermsOfService() != null) {
                 //TODO
+                if (!accountRequest.getTermsOfServiceAgreed()) {
+                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
+                    problemDetails.setDetail("Terms of Service agreement required");
+                    //TODO provide terms location
+
+                    return buildBaseResponseEntity(403)
+                            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                            .body(problemDetails);
+                }
             }
 
             //Validate the data in the account request for valid syntax and format
             if (validateAccountRequest(accountRequest) == null) {
 
-                AccountData accountData = new AccountProcessor().buildNew();
+                AccountData accountData = new AccountProcessor().buildNew(directory);
                 Account account = accountData.getObject();
 
                 //If external account required, perform further validation
-                if (directory.getMeta().isExternalAccountRequired()) {
+                if (directory.getObject().getMeta().isExternalAccountRequired()) {
                     //TODO real logic
                     ExternalAccountProvider accountProvider = Application.accountProviders.get(0);
                     boolean verified = accountProvider.verifyExternalAccountJWS(accountRequest.getExternalAccountBinding());
@@ -141,9 +154,8 @@ public class AccountService extends BaseService {
 
             //Section 7.3.6
             if (accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
-                accountData.getObject().setStatus(StatusType.DEACTIVATED.toString());
-                accountData = accountPersistence.save(accountData);
 
+                accountData = accountProcessor.deactivateAccount(accountData);
 
                 return buildBaseResponseEntity(200)
                         .body(accountData.getObject());
@@ -179,10 +191,10 @@ public class AccountService extends BaseService {
     @RequestMapping(value = "key-change", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> keyRollover(HttpServletRequest httpRequest) throws Exception {
 
-        PayloadAndAccount<JWSObject> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(httpRequest, JWSObject.class);
+        PayloadAndAccount<AcmeJWSObject> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(httpRequest, AcmeJWSObject.class);
         AccountData accountData = payloadAndAccount.getAccountData();
 
-        if(validateJWSForKeyChange(payloadAndAccount, payloadAndAccount.getPayload())){
+        if (validateJWSForKeyChange(payloadAndAccount, payloadAndAccount.getPayload())) {
             //TODO
             String newKey = payloadAndAccount.getPayload().getHeader().getJWK().toString();
             accountData.setJwk(newKey);
@@ -214,14 +226,14 @@ public class AccountService extends BaseService {
 
     //Section 7.3.5
     //Must verify the inner JWS Object before updating account key
-    private boolean validateJWSForKeyChange(PayloadAndAccount<JWSObject> payloadAndAccount, JWSObject innerJws){
+    private boolean validateJWSForKeyChange(PayloadAndAccount<AcmeJWSObject> payloadAndAccount, AcmeJWSObject innerJws) {
         AccountData accountData = payloadAndAccount.getAccountData();
-        JWSObject outerJws = payloadAndAccount.getPayload();
+        AcmeJWSObject outerJws = payloadAndAccount.getPayload();
 
         boolean valid = true;
         KeyChangeRequest keyChangeRequest = null;
         //Check that the JWS protected header of the inner JWS has a “jwk” field.
-        if(innerJws.getHeader().getJWK() == null){
+        if (innerJws.getHeader().getJWK() == null) {
             valid = false;
         }
 
@@ -242,20 +254,19 @@ public class AccountService extends BaseService {
         }
 
         //Check that the “url” parameters of the inner and outer JWSs are the same.
-        if(!outerJws.getHeader().getCustomParam("url").toString()
-                .contentEquals(innerJws.getHeader().getCustomParam("url").toString())){
+        if (!outerJws.getHeaderAcmeUrl().toString().contentEquals(innerJws.getHeaderAcmeUrl().toString())) {
             valid = false;
         }
 
         //Check that the “account” field of the keyChange object contains the URL for the account matching the old key (i.e., the “kid” field in the outer JWS).
-        if(!outerJws.getHeader().getKeyID()
-                .contentEquals(keyChangeRequest.getAccount())){
+        if (!outerJws.getHeader().getKeyID()
+                .contentEquals(keyChangeRequest.getAccount())) {
             valid = false;
         }
 
         //Check that the “oldKey” field of the keyChange object is the same as the account key for the account in question.
         try {
-            if(!keyChangeRequest.getOldKey().equals(JWK.parse(accountData.getJwk()))){
+            if (!keyChangeRequest.getOldKey().equals(JWK.parse(accountData.getJwk()))) {
                 valid = false;
             }
         } catch (ParseException e) {
@@ -265,7 +276,7 @@ public class AccountService extends BaseService {
 
         //Check that no account exists whose account key is the same as the key in the “jwk” header parameter of the inner JWS.
         Optional<AccountData> existing = accountPersistence.getByJwk(innerJws.getHeader().getJWK().toString());
-        if(existing.isPresent()) valid = false;
+        if (existing.isPresent()) valid = false;
 
         return valid;
     }

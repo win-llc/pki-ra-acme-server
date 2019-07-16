@@ -1,7 +1,5 @@
 package com.winllc.acme.server.persistence;
 
-import com.winllc.acme.server.Application;
-import com.winllc.acme.server.model.Account;
 import com.winllc.acme.server.model.data.AccountData;
 
 import java.util.Optional;

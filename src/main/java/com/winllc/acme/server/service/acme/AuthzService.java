@@ -7,15 +7,16 @@ import com.winllc.acme.server.challenge.HttpChallenge;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
-import com.winllc.acme.server.model.Authorization;
-import com.winllc.acme.server.model.Challenge;
-import com.winllc.acme.server.model.Identifier;
-import com.winllc.acme.server.model.ProblemDetails;
+import com.winllc.acme.server.model.acme.Authorization;
+import com.winllc.acme.server.model.acme.Challenge;
+import com.winllc.acme.server.model.acme.Identifier;
+import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.AuthorizationProcessor;
+import com.winllc.acme.server.process.ChallengeProcessor;
 import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.springframework.http.MediaType;
@@ -33,6 +34,9 @@ import java.util.Optional;
 public class AuthzService extends BaseService {
 
     private AuthorizationPersistence authorizationPersistence;
+    private AuthorizationProcessor authorizationProcessor;
+    private ChallengeProcessor challengeProcessor;
+    private ChallengePersistence challengePersistence;
 
     @RequestMapping(value = "new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newAuthz(HttpServletRequest request){
@@ -43,7 +47,7 @@ public class AuthzService extends BaseService {
 
             if(serverWillingToIssueForIdentifier(identifier)){
                 //TODO build authorization object
-                Optional<AuthorizationData> authorizationOptional = new AuthorizationProcessor().buildAuthorizationForIdentifier(identifier, Application.directoryData);
+                Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, Application.directoryData);
 
 
 

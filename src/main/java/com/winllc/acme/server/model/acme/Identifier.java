@@ -1,4 +1,4 @@
-package com.winllc.acme.server.model;
+package com.winllc.acme.server.model.acme;
 
 public class Identifier {
     //required

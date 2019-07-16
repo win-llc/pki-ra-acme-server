@@ -1,4 +1,4 @@
-package com.winllc.acme.server.model;
+package com.winllc.acme.server.model.acme;
 
 //RFC8555 Section 7.1.3
 public class Order extends BaseAcmeObject {

@@ -1,7 +1,7 @@
 package com.winllc.acme.server.model.data;
 
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.model.Directory;
+import com.winllc.acme.server.model.acme.Directory;
 
 public class DirectoryData extends DataObject<Directory> {
     private String name;

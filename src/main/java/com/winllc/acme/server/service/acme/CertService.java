@@ -1,17 +1,14 @@
 package com.winllc.acme.server.service.acme;
 
-import com.nimbusds.jose.util.X509CertUtils;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.RevocationReason;
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.server.external.CertificateAuthorityImpl;
-import com.winllc.acme.server.model.ProblemDetails;
+import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.CertData;
 import com.winllc.acme.server.model.requestresponse.RevokeCertRequest;
 import com.winllc.acme.server.persistence.CertificatePersistence;
 import com.winllc.acme.server.util.AppUtil;
-import com.winllc.acme.server.util.CertUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -21,11 +18,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.ByteArrayInputStream;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.Base64;
 import java.util.Optional;
 
 

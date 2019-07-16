@@ -1,6 +1,6 @@
 package com.winllc.acme.server.model.requestresponse;
 
-import com.winllc.acme.server.model.Identifier;
+import com.winllc.acme.server.model.acme.Identifier;
 
 public class OrderRequest {
     //required

@@ -3,10 +3,10 @@ package com.winllc.acme.server.process;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.external.CAValidationRule;
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.server.model.Authorization;
-import com.winllc.acme.server.model.Challenge;
-import com.winllc.acme.server.model.Directory;
-import com.winllc.acme.server.model.Identifier;
+import com.winllc.acme.server.model.acme.Authorization;
+import com.winllc.acme.server.model.acme.Challenge;
+import com.winllc.acme.server.model.acme.Directory;
+import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.model.data.DataObject;
@@ -17,15 +17,39 @@ import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+
+/*
+                   pending --------------------+
+                      |                        |
+    Challenge failure |                        |
+           or         |                        |
+          Error       |  Challenge valid       |
+            +---------+---------+              |
+            |                   |              |
+            V                   V              |
+         invalid              valid            |
+                                |              |
+                                |              |
+                                |              |
+                 +--------------+--------------+
+                 |              |              |
+                 |              |              |
+          Server |       Client |   Time after |
+          revoke |   deactivate |    "expires" |
+                 V              V              V
+              revoked      deactivated      expired
+ */
 
 public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationData> {
+
+    private ChallengeProcessor challengeProcessor;
+
     @Override
-    public AuthorizationData buildNew() {
+    public AuthorizationData buildNew(DirectoryData directoryData) {
         Authorization authorization = new Authorization();
         authorization.setStatus("pending");
 
-        AuthorizationData authorizationData = new AuthorizationData(authorization);
+        AuthorizationData authorizationData = new AuthorizationData(authorization, directoryData);
 
         return authorizationData;
     }
@@ -57,7 +81,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, DirectoryData directory){
         CertificateAuthority ca = new CertificateAuthorityService().getByName(directory.getMapsToCertificateAuthorityName());
 
-        AuthorizationData authorizationData = buildNew();
+        AuthorizationData authorizationData = buildNew(directory);
         Authorization authorization = authorizationData.getObject();
         authorization.setIdentifier(identifier);
 
@@ -67,7 +91,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
             if(identifier.getType().contentEquals(rule.getIdentifierType())){
                 //And identifier base domain matches
                 if(identifier.getValue().endsWith(rule.getBaseDomainName())){
-                    ChallengeData challengeData = new ChallengeProcessor().buildNew();
+                    ChallengeData challengeData = challengeProcessor.buildNew(directory);
                     //Needed for referencing later
                     challengeData.setAuthorizationId(authorizationData.getId());
                     Challenge challenge = challengeData.getObject();

@@ -1,67 +1,91 @@
 package com.winllc.acme.server.process;
 
 import com.winllc.acme.server.contants.StatusType;
-import com.winllc.acme.server.model.Account;
-import com.winllc.acme.server.model.OrderList;
+import com.winllc.acme.server.exceptions.InternalServerException;
+import com.winllc.acme.server.model.acme.Account;
+import com.winllc.acme.server.model.acme.OrderList;
 import com.winllc.acme.server.model.data.AccountData;
+import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.server.model.data.OrderData;
 import com.winllc.acme.server.model.data.OrderListData;
-import com.winllc.acme.server.model.requestresponse.KeyChangeRequest;
+import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
+import com.winllc.acme.server.persistence.OrderPersistence;
+
+import java.util.List;
+
+/*
+                  valid
+                    |
+                    |
+        +-----------+-----------+
+ Client |                Server |
+deactiv.|                revoke |
+        V                       V
+   deactivated               revoked
+ */
 
 public class AccountProcessor implements AcmeDataProcessor<AccountData> {
 
-    public AccountData buildNew(){
+    private AccountPersistence accountPersistence;
+    private OrderPersistence orderPersistence;
+
+    public AccountData buildNew(DirectoryData directoryData){
         Account account = new Account();
         account.setStatus(StatusType.VALID.toString());
 
         //Set order list location, Section 7.1.2.1
         OrderList orderList = new OrderList();
 
-        OrderListData orderListData = new OrderListData(orderList);
+        OrderListData orderListData = new OrderListData(orderList, directoryData);
         new OrderListPersistence().save(orderListData);
 
         account.setOrders(orderListData.buildUrl());
 
-        AccountData accountData = new AccountData(account);
+        AccountData accountData = new AccountData(account, directoryData);
 
         return accountData;
     }
 
     //Section 7.3.6
-    public Account deactivateAccount(Account account) throws Exception {
-        //TODO
+    public AccountData deactivateAccount(AccountData accountData) throws InternalServerException {
         //if all goes well
-        if(account.getStatus().contentEquals("valid")) {
-            account.setStatus("deactivated");
+        Account account = accountData.getObject();
+        if(account.getStatus().contentEquals(StatusType.VALID.toString())) {
+            accountData.getObject().setStatus(StatusType.DEACTIVATED.toString());
+            accountData = accountPersistence.save(accountData);
 
-            //TODO cancel pending operations
+            markInProgressAccountObjectsInvalid(accountData);
 
-            return account;
+            return accountData;
         }else{
-            throw new Exception();
+            throw new InternalServerException("Account was not in state to be set deactivated");
         }
     }
 
-    public Account serverRevoke(Account account) throws Exception {
-        //TODO
+    public AccountData accountRevoke(AccountData accountData) throws InternalServerException {
         //if all goes well
-        if(account.getStatus().contentEquals("valid")) {
-            account.setStatus("revoked");
+        Account account = accountData.getObject();
+        if(account.getStatus().contentEquals(StatusType.VALID.toString())) {
+            account.setStatus(StatusType.REVOKED.toString());
+            accountData = accountPersistence.save(accountData);
 
-            return account;
+            markInProgressAccountObjectsInvalid(accountData);
+
+            return accountData;
         }else{
-            throw new Exception();
+            throw new InternalServerException("Account was not in state to be set revoked");
         }
     }
 
-    public Account keyChange(KeyChangeRequest keyChangeRequest){
-        //TODO
-        //canChangeAccount
-
-        return null;
-    }
-
-    private boolean canChangeAccount(Account account){
-        return !account.getStatus().equalsIgnoreCase("deactivated");
+    //The server SHOULD cancel any pending operations authorized by the account’s key, such as certificate orders
+    private void markInProgressAccountObjectsInvalid(AccountData accountData){
+        List<OrderData> orderDataList = orderPersistence.getOrdersForAccount(accountData);
+        orderDataList.forEach(o -> {
+            if(!o.getObject().getStatus().contentEquals(StatusType.VALID.toString())) {
+                o.getObject().setStatus(StatusType.INVALID.toString());
+                orderPersistence.save(o);
+            }
+        });
     }
 }
