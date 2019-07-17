@@ -23,21 +23,20 @@ public class Application {
     public static List<String> usedNonces = new ArrayList<>();
     public static List<String> unUsedNonces = new ArrayList<>();
 
-    public static DirectoryData directoryData;
     public static Map<String, DirectoryData> directoryDataMap;
-    public static Directory directory;
-    public static CertificateAuthority ca;
     public static Map<String, CertificateAuthority> availableCAs;
+    public static Map<String, ExternalAccountProvider> externalAccountProviderMap;
 
     public static RSAKey rsaJWK;
 
     static {
         availableCAs = new HashMap<>();
         directoryDataMap = new HashMap<>();
-        ca = new CertificateAuthorityImpl("ca1");
+        externalAccountProviderMap = new HashMap<>();
+        CertificateAuthority ca = new CertificateAuthorityImpl("ca1");
         availableCAs.put(ca.getName(), ca);
 
-        directory = new Directory();
+        Directory directory = new Directory();
         directory.setNewNonce(baseURL+"new-nonce");
         directory.setNewAccount(baseURL+"new-account");
         directory.setNewOrder(baseURL+"new-order");
@@ -53,10 +52,12 @@ public class Application {
 
         directory.setMeta(meta);
 
-        directoryData = new DirectoryData(directory);
+        DirectoryData directoryData = new DirectoryData(directory);
         directoryData.setAllowPreAuthorization(true);
         directoryData.setName("acme");
         directoryData.setMapsToCertificateAuthorityName(ca.getName());
+
+        directoryDataMap.put(directoryData.getName(), directoryData);
 
         try {
             rsaJWK = new RSAKeyGenerator(2048)

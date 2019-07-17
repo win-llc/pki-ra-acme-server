@@ -3,13 +3,19 @@ package com.winllc.acme.server.service.acme;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.RevocationReason;
+import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
+import com.winllc.acme.server.model.AcmeURL;
+import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.CertData;
+import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.model.requestresponse.RevokeCertRequest;
 import com.winllc.acme.server.persistence.CertificatePersistence;
 import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,21 +31,19 @@ import java.util.Optional;
 @RestController
 public class CertService extends BaseService {
 
+    private Logger log = LogManager.getLogger(CertService.class);
+
     //Section 7.4.2
     @RequestMapping(value = "cert/{id}", method = RequestMethod.POST,
             consumes = "application/jose+json")
-    public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id) {
+    public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id) throws AcmeServerException {
 
         Optional<CertData> optionalCertData = new CertificatePersistence().getById(id);
 
         if(optionalCertData.isPresent()) {
             CertData certData = optionalCertData.get();
 
-            try {
-                PayloadAndAccount<String> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, String.class);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            PayloadAndAccount<String> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, String.class);
 
             String returnCert = null;
 
@@ -59,7 +63,7 @@ public class CertService extends BaseService {
                     break;
             }
 
-            return buildBaseResponseEntity(200)
+            return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                     .headers(headers)
                     .body(returnCert);
         }else{
@@ -72,12 +76,13 @@ public class CertService extends BaseService {
     @RequestMapping(value = "revoke-cert", method = RequestMethod.POST,
             consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> certRevoke(HttpServletRequest request, @PathVariable String id) {
-
-        CertificateAuthority ca = Application.ca;
-
+        AcmeURL acmeURL = new AcmeURL(request);
+        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+        CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
+        PayloadAndAccount<RevokeCertRequest> payloadAndAccount;
         try {
             //TODO verify signature from either account key or certificate
-            PayloadAndAccount<RevokeCertRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, RevokeCertRequest.class);
+            payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, RevokeCertRequest.class);
             RevokeCertRequest revokeCertRequest = payloadAndAccount.getPayload();
 
             //TODO before revoking, ensure account owns all of the identifiers associated with the certificate
@@ -90,7 +95,7 @@ public class CertService extends BaseService {
                 } else {
                     ProblemDetails error = new ProblemDetails(ProblemType.ALREADY_REVOKED);
 
-                    return buildBaseResponseEntity(400)
+                    return buildBaseResponseEntity(400, payloadAndAccount.getDirectoryData())
                             .body(error);
                 }
             }else{
@@ -99,7 +104,11 @@ public class CertService extends BaseService {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e);
+
+            ProblemDetails error = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            error.setDetail(e.getMessage());
+            //TODO return
         }
 
 

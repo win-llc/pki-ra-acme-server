@@ -14,7 +14,9 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.MalformedRequest;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.AcmeURL;
+import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.data.AccountData;
+import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -55,7 +57,7 @@ public class AppUtil {
     public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,
                                                                                        String accountId, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
-
+        DirectoryData directoryData = Application.directoryDataMap.get(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
         //The URL must match the URL in the JWS Header
         //Section 6.4
         String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
@@ -104,7 +106,7 @@ public class AppUtil {
 
             T obj = getPayloadFromJWSObject(jwsObject, clazz);
 
-            return new PayloadAndAccount<>(obj, accountData);
+            return new PayloadAndAccount<>(obj, accountData, directoryData);
         }else{
             throw new AcmeServerException(ProblemType.ACCOUNT_DOES_NOT_EXIST);
         }

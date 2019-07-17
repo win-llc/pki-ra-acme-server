@@ -7,11 +7,11 @@ public class DirectoryData extends DataObject<Directory> {
     private String name;
     private boolean allowPreAuthorization;
     private String mapsToCertificateAuthorityName;
+    private String externalAccountProviderName;
 
     public DirectoryData(Directory obj) {
         super(obj);
     }
-
 
     @Override
     public String buildUrl() {
@@ -47,5 +47,13 @@ public class DirectoryData extends DataObject<Directory> {
 
     public void setMapsToCertificateAuthorityName(String mapsToCertificateAuthorityName) {
         this.mapsToCertificateAuthorityName = mapsToCertificateAuthorityName;
+    }
+
+    public String getExternalAccountProviderName() {
+        return externalAccountProviderName;
+    }
+
+    public void setExternalAccountProviderName(String externalAccountProviderName) {
+        this.externalAccountProviderName = externalAccountProviderName;
     }
 }

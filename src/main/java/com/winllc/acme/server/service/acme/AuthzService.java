@@ -7,12 +7,10 @@ import com.winllc.acme.server.challenge.HttpChallenge;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
-import com.winllc.acme.server.model.acme.Authorization;
-import com.winllc.acme.server.model.acme.Challenge;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.acme.ProblemDetails;
+import com.winllc.acme.server.model.acme.*;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
+import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.AuthorizationProcessor;
@@ -39,38 +37,55 @@ public class AuthzService extends BaseService {
     private ChallengePersistence challengePersistence;
 
     @RequestMapping(value = "new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> newAuthz(HttpServletRequest request){
+    public ResponseEntity<?> newAuthz(HttpServletRequest request) {
         try {
             PayloadAndAccount<Identifier> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Identifier.class);
+            DirectoryData directoryData = payloadAndAccount.getDirectoryData();
+            if(directoryData.isAllowPreAuthorization()) {
+                Identifier identifier = payloadAndAccount.getPayload();
 
-            Identifier identifier = payloadAndAccount.getPayload();
+                if (serverWillingToIssueForIdentifier(identifier, false)) {
+                    Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, directoryData);
+                    if(authorizationOptional.isPresent()){
+                        AuthorizationData authorizationData = authorizationOptional.get();
+                        authorizationData.setAccountId(payloadAndAccount.getAccountData().getId());
 
-            if(serverWillingToIssueForIdentifier(identifier)){
-                //TODO build authorization object
-                Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, Application.directoryData);
+                        authorizationData = authorizationPersistence.save(authorizationData);
 
+                        return buildBaseResponseEntity(201, directoryData)
+                                .body(authorizationData.getObject());
+                    }else{
+                        //TODO get proper problem type
+                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+                    }
 
-
+                } else {
+                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNSUPPORTED_IDENTIFIER);
+                    //TODO fill out problem details
+                    return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
+                            .body(problemDetails);
+                }
             }else{
-                ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNSUPPORTED_IDENTIFIER);
-                //TODO fill out problem details
-                return buildBaseResponseEntity(403)
+                //Pre-auth not allowed
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
+                return buildBaseResponseEntity(403, directoryData)
                         .body(problemDetails);
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+
         return null;
     }
 
     //Section 7.5
     @RequestMapping(value = "authz/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> authz(HttpServletRequest request, @PathVariable String id){
+    public ResponseEntity<?> authz(HttpServletRequest request, @PathVariable String id) {
 
         Optional<AuthorizationData> optionalAuthorizationData = authorizationPersistence.getById(id);
 
-        if(optionalAuthorizationData.isPresent()) {
+        if (optionalAuthorizationData.isPresent()) {
             AuthorizationData authorizationData = optionalAuthorizationData.get();
 
             try {
@@ -79,11 +94,11 @@ public class AuthzService extends BaseService {
                 Authorization authorization = payloadAndAccount.getPayload();
 
                 //Section 7.5.2
-                if(authorization.getStatus().contentEquals(StatusType.DEACTIVATED.toString())){
+                if (authorization.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
                     authorizationData.getObject().setStatus(StatusType.DEACTIVATED.toString());
                     authorizationPersistence.save(authorizationData);
 
-                    return buildBaseResponseEntity(200)
+                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                             .contentType(MediaType.APPLICATION_JSON)
                             .body(authorizationData.getObject());
                 }
@@ -94,7 +109,7 @@ public class AuthzService extends BaseService {
 
                 authorizationPersistence.save(authorizationData);
 
-                return buildBaseResponseEntity(200)
+                return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                         .header("Link", "TODO")
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(refreshedAuthorization);
@@ -110,15 +125,15 @@ public class AuthzService extends BaseService {
 
     //Section 7.5.1
     @RequestMapping(value = "chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id){
+    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id) {
         Optional<ChallengeData> optionalChallengeData = new ChallengePersistence().getById(id);
 
-        if(optionalChallengeData.isPresent()){
+        if (optionalChallengeData.isPresent()) {
             ChallengeData challengeData = optionalChallengeData.get();
             Challenge challenge = challengeData.getObject();
 
             ChallengeType challengeType = ChallengeType.valueOf(challenge.getType());
-            switch (challengeType){
+            switch (challengeType) {
                 case HTTP:
                     new HttpChallenge().verify(challengeData);
                     break;
@@ -132,7 +147,7 @@ public class AuthzService extends BaseService {
         return null;
     }
 
-    private boolean serverWillingToIssueForIdentifier(Identifier identifier){
+    private boolean serverWillingToIssueForIdentifier(Identifier identifier, boolean allowWildcards) {
         //TODO
         return false;
     }

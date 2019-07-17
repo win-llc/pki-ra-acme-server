@@ -14,7 +14,7 @@ public class ChallengeData extends DataObject<Challenge> {
 
     @Override
     public String buildUrl() {
-        return Application.baseURL + "chall/" + getId();
+        return buildBaseUrl() + "chall/" + getId();
     }
 
     public String getAuthorizationId() {

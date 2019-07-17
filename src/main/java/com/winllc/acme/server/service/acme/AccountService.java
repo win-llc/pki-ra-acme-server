@@ -10,6 +10,7 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.ExternalAccount;
 import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.model.AcmeJWSObject;
+import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.ProblemDetails;
@@ -44,21 +45,24 @@ public class AccountService extends BaseService {
     //Section 7.3
     @RequestMapping(value = "new-account", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> request(HttpServletRequest request) throws Exception {
-
+        DirectoryData directoryData = Application.directoryDataMap.get(new AcmeURL(request).getDirectoryIdentifier());
         HttpHeaders headers = new HttpHeaders();
 
         String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
         AcmeJWSObject jwsObject = AcmeJWSObject.parse(body);
 
-        if (AppUtil.verifyJWS(jwsObject)) {
-            //TODO only proceed if true
-        } else {
-            //Invalid JWS
+        //If JWS invalid, don't proceed
+        if (!AppUtil.verifyJWS(jwsObject)) {
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED);
+
+            return buildBaseResponseEntity(500, directoryData)
+                    .body(problemDetails);
+
         }
 
         String jwk = jwsObject.getHeader().getJWK().toJSONString();
 
-        AccountRequest accountRequest = buildAccountRequestFromHttpRequest(request);
+        AccountRequest accountRequest = AppUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
 
         //Section 7.3.1
         Optional<AccountData> accountDataOptional = accountPersistence.getByJwk(jwk);
@@ -67,13 +71,13 @@ public class AccountService extends BaseService {
             AccountData accountData = accountDataOptional.get();
             headers.add("Location", accountData.buildUrl());
 
-            return buildBaseResponseEntity(200)
+            return buildBaseResponseEntity(200, directoryData)
                     .headers(headers).build();
         } else {
             //If no account exists, but account lookup requested, send error
             if (accountRequest.getOnlyReturnExisting()) {
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.ACCOUNT_DOES_NOT_EXIST);
-                return buildBaseResponseEntity(400)
+                return buildBaseResponseEntity(400, directoryData)
                         .body(problemDetails);
             }
         }
@@ -81,18 +85,15 @@ public class AccountService extends BaseService {
         //Section 7.3.1 Paragraph 2
         //Not an account lookup at this point, create a new account
         if (!accountRequest.getOnlyReturnExisting()) {
-
-            DirectoryData directory = Application.directoryDataMap.get(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
-
             //If terms of service exist, ensure client has agreed
-            if (directory.getObject().getMeta().getTermsOfService() != null) {
+            if (directoryData.getObject().getMeta().getTermsOfService() != null) {
                 //TODO
                 if (!accountRequest.getTermsOfServiceAgreed()) {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
                     problemDetails.setDetail("Terms of Service agreement required");
                     //TODO provide terms location
 
-                    return buildBaseResponseEntity(403)
+                    return buildBaseResponseEntity(403, directoryData)
                             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                             .body(problemDetails);
                 }
@@ -101,13 +102,13 @@ public class AccountService extends BaseService {
             //Validate the data in the account request for valid syntax and format
             if (validateAccountRequest(accountRequest) == null) {
 
-                AccountData accountData = new AccountProcessor().buildNew(directory);
+                AccountData accountData = new AccountProcessor().buildNew(directoryData);
                 Account account = accountData.getObject();
 
                 //If external account required, perform further validation
-                if (directory.getObject().getMeta().isExternalAccountRequired()) {
+                if (directoryData.getObject().getMeta().isExternalAccountRequired()) {
                     //TODO real logic
-                    ExternalAccountProvider accountProvider = Application.accountProviders.get(0);
+                    ExternalAccountProvider accountProvider = Application.externalAccountProviderMap.get(directoryData.getExternalAccountProviderName());
                     boolean verified = accountProvider.verifyExternalAccountJWS(accountRequest.getExternalAccountBinding());
 
                     if (verified) {
@@ -143,6 +144,7 @@ public class AccountService extends BaseService {
     //Section 7.3.2
     @RequestMapping(value = "acct/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> update(@PathVariable String id, HttpServletRequest request) throws Exception {
+        AcmeURL acmeURL = new AcmeURL(request);
         PayloadAndAccount<AccountRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
 
         AccountRequest accountRequest = payloadAndAccount.getPayload();
@@ -157,19 +159,19 @@ public class AccountService extends BaseService {
 
                 accountData = accountProcessor.deactivateAccount(accountData);
 
-                return buildBaseResponseEntity(200)
+                return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                         .body(accountData.getObject());
             }
 
             //Section 7.3.3
-            if (!checkChangeInTermsOfService(accountData, Application.directory)) {
+            if (!checkChangeInTermsOfService(accountData, Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier()))) {
 
                 if (validateContactField(accountRequest) == null) {
                     accountData.getObject().setContact(accountRequest.getContact());
 
                     accountData = accountPersistence.save(accountData);
 
-                    return buildBaseResponseEntity(200)
+                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                             .body(accountData);
                 }
             } else {
@@ -179,7 +181,7 @@ public class AccountService extends BaseService {
                 problemDetails.setDetail("Terms of service have changed");
                 //TODO
                 problemDetails.setInstance("TODO");
-                return buildBaseResponseEntity(403)
+                return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
                         //TODO headers
                         .body(problemDetails);
             }
@@ -201,7 +203,7 @@ public class AccountService extends BaseService {
 
             accountPersistence.save(accountData);
 
-            return buildBaseResponseEntity(200)
+            return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                     .body(accountData.getObject());
         } else {
             HttpHeaders headers = new HttpHeaders();
@@ -211,7 +213,7 @@ public class AccountService extends BaseService {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
 
             //TODO, only for conflict
-            return buildBaseResponseEntity(409)
+            return buildBaseResponseEntity(409, payloadAndAccount.getDirectoryData())
                     .headers(headers)
                     .body(problemDetails);
         }
@@ -307,7 +309,7 @@ public class AccountService extends BaseService {
         return false;
     }
 
-    private boolean checkChangeInTermsOfService(AccountData accountData, Directory directory) {
+    private boolean checkChangeInTermsOfService(AccountData accountData, DirectoryData directory) {
         //TODO
         return true;
     }

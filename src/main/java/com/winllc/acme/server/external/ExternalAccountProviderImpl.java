@@ -51,13 +51,13 @@ The “url” field MUST be set to the same value as the outer JWS
     /*
     To verify the account binding, the CA MUST take the following steps:
 
-Verify that the value of the field is a well-formed JWS
-Verify that the JWS protected field meets the above criteria
-Retrieve the MAC key corresponding to the key identifier in the “kid” field
-Verify that the MAC on the JWS verifies using that MAC key
-Verify that the payload of the JWS represents the same key as was used to verify the outer JWS (i.e., the “jwk” field of the outer JWS)
+    Verify that the value of the field is a well-formed JWS
+    Verify that the JWS protected field meets the above criteria
+    Retrieve the MAC key corresponding to the key identifier in the “kid” field
+    Verify that the MAC on the JWS verifies using that MAC key
+    Verify that the payload of the JWS represents the same key as was used to verify the outer JWS (i.e., the “jwk” field of the outer JWS)
      */
-    private boolean verifyAccountBinding(JWSObject jwsObject){
+    private boolean verifyAccountBinding(AcmeJWSObject jwsObject){
         //TODO
         //Send JWS to verificationURL
         getAccountVerificationUrl();

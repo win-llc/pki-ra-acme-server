@@ -6,10 +6,11 @@ import com.winllc.acme.server.model.acme.Authorization;
 public class AuthorizationData extends DataObject<Authorization> {
 
     private String orderId;
+    private String accountId;
 
     @Override
     public String buildUrl() {
-        return Application.baseURL + "authz/" + getId();
+        return buildBaseUrl() + "authz/" + getId();
     }
 
     public AuthorizationData(Authorization authorization, DirectoryData directoryData){
@@ -28,5 +29,14 @@ public class AuthorizationData extends DataObject<Authorization> {
 
     public void setOrderId(String orderId) {
         this.orderId = orderId;
+    }
+
+    @Override
+    public String getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(String accountId) {
+        this.accountId = accountId;
     }
 }

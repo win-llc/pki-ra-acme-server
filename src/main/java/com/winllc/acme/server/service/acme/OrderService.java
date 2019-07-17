@@ -5,6 +5,7 @@ import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.external.CAValidationRule;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.Directory;
@@ -43,7 +44,9 @@ public class OrderService extends BaseService {
 
     private OrderProcessor orderProcessor;
     private OrderPersistence orderPersistence;
+    private OrderListPersistence orderListPersistence;
     private CertificatePersistence certificatePersistence;
+    private AccountPersistence accountPersistence;
 
     @RequestMapping(value = "new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request){
@@ -56,35 +59,45 @@ public class OrderService extends BaseService {
             OrderRequest orderRequest = payloadAndAccount.getPayload();
             AccountData accountData = payloadAndAccount.getAccountData();
 
-            if(caCanFulfill(orderRequest)){
+            if(orderRequest.isValid() && caCanFulfill(orderRequest, directoryData)){
 
                 //CA can fulfill
                 OrderData orderData = orderProcessor.buildNew(directoryData);
                 Order order = orderData.getObject();
 
-                generateAuthorizationsForOrder(order);
+                generateAuthorizationsForOrder(order, directoryData);
 
                 order.setIdentifiers(orderRequest.getIdentifiers());
                 order.setNotAfter(orderRequest.getNotAfter());
                 order.setNotBefore(orderRequest.getNotBefore());
 
-                new OrderPersistence().save(orderData);
+                orderData = orderPersistence.save(orderData);
 
                 //Get order list ID from account
                 Optional<String> objectId = new AcmeURL(accountData.getObject().getOrders()).getObjectId();
                 String orderListId = objectId.get();
-                OrderListData orderListData = new OrderListPersistence().getFromId(orderListId);
+
+                OrderListData orderListData = orderListPersistence.getFromId(orderListId);
                 orderListData.addOrder(orderData);
+                orderListPersistence.save(orderListData);
 
-                //TODO
-                new AccountPersistence().save(accountData);
+                accountPersistence.save(accountData);
 
-                //TODO send order object
-                return buildBaseResponseEntity(201)
+                /*
+                 If the server is willing to issue the requested certificate, it responds with a 201 (Created) response.
+                 The body of this response is an order object reflecting the client’s request and any authorizations
+                 the client must complete before the certificate will be issued.
+                 */
+                return buildBaseResponseEntity(201, directoryData)
                         .body(order);
             }else{
                 //TODO CA can't fulfill
-                //ProblemDetails problemDetails = new ProblemDetails(ProblemType.)
+                /*
+                The server MUST return an error if it cannot fulfill the request as specified,
+                and it MUST NOT issue a certificate with contents other than those requested.
+                If the server requires the request to be modified in a certain way,
+                it should indicate the required changes using an appropriate error type and description.
+                 */
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -120,7 +133,7 @@ public class OrderService extends BaseService {
                     //TODO update the Order object
                     orderPersistence.save(orderData);
 
-                    return buildBaseResponseEntity(200)
+                    return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
                             .body(orderData.getObject());
                 }else{
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.BAD_CSR);
@@ -136,7 +149,7 @@ public class OrderService extends BaseService {
         }else{
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.ORDER_NOT_READY);
 
-            return buildBaseResponseEntity(403)
+            return buildBaseResponseEntity(403, certificateRequestPayloadAndAccount.getDirectoryData())
                     .body(problemDetails);
         }
 
@@ -160,16 +173,27 @@ public class OrderService extends BaseService {
     }
 
 
-    private boolean caCanFulfill(OrderRequest orderRequest){
+    private boolean caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData){
 
+        CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
 
-        //TODO connect to CA service to determine
-        return false;
+        //If allowed to issue to all identifiers, return true
+        int allowedToIssueTo = 0;
+        for(Identifier identifier : orderRequest.getIdentifiers()) {
+            for (CAValidationRule rule : ca.getValidationRules()) {
+                if(rule.canIssueToIdentifier(identifier)){
+                    allowedToIssueTo++;
+                    break;
+                }
+            }
+        }
+
+        return allowedToIssueTo == orderRequest.getIdentifiers().length;
     }
 
 
     //Section 8
-    private void generateAuthorizationsForOrder(Order order){
+    private void generateAuthorizationsForOrder(Order order, DirectoryData directoryData){
         //TODO
 
         AuthorizationProcessor authorizationProcessor = new AuthorizationProcessor();
@@ -178,7 +202,7 @@ public class OrderService extends BaseService {
 
         for(Identifier identifier : order.getIdentifiers()){
             //TODO don't use static directoryData
-            Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, Application.directoryData);
+            Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, directoryData);
             if(authorizationOptional.isPresent()){
                 AuthorizationData authorization = authorizationOptional.get();
                 authorizationUrls.add(authorization.buildUrl());

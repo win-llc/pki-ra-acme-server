@@ -13,7 +13,7 @@ public class OrderData extends DataObject<Order> {
 
     @Override
     public String buildUrl() {
-        return Application.baseURL + "order/" + getId();
+        return buildBaseUrl() + "order/" + getId();
     }
 
 }

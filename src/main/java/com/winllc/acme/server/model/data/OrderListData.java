@@ -23,7 +23,7 @@ public class OrderListData extends DataObject<OrderList> {
 
     @Override
     public String buildUrl() {
-        return Application.baseURL + "orders/" + getId();
+        return buildBaseUrl() + "orders/" + getId();
     }
 
     @Override

@@ -45,5 +45,4 @@ public class CertificateAuthorityImpl implements CertificateAuthority {
         return null;
     }
 
-
 }
