@@ -3,11 +3,14 @@ package com.winllc.acme.server.model.data;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.model.acme.Directory;
 
+import java.util.Date;
+
 public class DirectoryData extends DataObject<Directory> {
     private String name;
     private boolean allowPreAuthorization;
     private String mapsToCertificateAuthorityName;
     private String externalAccountProviderName;
+    private Date termsOfServiceLastUpdatedOn;
 
     public DirectoryData(Directory obj) {
         super(obj);
@@ -55,5 +58,13 @@ public class DirectoryData extends DataObject<Directory> {
 
     public void setExternalAccountProviderName(String externalAccountProviderName) {
         this.externalAccountProviderName = externalAccountProviderName;
+    }
+
+    public Date getTermsOfServiceLastUpdatedOn() {
+        return termsOfServiceLastUpdatedOn;
+    }
+
+    public void setTermsOfServiceLastUpdatedOn(Date termsOfServiceLastUpdatedOn) {
+        this.termsOfServiceLastUpdatedOn = termsOfServiceLastUpdatedOn;
     }
 }

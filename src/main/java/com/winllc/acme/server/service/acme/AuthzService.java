@@ -7,6 +7,8 @@ import com.winllc.acme.server.challenge.HttpChallenge;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.server.external.CertificateAuthority;
+import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.*;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
@@ -44,7 +46,7 @@ public class AuthzService extends BaseService {
             if(directoryData.isAllowPreAuthorization()) {
                 Identifier identifier = payloadAndAccount.getPayload();
 
-                if (serverWillingToIssueForIdentifier(identifier, false)) {
+                if (serverWillingToIssueForIdentifier(identifier, directoryData, false)) {
                     Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, directoryData);
                     if(authorizationOptional.isPresent()){
                         AuthorizationData authorizationData = authorizationOptional.get();
@@ -57,6 +59,8 @@ public class AuthzService extends BaseService {
                     }else{
                         //TODO get proper problem type
                         ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+                        return buildBaseResponseEntity(500, directoryData)
+                                .body(problemDetails);
                     }
 
                 } else {
@@ -74,9 +78,12 @@ public class AuthzService extends BaseService {
 
         } catch (Exception e) {
             e.printStackTrace();
-        }
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            problemDetails.setDetail(e.getMessage());
 
-        return null;
+            return ResponseEntity.status(500)
+                    .body(problemDetails);
+        }
     }
 
     //Section 7.5
@@ -89,7 +96,6 @@ public class AuthzService extends BaseService {
             AuthorizationData authorizationData = optionalAuthorizationData.get();
 
             try {
-                JWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
                 PayloadAndAccount<Authorization> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Authorization.class);
                 Authorization authorization = payloadAndAccount.getPayload();
 
@@ -103,11 +109,7 @@ public class AuthzService extends BaseService {
                             .body(authorizationData.getObject());
                 }
 
-                //TODO verify account key
-                Authorization refreshedAuthorization = new AuthorizationProcessor().buildCurrentAuthorization(authorizationData);
-                authorizationData.updateObject(refreshedAuthorization);
-
-                authorizationPersistence.save(authorizationData);
+                AuthorizationData refreshedAuthorization = authorizationProcessor.buildCurrentAuthorization(authorizationData);
 
                 return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                         .header("Link", "TODO")
@@ -116,18 +118,25 @@ public class AuthzService extends BaseService {
 
             } catch (Exception e) {
                 e.printStackTrace();
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+                problemDetails.setDetail(e.getMessage());
+
+                return ResponseEntity.status(500)
+                        .body(problemDetails);
             }
+        }else {
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            return ResponseEntity.status(500)
+                    .body(problemDetails);
         }
-
-
-        return null;
     }
 
     //Section 7.5.1
     @RequestMapping(value = "chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id) {
-        Optional<ChallengeData> optionalChallengeData = new ChallengePersistence().getById(id);
-
+        Optional<ChallengeData> optionalChallengeData = challengePersistence.getById(id);
+        AcmeURL acmeURL = new AcmeURL(request);
+        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
         if (optionalChallengeData.isPresent()) {
             ChallengeData challengeData = optionalChallengeData.get();
             Challenge challenge = challengeData.getObject();
@@ -141,15 +150,26 @@ public class AuthzService extends BaseService {
                     new DnsChallenge().verify(challengeData);
                     break;
             }
-
+            //Get the current challenge and return 200
+            Optional<ChallengeData> challengeDataOptional = challengePersistence.getById(challengeData.getId());
+            return buildBaseResponseEntity(200, directoryData)
+                    .body(challengeDataOptional.get().getObject());
+        }else{
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            problemDetails.setDetail("Could not find challenge");
+            return buildBaseResponseEntity(500, directoryData)
+                    .body(problemDetails);
         }
-
-        return null;
     }
 
-    private boolean serverWillingToIssueForIdentifier(Identifier identifier, boolean allowWildcards) {
-        //TODO
-        return false;
+    private boolean serverWillingToIssueForIdentifier(Identifier identifier, DirectoryData directoryData, boolean allowWildcards) {
+        CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
+
+        if(!allowWildcards && identifier.getValue().startsWith("*")){
+            return false;
+        }else {
+            return ca.canIssueToIdentifier(identifier);
+        }
     }
 
 }

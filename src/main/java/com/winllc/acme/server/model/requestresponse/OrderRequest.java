@@ -20,7 +20,7 @@ notAfter (optional, string):
 The requested value of the notAfter field in the certificate, in the date format defined in [RFC3339].
  */
 
-public class OrderRequest {
+public class OrderRequest implements RequestValidator{
     //required
     private Identifier[] identifiers;
     //optional

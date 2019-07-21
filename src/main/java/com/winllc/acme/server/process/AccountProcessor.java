@@ -29,6 +29,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
 
     private AccountPersistence accountPersistence;
     private OrderPersistence orderPersistence;
+    private OrderListPersistence orderListPersistence;
 
     public AccountData buildNew(DirectoryData directoryData){
         Account account = new Account();
@@ -38,7 +39,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
         OrderList orderList = new OrderList();
 
         OrderListData orderListData = new OrderListData(orderList, directoryData);
-        new OrderListPersistence().save(orderListData);
+        orderListData = orderListPersistence.save(orderListData);
 
         account.setOrders(orderListData.buildUrl());
 

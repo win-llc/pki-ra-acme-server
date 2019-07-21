@@ -1,9 +1,6 @@
 package com.winllc.acme.server.model;
 
-import com.nimbusds.jose.JOSEObject;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSObject;
-import com.nimbusds.jose.Payload;
+import com.nimbusds.jose.*;
 import com.nimbusds.jose.util.Base64URL;
 
 import java.text.ParseException;
@@ -36,5 +33,25 @@ public class AcmeJWSObject extends JWSObject {
         }
 
         return new AcmeJWSObject(parts[0], parts[1], parts[2]);
+    }
+
+    //Section 6.2
+    public boolean hasValidHeaderFields(){
+        if(getHeader().getCustomParam("alg") != null &&
+                getHeader().getCustomParam("nonce") != null &&
+                getHeader().getCustomParam("url") != null &&
+                (getHeader().getCustomParam("jwk") != null || getHeader().getCustomParam("kid") != null)){
+            boolean valid = true;
+            String alg = getHeader().getCustomParam("alg").toString();
+            if(alg.equalsIgnoreCase("none") && JWSAlgorithm.Family.HMAC_SHA.contains(JWSAlgorithm.parse(alg))){
+                valid = false;
+            }
+
+            if(getHeader().getCustomParam("jwk") != null && getHeader().getCustomParam("kid") != null){
+                valid = false;
+            }
+            return valid;
+        }
+        return false;
     }
 }

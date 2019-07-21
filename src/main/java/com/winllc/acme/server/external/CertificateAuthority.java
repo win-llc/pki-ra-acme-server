@@ -1,5 +1,6 @@
 package com.winllc.acme.server.external;
 
+import com.winllc.acme.server.model.acme.Identifier;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.security.cert.X509Certificate;
@@ -13,4 +14,5 @@ public interface CertificateAuthority {
     boolean isCertificateRevoked(X509Certificate certificate);
     X509Certificate[] getTrustChain();
     List<CAValidationRule> getValidationRules();
+    boolean canIssueToIdentifier(Identifier identifier);
 }

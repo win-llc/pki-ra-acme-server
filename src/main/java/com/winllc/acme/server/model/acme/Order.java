@@ -1,9 +1,9 @@
 package com.winllc.acme.server.model.acme;
 
+import org.apache.commons.lang3.StringUtils;
+
 //RFC8555 Section 7.1.3
-public class Order extends BaseAcmeObject {
-    //optional
-    private String expires;
+public class Order extends ExpiresObject {
     //required
     private Identifier[] identifiers;
     //optional
@@ -18,14 +18,6 @@ public class Order extends BaseAcmeObject {
     private String finalize;
     //optional
     private String certificate;
-
-    public String getExpires() {
-        return expires;
-    }
-
-    public void setExpires(String expires) {
-        this.expires = expires;
-    }
 
     public Identifier[] getIdentifiers() {
         return identifiers;
@@ -83,5 +75,8 @@ public class Order extends BaseAcmeObject {
         this.certificate = certificate;
     }
 
-
+    @Override
+    public boolean isValid() {
+        return identifiers != null && StringUtils.isNotBlank(finalize);
+    }
 }

@@ -1,6 +1,9 @@
 package com.winllc.acme.server.service.acme;
 
 import com.winllc.acme.server.Application;
+import com.winllc.acme.server.model.AcmeURL;
+import com.winllc.acme.server.model.acme.Directory;
+import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.util.AppUtil;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.http.HttpHeaders;
@@ -9,30 +12,35 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
+
 @RestController
 public class NonceService {
 
     @RequestMapping(value = "new-nonce", method = RequestMethod.HEAD)
-    public ResponseEntity<?> newNonceHead(){
+    public ResponseEntity<?> newNonceHead(HttpServletRequest request){
+        AcmeURL acmeURL = new AcmeURL(request);
+        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
         return ResponseEntity.ok()
-                .headers(generateHeaders())
+                .headers(generateHeaders(directoryData))
                 .build();
     }
 
     @RequestMapping(value = "new-nonce", method = RequestMethod.GET)
-    public ResponseEntity<?> newNonceGet(){
+    public ResponseEntity<?> newNonceGet(HttpServletRequest request){
+        AcmeURL acmeURL = new AcmeURL(request);
+        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
         return ResponseEntity.noContent()
-                .headers(generateHeaders())
+                .headers(generateHeaders(directoryData))
                 .build();
     }
 
-    private HttpHeaders generateHeaders(){
+    private HttpHeaders generateHeaders(DirectoryData directoryData){
         String nonce = AppUtil.generateNonce();
         HttpHeaders headers = new HttpHeaders();
         headers.add("Replay-Nonce", nonce);
         headers.add("Cache-Control", "no-store");
-        //TODO
-        headers.add("Link", "TODO");
+        headers.add("Link", directoryData.buildLinkUrl());
         return headers;
     }
 

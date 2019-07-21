@@ -49,4 +49,9 @@ public class Account extends BaseAcmeObject<Account> {
     public void setOrders(String orders) {
         this.orders = orders;
     }
+
+    @Override
+    public boolean isValid() {
+        return orders != null;
+    }
 }

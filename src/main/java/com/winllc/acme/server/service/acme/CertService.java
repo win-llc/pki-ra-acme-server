@@ -37,6 +37,8 @@ public class CertService extends BaseService {
     @RequestMapping(value = "cert/{id}", method = RequestMethod.POST,
             consumes = "application/jose+json")
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id) throws AcmeServerException {
+        AcmeURL acmeURL = new AcmeURL(request);
+        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
 
         Optional<CertData> optionalCertData = new CertificatePersistence().getById(id);
 
@@ -53,13 +55,12 @@ public class CertService extends BaseService {
             switch (request.getHeader("Accept")){
                 case "application/pem-certificate-chain":
                     returnCert = certData.buildReturnString();
-
                     break;
                 case "application/pkix-cert":
                     returnCert = certData.getCertChain()[0];
                     break;
                 case "application/pkcs7-mime":
-
+                    //TODO
                     break;
             }
 
@@ -67,8 +68,10 @@ public class CertService extends BaseService {
                     .headers(headers)
                     .body(returnCert);
         }else{
-            //TODO return error
-            return null;
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            problemDetails.setDetail("Could not find Cert Data");
+            return buildBaseResponseEntity(500, directoryData)
+                    .body(problemDetails);
         }
     }
 
@@ -91,7 +94,7 @@ public class CertService extends BaseService {
             if(validateRevocationRequest(revokeCertRequest)) {
 
                 if (ca.revokeCertificate(certificate, revokeCertRequest.getReason())) {
-                    return ResponseEntity.ok().build();
+                    return buildBaseResponseEntity(200, directoryData).build();
                 } else {
                     ProblemDetails error = new ProblemDetails(ProblemType.ALREADY_REVOKED);
 
@@ -100,7 +103,8 @@ public class CertService extends BaseService {
                 }
             }else{
                 ProblemDetails error = new ProblemDetails(ProblemType.BAD_REVOCATION_REASON);
-                //TODO return
+                return buildBaseResponseEntity(500, directoryData)
+                        .body(error);
             }
 
         } catch (Exception e) {
@@ -108,11 +112,9 @@ public class CertService extends BaseService {
 
             ProblemDetails error = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             error.setDetail(e.getMessage());
-            //TODO return
+            return buildBaseResponseEntity(500, directoryData)
+                    .body(error);
         }
-
-
-        return null;
     }
 
     private boolean validateRevocationRequest(RevokeCertRequest request){

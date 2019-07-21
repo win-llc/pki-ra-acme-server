@@ -8,6 +8,8 @@ import java.util.Map;
 
 public class CertificateAuthorityService {
 
+    //TODO CRUD service for CA's
+
     private Map<String, CertificateAuthority> caMap = new HashMap<>();
 
     public CertificateAuthority getByName(String name){

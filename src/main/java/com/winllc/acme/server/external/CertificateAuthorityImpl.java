@@ -1,5 +1,6 @@
 package com.winllc.acme.server.external;
 
+import com.winllc.acme.server.model.acme.Identifier;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.security.cert.X509Certificate;
@@ -45,4 +46,14 @@ public class CertificateAuthorityImpl implements CertificateAuthority {
         return null;
     }
 
+
+    @Override
+    public boolean canIssueToIdentifier(Identifier identifier) {
+        for (CAValidationRule rule : getValidationRules()) {
+            if(rule.canIssueToIdentifier(identifier)){
+                return true;
+            }
+        }
+        return false;
+    }
 }

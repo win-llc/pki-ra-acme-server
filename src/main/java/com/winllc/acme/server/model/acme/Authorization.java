@@ -4,11 +4,9 @@ import java.util.Arrays;
 import java.util.List;
 
 //RFC8555 Section 7.1.4
-public class Authorization extends BaseAcmeObject {
+public class Authorization extends ExpiresObject {
     //required
     private Identifier identifier;
-    //optional
-    private String expires;
     //required
     private Challenge[] challenges;
     //optional
@@ -20,15 +18,6 @@ public class Authorization extends BaseAcmeObject {
 
     public void setIdentifier(Identifier identifier) {
         this.identifier = identifier;
-    }
-
-
-    public String getExpires() {
-        return expires;
-    }
-
-    public void setExpires(String expires) {
-        this.expires = expires;
     }
 
     public Challenge[] getChallenges() {
@@ -53,5 +42,10 @@ public class Authorization extends BaseAcmeObject {
 
     public void setWildcard(Boolean wildcard) {
         this.wildcard = wildcard;
+    }
+
+    @Override
+    public boolean isValid() {
+        return identifier != null && challenges != null;
     }
 }

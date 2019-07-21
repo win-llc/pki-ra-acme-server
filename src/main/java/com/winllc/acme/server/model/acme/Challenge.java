@@ -1,5 +1,7 @@
 package com.winllc.acme.server.model.acme;
 
+import org.apache.commons.lang3.StringUtils;
+
 //RFC8555 Section 8
 public class Challenge extends BaseAcmeObject {
     //required
@@ -41,5 +43,10 @@ public class Challenge extends BaseAcmeObject {
 
     public void setError(ProblemDetails error) {
         this.error = error;
+    }
+
+    @Override
+    public boolean isValid() {
+        return StringUtils.isNotBlank(type) && StringUtils.isNotBlank(url);
     }
 }

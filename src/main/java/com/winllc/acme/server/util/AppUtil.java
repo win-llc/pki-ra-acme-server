@@ -25,7 +25,7 @@ import org.apache.logging.log4j.Logger;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class AppUtil {
@@ -57,6 +57,11 @@ public class AppUtil {
     public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,
                                                                                        String accountId, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
+        //Section 6.2
+        if(!jwsObject.hasValidHeaderFields()){
+           throw new AcmeServerException(ProblemType.MALFORMED);
+        }
+
         DirectoryData directoryData = Application.directoryDataMap.get(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
         //The URL must match the URL in the JWS Header
         //Section 6.4
@@ -90,7 +95,7 @@ public class AppUtil {
             }
 
             //Check if account key and request JWK match
-            if (jwsObject.getHeader().getJWK().equals(accountJWK)) {
+            if (!jwsObject.getHeader().getJWK().equals(accountJWK)) {
                 throw new AcmeServerException(ProblemType.UNAUTHORIZED);
             }
 
@@ -166,6 +171,19 @@ public class AppUtil {
 
         }
         throw new AcmeServerException(ProblemType.BAD_SIGNATURE_ALGORITHM);
+    }
+
+    public static <T> List<List<T>> getPages(Collection<T> c, Integer pageSize) {
+        if (c == null)
+            return Collections.emptyList();
+        List<T> list = new ArrayList<T>(c);
+        if (pageSize == null || pageSize <= 0 || pageSize > list.size())
+            pageSize = list.size();
+        int numPages = (int) Math.ceil((double)list.size() / (double)pageSize);
+        List<List<T>> pages = new ArrayList<>(numPages);
+        for (int pageNum = 0; pageNum < numPages;)
+            pages.add(list.subList(pageNum * pageSize, Math.min(++pageNum * pageSize, list.size())));
+        return pages;
     }
 
 }

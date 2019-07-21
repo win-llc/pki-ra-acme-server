@@ -21,4 +21,7 @@ public abstract class BaseAcmeObject<T extends BaseAcmeObject> {
     public StatusType getStatusType(){
         return StatusType.valueOf(status);
     }
+
+    @JsonIgnore
+    public abstract boolean isValid();
 }

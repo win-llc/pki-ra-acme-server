@@ -3,15 +3,18 @@ package com.winllc.acme.server.persistence;
 import com.winllc.acme.server.model.data.OrderData;
 import com.winllc.acme.server.model.data.OrderListData;
 
-public class OrderListPersistence {
+import java.util.Optional;
 
-    public OrderListData getFromId(String id){
-        //TODO
+public class OrderListPersistence implements DataPersistence<OrderListData> {
 
-        return null;
+
+    @Override
+    public Optional<OrderListData> getById(String id) {
+        return Optional.empty();
     }
 
-    public void save(OrderListData orderListData){
-        //TODO
+    @Override
+    public OrderListData save(OrderListData data) {
+        return null;
     }
 }

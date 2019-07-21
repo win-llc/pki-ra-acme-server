@@ -8,17 +8,11 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CAValidationRule;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.acme.Order;
-import com.winllc.acme.server.model.acme.ProblemDetails;
+import com.winllc.acme.server.model.acme.*;
 import com.winllc.acme.server.model.data.*;
 import com.winllc.acme.server.model.requestresponse.CertificateRequest;
 import com.winllc.acme.server.model.requestresponse.OrderRequest;
-import com.winllc.acme.server.persistence.AccountPersistence;
-import com.winllc.acme.server.persistence.CertificatePersistence;
-import com.winllc.acme.server.persistence.OrderListPersistence;
-import com.winllc.acme.server.persistence.OrderPersistence;
+import com.winllc.acme.server.persistence.*;
 import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.process.OrderProcessor;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
@@ -30,8 +24,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.swing.text.html.Option;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,19 +43,23 @@ public class OrderService extends BaseService {
     private OrderListPersistence orderListPersistence;
     private CertificatePersistence certificatePersistence;
     private AccountPersistence accountPersistence;
+    private AuthorizationProcessor authorizationProcessor;
+    private DirectoryPersistence directoryPersistence;
 
     @RequestMapping(value = "new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request){
 
+        AcmeURL acmeURL = new AcmeURL(request);
+        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+
         try {
             PayloadAndAccount<OrderRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, OrderRequest.class);
-            AcmeURL acmeURL = new AcmeURL(request);
-            DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
 
             OrderRequest orderRequest = payloadAndAccount.getPayload();
             AccountData accountData = payloadAndAccount.getAccountData();
 
-            if(orderRequest.isValid() && caCanFulfill(orderRequest, directoryData)){
+            Optional<ProblemDetails> problemDetailsOptional = caCanFulfill(orderRequest, directoryData);
+            if(orderRequest.isValid() && !problemDetailsOptional.isPresent()){
 
                 //CA can fulfill
                 OrderData orderData = orderProcessor.buildNew(directoryData);
@@ -77,19 +77,27 @@ public class OrderService extends BaseService {
                 Optional<String> objectId = new AcmeURL(accountData.getObject().getOrders()).getObjectId();
                 String orderListId = objectId.get();
 
-                OrderListData orderListData = orderListPersistence.getFromId(orderListId);
-                orderListData.addOrder(orderData);
-                orderListPersistence.save(orderListData);
+                Optional<OrderListData> orderListDataOptional = orderListPersistence.getById(orderListId);
+                if(orderListDataOptional.isPresent()) {
+                    OrderListData orderListData = orderListDataOptional.get();
+                    orderListData.addOrder(orderData);
+                    orderListPersistence.save(orderListData);
 
-                accountPersistence.save(accountData);
+                    accountPersistence.save(accountData);
 
                 /*
                  If the server is willing to issue the requested certificate, it responds with a 201 (Created) response.
                  The body of this response is an order object reflecting the client’s request and any authorizations
                  the client must complete before the certificate will be issued.
                  */
-                return buildBaseResponseEntity(201, directoryData)
-                        .body(order);
+                    return buildBaseResponseEntity(201, directoryData)
+                            .body(order);
+                }else {
+                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+                    problemDetails.setDetail("Could not find Order List");
+                    return buildBaseResponseEntity(500, directoryData)
+                            .body(problemDetails);
+                }
             }else{
                 //TODO CA can't fulfill
                 /*
@@ -98,12 +106,17 @@ public class OrderService extends BaseService {
                 If the server requires the request to be modified in a certain way,
                 it should indicate the required changes using an appropriate error type and description.
                  */
+                ProblemDetails problemDetails = problemDetailsOptional.get();
+                return buildBaseResponseEntity(403, directoryData)
+                        .body(problemDetails);
             }
         } catch (Exception e) {
             e.printStackTrace();
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            problemDetails.setDetail(e.getMessage());
+            return buildBaseResponseEntity(500, directoryData)
+                    .body(problemDetails);
         }
-
-        return null;
     }
 
     @RequestMapping(value = "order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
@@ -117,7 +130,7 @@ public class OrderService extends BaseService {
             //TODO return exception
         }
 
-        Optional<OrderData> optionalOrderData = new OrderPersistence().getById(id);
+        Optional<OrderData> optionalOrderData = orderPersistence.getById(id);
         OrderData orderData = orderProcessor.buildCurrentOrder(optionalOrderData.get());
 
         //if order ready to be completed by passing authorization checks
@@ -158,45 +171,56 @@ public class OrderService extends BaseService {
 
     //Section 7.1.2.1
     @RequestMapping(value = "orders/{id}", produces = "application/json", method = RequestMethod.GET)
-    public ResponseEntity<?> orderList(@PathVariable String id, HttpServletRequest request){
-        //TODO add 'paging'
-
-        OrderListData orderListData = new OrderListPersistence().getFromId(id);
-
+    public ResponseEntity<?> orderList(@PathVariable String id, @RequestParam(required = false) Integer cursor, HttpServletRequest request){
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Link", "TODO");
-        headers.add("Link", "TODO");
 
-        return ResponseEntity.status(200)
-                .headers(headers)
-                .body(orderListData.buildOrderList());
+        Optional<OrderListData> orderListDataOptional = orderListPersistence.getById(id);
+        if(orderListDataOptional.isPresent()) {
+            OrderListData orderListData = orderListDataOptional.get();
+
+            DirectoryData directoryData = directoryPersistence.getByName(orderListData.getDirectory());
+
+            OrderList orderList = orderListData.getObject();
+            if (cursor != null) {
+                orderList = orderListData.buildPaginatedOrderList(cursor);
+                Optional<String> nextPageLink = orderListData.buildPaginatedLink(cursor);
+                //If a next page is available, add the link
+                nextPageLink.ifPresent(s -> headers.add("Link", s));
+            }
+
+            return buildBaseResponseEntity(200, directoryData)
+                    .headers(headers)
+                    .body(orderList);
+        }else {
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            problemDetails.setDetail("Could not find Order List");
+            return ResponseEntity.status(500)
+                    .body(problemDetails);
+        }
     }
 
-
-    private boolean caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData){
+    //Return problem details if CA can't issue, return empty if can fulfill
+    private Optional<ProblemDetails> caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData){
 
         CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
-
+        ProblemDetails problemDetails = new ProblemDetails(ProblemType.COMPOUND);
         //If allowed to issue to all identifiers, return true
         int allowedToIssueTo = 0;
         for(Identifier identifier : orderRequest.getIdentifiers()) {
-            for (CAValidationRule rule : ca.getValidationRules()) {
-                if(rule.canIssueToIdentifier(identifier)){
-                    allowedToIssueTo++;
-                    break;
-                }
+            if(!ca.canIssueToIdentifier(identifier)){
+                ProblemDetails temp = new ProblemDetails(ProblemType.UNSUPPORTED_IDENTIFIER);
+                temp.setDetail("CA can't issue for: "+identifier);
+                problemDetails.addSubproblem(temp);
             }
         }
 
-        return allowedToIssueTo == orderRequest.getIdentifiers().length;
+        return problemDetails.getSubproblems().length > 0 ? Optional.of(problemDetails) : Optional.empty();
     }
 
 
     //Section 8
     private void generateAuthorizationsForOrder(Order order, DirectoryData directoryData){
         //TODO
-
-        AuthorizationProcessor authorizationProcessor = new AuthorizationProcessor();
 
         List<String> authorizationUrls = new ArrayList<>();
 
@@ -222,7 +246,7 @@ public class OrderService extends BaseService {
          */
 
         DirectoryData directoryData = Application.directoryDataMap.get(order.getDirectory());
-        CertificateAuthority ca = new CertificateAuthorityService().getByDirectoryData(directoryData);
+        CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
 
         try {
             X509Certificate certificate = ca.issueCertificate(CertUtil.csrBase64ToPKC10Object(csr));

@@ -1,6 +1,8 @@
 package com.winllc.acme.server.model.requestresponse;
 
-public class CertificateRequest {
+import org.apache.commons.lang3.StringUtils;
+
+public class CertificateRequest implements RequestValidator {
     //required
     private String csr;
 
@@ -10,5 +12,10 @@ public class CertificateRequest {
 
     public void setCsr(String csr) {
         this.csr = csr;
+    }
+
+    @Override
+    public boolean isValid() {
+        return StringUtils.isNotBlank(csr);
     }
 }

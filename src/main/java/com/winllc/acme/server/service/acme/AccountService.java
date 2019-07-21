@@ -46,7 +46,6 @@ public class AccountService extends BaseService {
     @RequestMapping(value = "new-account", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> request(HttpServletRequest request) throws Exception {
         DirectoryData directoryData = Application.directoryDataMap.get(new AcmeURL(request).getDirectoryIdentifier());
-        HttpHeaders headers = new HttpHeaders();
 
         String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
         AcmeJWSObject jwsObject = AcmeJWSObject.parse(body);
@@ -69,10 +68,10 @@ public class AccountService extends BaseService {
         //If account already present, don't recreate
         if (accountDataOptional.isPresent()) {
             AccountData accountData = accountDataOptional.get();
-            headers.add("Location", accountData.buildUrl());
 
             return buildBaseResponseEntity(200, directoryData)
-                    .headers(headers).build();
+                    .header("Location", accountData.buildUrl())
+                    .body(accountData.getObject());
         } else {
             //If no account exists, but account lookup requested, send error
             if (accountRequest.getOnlyReturnExisting()) {
@@ -87,11 +86,10 @@ public class AccountService extends BaseService {
         if (!accountRequest.getOnlyReturnExisting()) {
             //If terms of service exist, ensure client has agreed
             if (directoryData.getObject().getMeta().getTermsOfService() != null) {
-                //TODO
                 if (!accountRequest.getTermsOfServiceAgreed()) {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
                     problemDetails.setDetail("Terms of Service agreement required");
-                    //TODO provide terms location
+                    problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
 
                     return buildBaseResponseEntity(403, directoryData)
                             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
@@ -100,14 +98,22 @@ public class AccountService extends BaseService {
             }
 
             //Validate the data in the account request for valid syntax and format
-            if (validateAccountRequest(accountRequest) == null) {
+            ProblemDetails validationError = validateAccountRequest(accountRequest);
+            if (validationError == null) {
 
-                AccountData accountData = new AccountProcessor().buildNew(directoryData);
+                AccountData accountData = accountProcessor.buildNew(directoryData);
                 Account account = accountData.getObject();
 
                 //If external account required, perform further validation
                 if (directoryData.getObject().getMeta().isExternalAccountRequired()) {
-                    //TODO real logic
+                    //If external account required, but none provided, return error
+                    if(accountRequest.getExternalAccountBinding() == null){
+                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.EXTERNAL_ACCOUNT_REQUIRED);
+                        return buildBaseResponseEntity(403, directoryData)
+                                .body(problemDetails);
+                    }
+
+                    //TODO
                     ExternalAccountProvider accountProvider = Application.externalAccountProviderMap.get(directoryData.getExternalAccountProviderName());
                     boolean verified = accountProvider.verifyExternalAccountJWS(accountRequest.getExternalAccountBinding());
 
@@ -118,6 +124,10 @@ public class AccountService extends BaseService {
                         account.setExternalAccountBinding(externalAccount);
                     } else {
                         //reject and return
+                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED);
+                        problemDetails.setDetail("Could not verify external account");
+                        return buildBaseResponseEntity(403, directoryData)
+                                .body(problemDetails);
                     }
                 }
 
@@ -127,14 +137,13 @@ public class AccountService extends BaseService {
 
                 accountPersistence.save(accountData);
 
-                headers.add("Replay-Nonce", AppUtil.generateNonce());
-                headers.add("Link", "TODO");
-                headers.add("Location", accountData.buildUrl());
-
-                return ResponseEntity.status(201)
-                        .headers(headers)
+                return buildBaseResponseEntity(201, directoryData)
+                        .header("Location", accountData.buildUrl())
                         .body(account);
 
+            }else{
+                return buildBaseResponseEntity(500, directoryData)
+                        .body(validationError);
             }
 
         }
@@ -148,45 +157,59 @@ public class AccountService extends BaseService {
         PayloadAndAccount<AccountRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
 
         AccountRequest accountRequest = payloadAndAccount.getPayload();
+        DirectoryData directoryData = payloadAndAccount.getDirectoryData();
         Optional<AccountData> optionalAccountData = accountPersistence.getByAccountId(id);
 
 
         if (optionalAccountData.isPresent()) {
             AccountData accountData = optionalAccountData.get();
 
-            //Section 7.3.6
-            if (accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
+            if(!accountData.getObject().getStatus().equalsIgnoreCase(StatusType.DEACTIVATED.toString())) {
+                //Section 7.3.6
+                if (accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
 
-                accountData = accountProcessor.deactivateAccount(accountData);
-
-                return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                        .body(accountData.getObject());
-            }
-
-            //Section 7.3.3
-            if (!checkChangeInTermsOfService(accountData, Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier()))) {
-
-                if (validateContactField(accountRequest) == null) {
-                    accountData.getObject().setContact(accountRequest.getContact());
-
-                    accountData = accountPersistence.save(accountData);
+                    accountData = accountProcessor.deactivateAccount(accountData);
 
                     return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                            .body(accountData);
+                            .body(accountData.getObject());
                 }
-            } else {
-                //TODO return a 403
 
-                ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
-                problemDetails.setDetail("Terms of service have changed");
-                //TODO
-                problemDetails.setInstance("TODO");
+                //Section 7.3.3
+                if (!checkChangeInTermsOfService(accountData, directoryData)) {
+                    ProblemDetails problemDetails = validateContactField(accountRequest);
+                    if (problemDetails == null) {
+                        accountData.getObject().setContact(accountRequest.getContact());
+
+                        accountData = accountPersistence.save(accountData);
+
+                        return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                                .body(accountData);
+                    }else{
+                        return buildBaseResponseEntity(500, directoryData)
+                                .body(problemDetails);
+                    }
+                } else {
+                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
+                    problemDetails.setDetail("Terms of service have changed");
+                    //TODO
+                    problemDetails.setInstance("TODO");
+                    return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
+                            //TODO headers
+                            .body(problemDetails);
+                }
+            }else{
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
+                problemDetails.setDetail("Account deactivated, can't update");
                 return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
-                        //TODO headers
                         .body(problemDetails);
+
             }
+        }else {
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            problemDetails.setDetail("Could not find account");
+            return buildBaseResponseEntity(500, payloadAndAccount.getDirectoryData())
+                    .body(problemDetails);
         }
-        return null;
     }
 
     //Section 7.3.5
@@ -217,13 +240,6 @@ public class AccountService extends BaseService {
                     .headers(headers)
                     .body(problemDetails);
         }
-    }
-
-    private AccountRequest buildAccountRequestFromHttpRequest(HttpServletRequest request) throws Exception {
-        String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-        JWSObject jwsObject = JWSObject.parse(body);
-        ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.readValue(jwsObject.getPayload().toJSONObject().toJSONString(), AccountRequest.class);
     }
 
     //Section 7.3.5
@@ -283,10 +299,13 @@ public class AccountService extends BaseService {
         return valid;
     }
 
+    //Verify account request meets requirements
     private ProblemDetails validateAccountRequest(AccountRequest accountRequest) {
-        //TODO
-        if (validateContactField(accountRequest) != null) {
-
+        ProblemDetails problemDetails = new ProblemDetails(ProblemType.COMPOUND);
+        ProblemDetails contactError = validateContactField(accountRequest);
+        if (contactError != null) {
+            problemDetails.addSubproblem(contactError);
+            return problemDetails;
         }
 
         return null;
@@ -297,7 +316,8 @@ public class AccountService extends BaseService {
             for (String contact : accountRequest.getContact()) {
                 if (!validateEmail(contact)) {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.INVALID_CONTACT);
-                    problemDetails.setDetail("Contact not valid");
+                    problemDetails.setDetail("Contact not valid: "+contact);
+                    return problemDetails;
                 }
             }
         }
@@ -305,12 +325,21 @@ public class AccountService extends BaseService {
     }
 
     private boolean validateEmail(String email) {
-        //TODO
-        return false;
+        String regex = "^[\\w-_\\.+]*[\\w-_\\.]\\@([\\w]+\\.)+[\\w]+[\\w]$";
+        return email.matches(regex);
     }
 
     private boolean checkChangeInTermsOfService(AccountData accountData, DirectoryData directory) {
-        //TODO
-        return true;
+        if(directory.getObject().getMeta().getTermsOfService() != null){
+            //has never agreed to terms
+            if(accountData.getLastAgreedToTermsOfServiceOn() == null){
+                return true;
+            }
+            //terms have been updated since last agreement
+            if(directory.getTermsOfServiceLastUpdatedOn().after(accountData.getLastAgreedToTermsOfServiceOn())){
+                return true;
+            }
+        }
+        return false;
     }
 }
