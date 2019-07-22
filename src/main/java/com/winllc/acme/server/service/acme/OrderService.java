@@ -5,6 +5,7 @@ import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.external.CAValidationRule;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.AcmeURL;
@@ -46,8 +47,8 @@ public class OrderService extends BaseService {
     private AuthorizationProcessor authorizationProcessor;
     private DirectoryPersistence directoryPersistence;
 
-    @RequestMapping(value = "new-order", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> newOrder(HttpServletRequest request){
+    @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")
+    public ResponseEntity<?> newOrder(HttpServletRequest request, @PathVariable String directory){
 
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
@@ -83,8 +84,6 @@ public class OrderService extends BaseService {
                     orderListData.addOrder(orderData);
                     orderListPersistence.save(orderListData);
 
-                    accountPersistence.save(accountData);
-
                 /*
                  If the server is willing to issue the requested certificate, it responds with a 201 (Created) response.
                  The body of this response is an order object reflecting the client’s request and any authorizations
@@ -99,7 +98,6 @@ public class OrderService extends BaseService {
                             .body(problemDetails);
                 }
             }else{
-                //TODO CA can't fulfill
                 /*
                 The server MUST return an error if it cannot fulfill the request as specified,
                 and it MUST NOT issue a certificate with contents other than those requested.
@@ -119,15 +117,19 @@ public class OrderService extends BaseService {
         }
     }
 
-    @RequestMapping(value = "order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest) {
+    @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
+    public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
+        AcmeURL acmeURL = new AcmeURL(httpServletRequest);
+        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
 
         PayloadAndAccount<CertificateRequest> certificateRequestPayloadAndAccount = null;
         try {
             certificateRequestPayloadAndAccount =
                     AppUtil.verifyJWSAndReturnPayloadForExistingAccount(httpServletRequest, CertificateRequest.class);
         } catch (AcmeServerException e) {
-            //TODO return exception
+            ProblemDetails problemDetails = new ProblemDetails(e.getProblemType());
+            return buildBaseResponseEntity(500, directoryData)
+                    .body(problemDetails);
         }
 
         Optional<OrderData> optionalOrderData = orderPersistence.getById(id);
@@ -135,29 +137,27 @@ public class OrderService extends BaseService {
 
         //if order ready to be completed by passing authorization checks
         if(orderReadyForFinalize(orderData.getObject())){
-            //TODO get csr from payload
             String csr = certificateRequestPayloadAndAccount.getPayload().getCsr();
             try {
-                if (validateCsr(csr, orderData.getObject())) {
+                Optional<ProblemDetails> problemDetailsOptional = validateCsr(csr, orderData.getObject());
+                if (!problemDetailsOptional.isPresent()) {
                     //if checks pass, return
-
                     finalizeOrder(orderData, csr);
 
-                    //TODO update the Order object
-                    orderPersistence.save(orderData);
+                    orderData = orderPersistence.save(orderData);
 
                     return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
                             .body(orderData.getObject());
                 }else{
-                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.BAD_CSR);
-                    problemDetails.setDetail("why it failed");
-                    //TODO
-
+                    ProblemDetails problemDetails = problemDetailsOptional.get();
+                    return buildBaseResponseEntity(500, directoryData)
+                            .body(problemDetails);
                 }
             } catch (AcmeServerException e) {
                 e.printStackTrace();
-                ProblemDetails problemDetails = new ProblemDetails(ProblemType.BAD_CSR);
-                //TODO
+                ProblemDetails problemDetails = new ProblemDetails(e.getProblemType());
+                return buildBaseResponseEntity(500, directoryData)
+                        .body(problemDetails);
             }
         }else{
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.ORDER_NOT_READY);
@@ -165,13 +165,11 @@ public class OrderService extends BaseService {
             return buildBaseResponseEntity(403, certificateRequestPayloadAndAccount.getDirectoryData())
                     .body(problemDetails);
         }
-
-        return null;
     }
 
     //Section 7.1.2.1
-    @RequestMapping(value = "orders/{id}", produces = "application/json", method = RequestMethod.GET)
-    public ResponseEntity<?> orderList(@PathVariable String id, @RequestParam(required = false) Integer cursor, HttpServletRequest request){
+    @RequestMapping(value = "{directory}/orders/{id}", produces = "application/json", method = RequestMethod.GET)
+    public ResponseEntity<?> orderList(@PathVariable String id, @PathVariable String directory, @RequestParam(required = false) Integer cursor, HttpServletRequest request){
         HttpHeaders headers = new HttpHeaders();
 
         Optional<OrderListData> orderListDataOptional = orderListPersistence.getById(id);
@@ -221,11 +219,9 @@ public class OrderService extends BaseService {
     //Section 8
     private void generateAuthorizationsForOrder(Order order, DirectoryData directoryData){
         //TODO
-
         List<String> authorizationUrls = new ArrayList<>();
 
         for(Identifier identifier : order.getIdentifiers()){
-            //TODO don't use static directoryData
             Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, directoryData);
             if(authorizationOptional.isPresent()){
                 AuthorizationData authorization = authorizationOptional.get();
@@ -236,7 +232,7 @@ public class OrderService extends BaseService {
         order.setAuthorizations(authorizationUrls.toArray(new String[0]));
     }
 
-    private void finalizeOrder(OrderData order, String csr){
+    private void finalizeOrder(OrderData order, String csr) throws InternalServerException {
         /*
         “invalid”: The certificate will not be issued. Consider this order process abandoned.
         “pending”: The server does not believe that the client has fulfilled the requirements. Check the “authorizations” array for entries that are still pending.
@@ -258,7 +254,8 @@ public class OrderService extends BaseService {
             order.getObject().setCertificate(certData.buildUrl());
 
         }catch (Exception e){
-            //TODO, but should not fail from CSR parsing at this point
+            e.printStackTrace();
+            throw new InternalServerException("Could not issue certificate", e);
         }
     }
 
@@ -274,7 +271,7 @@ public class OrderService extends BaseService {
     If the account is not authorized for the identifiers indicated in the CSR
     If the CSR requests extensions that the CA is not willing to include
      */
-    private boolean validateCsr(String csr, Order order) throws AcmeServerException {
+    private Optional<ProblemDetails> validateCsr(String csr, Order order) throws AcmeServerException {
         List<String> dnsNamesInCsr = CertUtil.extractX509CSRDnsNames(csr).stream()
                 .map(String::toUpperCase)
                 .sorted()
@@ -286,7 +283,13 @@ public class OrderService extends BaseService {
                 .sorted()
                 .collect(Collectors.toList());
 
-        return dnsNamesInCsr.equals(dnsNamesInOrder);
+        if(dnsNamesInCsr.equals(dnsNamesInOrder)){
+            return Optional.empty();
+        }else{
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.BAD_CSR);
+            problemDetails.setDetail("CSR contains invalid identifiers");
+            return Optional.of(problemDetails);
+        }
     }
 
 }

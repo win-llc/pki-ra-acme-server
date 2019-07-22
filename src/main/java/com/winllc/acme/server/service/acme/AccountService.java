@@ -43,8 +43,8 @@ public class AccountService extends BaseService {
     private AccountProcessor accountProcessor;
 
     //Section 7.3
-    @RequestMapping(value = "new-account", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> request(HttpServletRequest request) throws Exception {
+    @RequestMapping(value = "{directory}/new-account", method = RequestMethod.POST, consumes = "application/jose+json")
+    public ResponseEntity<?> request(HttpServletRequest request, @PathVariable String directory) throws Exception {
         DirectoryData directoryData = Application.directoryDataMap.get(new AcmeURL(request).getDirectoryIdentifier());
 
         String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
@@ -56,7 +56,6 @@ public class AccountService extends BaseService {
 
             return buildBaseResponseEntity(500, directoryData)
                     .body(problemDetails);
-
         }
 
         String jwk = jwsObject.getHeader().getJWK().toJSONString();
@@ -151,8 +150,8 @@ public class AccountService extends BaseService {
     }
 
     //Section 7.3.2
-    @RequestMapping(value = "acct/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> update(@PathVariable String id, HttpServletRequest request) throws Exception {
+    @RequestMapping(value = "{directory}/acct/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
+    public ResponseEntity<?> update(@PathVariable String id, HttpServletRequest request, @PathVariable String directory) throws Exception {
         AcmeURL acmeURL = new AcmeURL(request);
         PayloadAndAccount<AccountRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
 
@@ -213,8 +212,8 @@ public class AccountService extends BaseService {
     }
 
     //Section 7.3.5
-    @RequestMapping(value = "key-change", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> keyRollover(HttpServletRequest httpRequest) throws Exception {
+    @RequestMapping(value = "{directory}/key-change", method = RequestMethod.POST, consumes = "application/jose+json")
+    public ResponseEntity<?> keyRollover(HttpServletRequest httpRequest, @PathVariable String directory) throws Exception {
 
         PayloadAndAccount<AcmeJWSObject> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(httpRequest, AcmeJWSObject.class);
         AccountData accountData = payloadAndAccount.getAccountData();

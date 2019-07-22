@@ -1,5 +1,9 @@
 package com.winllc.acme.server.service.acme;
 
+import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.JWSVerifier;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.RevocationReason;
@@ -34,9 +38,9 @@ public class CertService extends BaseService {
     private Logger log = LogManager.getLogger(CertService.class);
 
     //Section 7.4.2
-    @RequestMapping(value = "cert/{id}", method = RequestMethod.POST,
+    @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST,
             consumes = "application/jose+json")
-    public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id) throws AcmeServerException {
+    public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException {
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
 
@@ -76,22 +80,30 @@ public class CertService extends BaseService {
     }
 
     //Section 7.6
-    @RequestMapping(value = "revoke-cert", method = RequestMethod.POST,
+    @RequestMapping(value = "{directory}/revoke-cert", method = RequestMethod.POST,
             consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> certRevoke(HttpServletRequest request, @PathVariable String id) {
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
         CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
-        PayloadAndAccount<RevokeCertRequest> payloadAndAccount;
         try {
             //TODO verify signature from either account key or certificate
-            payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, RevokeCertRequest.class);
+            JWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
+            PayloadAndAccount<RevokeCertRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, RevokeCertRequest.class);
             RevokeCertRequest revokeCertRequest = payloadAndAccount.getPayload();
+
+            boolean signedByCert = true;
+            if(signedByCert) {
+                JWSVerifier verifier = new RSASSAVerifier((RSAKey) jwsObject.getHeader().getJWK().toPublicJWK());
+            }else{
+
+            }
 
             //TODO before revoking, ensure account owns all of the identifiers associated with the certificate
             X509Certificate certificate = revokeCertRequest.buildX509Cert();
 
-            if(validateRevocationRequest(revokeCertRequest)) {
+            Optional<ProblemDetails> problemDetailsOptional = validateRevocationRequest(revokeCertRequest);
+            if(!problemDetailsOptional.isPresent()) {
 
                 if (ca.revokeCertificate(certificate, revokeCertRequest.getReason())) {
                     return buildBaseResponseEntity(200, directoryData).build();
@@ -102,9 +114,8 @@ public class CertService extends BaseService {
                             .body(error);
                 }
             }else{
-                ProblemDetails error = new ProblemDetails(ProblemType.BAD_REVOCATION_REASON);
                 return buildBaseResponseEntity(500, directoryData)
-                        .body(error);
+                        .body(problemDetailsOptional.get());
             }
 
         } catch (Exception e) {
@@ -117,7 +128,7 @@ public class CertService extends BaseService {
         }
     }
 
-    private boolean validateRevocationRequest(RevokeCertRequest request){
+    private Optional<ProblemDetails> validateRevocationRequest(RevokeCertRequest request){
         boolean valid = true;
 
         if(request.getReason() != null){
@@ -125,7 +136,7 @@ public class CertService extends BaseService {
             if(reason == null) valid = false;
         }
 
-        return valid;
+        return valid ?  Optional.empty() : Optional.of(new ProblemDetails(ProblemType.BAD_REVOCATION_REASON));
     }
 
 }

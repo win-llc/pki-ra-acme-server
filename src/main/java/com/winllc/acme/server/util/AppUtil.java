@@ -21,6 +21,8 @@ import com.winllc.acme.server.persistence.AccountPersistence;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -28,9 +30,13 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Component
 public class AppUtil {
 
     private static final Logger log = LogManager.getLogger(AppUtil.class);
+
+    @Autowired
+    private static AccountPersistence accountPersistence;
 
     public static String generateRandomString(int length) {
         boolean useLetters = true;
@@ -70,7 +76,7 @@ public class AppUtil {
             throw new AcmeServerException(ProblemType.UNAUTHORIZED);
         }
 
-        Optional<AccountData> optionalAccount = new AccountPersistence().getByAccountId(accountId);
+        Optional<AccountData> optionalAccount = accountPersistence.getByAccountId(accountId);
         if(optionalAccount.isPresent()) {
             AccountData accountData = optionalAccount.get();
 
@@ -84,7 +90,6 @@ public class AppUtil {
                 accountJWK = JWK.parse(accountData.getJwk());
             } catch (ParseException e) {
                 throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Unable to parse account JWK");
-
             }
 
             boolean verified = verifyJWS(jwsObject);

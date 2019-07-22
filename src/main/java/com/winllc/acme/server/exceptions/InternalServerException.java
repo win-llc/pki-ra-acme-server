@@ -11,4 +11,9 @@ public class InternalServerException extends AcmeServerException {
         this(ProblemType.SERVER_INTERNAL);
         this.details = details;
     }
+
+    public InternalServerException(String details, Exception subProblem){
+        this(details);
+        this.addSuppressed(subProblem);
+    }
 }

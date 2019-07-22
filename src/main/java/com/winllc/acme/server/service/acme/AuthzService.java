@@ -38,8 +38,8 @@ public class AuthzService extends BaseService {
     private ChallengeProcessor challengeProcessor;
     private ChallengePersistence challengePersistence;
 
-    @RequestMapping(value = "new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> newAuthz(HttpServletRequest request) {
+    @RequestMapping(value = "{directory}/new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
+    public ResponseEntity<?> newAuthz(HttpServletRequest request, @PathVariable String directory) {
         try {
             PayloadAndAccount<Identifier> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Identifier.class);
             DirectoryData directoryData = payloadAndAccount.getDirectoryData();
@@ -87,8 +87,8 @@ public class AuthzService extends BaseService {
     }
 
     //Section 7.5
-    @RequestMapping(value = "authz/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> authz(HttpServletRequest request, @PathVariable String id) {
+    @RequestMapping(value = "{directory}/authz/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
+    public ResponseEntity<?> authz(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
 
         Optional<AuthorizationData> optionalAuthorizationData = authorizationPersistence.getById(id);
 
@@ -132,8 +132,8 @@ public class AuthzService extends BaseService {
     }
 
     //Section 7.5.1
-    @RequestMapping(value = "chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id) {
+    @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
+    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
         Optional<ChallengeData> optionalChallengeData = challengePersistence.getById(id);
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());

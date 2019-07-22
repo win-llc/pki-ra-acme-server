@@ -8,6 +8,7 @@ import com.winllc.acme.server.util.AppUtil;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,8 +18,8 @@ import javax.servlet.http.HttpServletRequest;
 @RestController
 public class NonceService {
 
-    @RequestMapping(value = "new-nonce", method = RequestMethod.HEAD)
-    public ResponseEntity<?> newNonceHead(HttpServletRequest request){
+    @RequestMapping(value = "{directory}/new-nonce", method = RequestMethod.HEAD)
+    public ResponseEntity<?> newNonceHead(HttpServletRequest request, @PathVariable String directory){
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
         return ResponseEntity.ok()
@@ -26,8 +27,8 @@ public class NonceService {
                 .build();
     }
 
-    @RequestMapping(value = "new-nonce", method = RequestMethod.GET)
-    public ResponseEntity<?> newNonceGet(HttpServletRequest request){
+    @RequestMapping(value = "{directory}/new-nonce", method = RequestMethod.GET)
+    public ResponseEntity<?> newNonceGet(HttpServletRequest request, @PathVariable String directory){
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
         return ResponseEntity.noContent()
