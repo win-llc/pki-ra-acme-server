@@ -8,9 +8,12 @@ import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Component
 public class ChallengeProcessor implements AcmeDataProcessor<ChallengeData> {
 
     /*
@@ -33,7 +36,9 @@ validation  |   validation
 valid              invalid
      */
 
+    @Autowired
     private ChallengePersistence challengePersistence;
+    @Autowired
     private AuthorizationProcessor authorizationProcessor;
 
     public ChallengeData buildNew(DirectoryData directoryData){

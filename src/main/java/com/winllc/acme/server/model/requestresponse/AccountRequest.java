@@ -2,7 +2,6 @@ package com.winllc.acme.server.model.requestresponse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSObject;
-import com.winllc.acme.server.external.ExternalAccount;
 import com.winllc.acme.server.model.AcmeJWSObject;
 
 import java.io.IOException;
@@ -13,9 +12,9 @@ public class AccountRequest {
     //optional
     private String[] contact;
     //optional
-    private Boolean termsOfServiceAgreed;
+    private Boolean termsOfServiceAgreed = false;
     //optional
-    private Boolean onlyReturnExisting;
+    private Boolean onlyReturnExisting = false;
     //optional
     private AcmeJWSObject externalAccountBinding;
 
@@ -59,8 +58,8 @@ public class AccountRequest {
         this.externalAccountBinding = externalAccountBinding;
     }
 
-    public ExternalAccount buildExternalAccount() throws IOException {
+    public JWSObject buildExternalAccount() throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.readValue(externalAccountBinding.getPayload().toJSONObject().toJSONString(), ExternalAccount.class);
+        return objectMapper.readValue(externalAccountBinding.getPayload().toJSONObject().toJSONString(), JWSObject.class);
     }
 }

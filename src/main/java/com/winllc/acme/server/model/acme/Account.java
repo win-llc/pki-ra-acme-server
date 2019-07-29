@@ -1,6 +1,7 @@
 package com.winllc.acme.server.model.acme;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.nimbusds.jose.JWSObject;
 
 //RFC8555 Section 7.1.2
 public class Account extends BaseAcmeObject<Account> {
@@ -13,7 +14,7 @@ public class Account extends BaseAcmeObject<Account> {
     private Boolean termsOfServiceAgreed;
     //optional
     @JsonProperty
-    private Object externalAccountBinding;
+    private JWSObject externalAccountBinding;
     //required
     @JsonProperty
     private String orders;
@@ -34,11 +35,11 @@ public class Account extends BaseAcmeObject<Account> {
         this.termsOfServiceAgreed = termsOfServiceAgreed;
     }
 
-    public Object getExternalAccountBinding() {
+    public JWSObject getExternalAccountBinding() {
         return externalAccountBinding;
     }
 
-    public void setExternalAccountBinding(Object externalAccountBinding) {
+    public void setExternalAccountBinding(JWSObject externalAccountBinding) {
         this.externalAccountBinding = externalAccountBinding;
     }
 

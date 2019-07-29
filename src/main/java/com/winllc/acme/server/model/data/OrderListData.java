@@ -21,8 +21,9 @@ public class OrderListData extends DataObject<OrderList> {
 
     public void addOrder(OrderData order){
         List<String> list = Arrays.asList(getObject().getOrders());
-        list.add(order.buildUrl());
-        getObject().setOrders(list.toArray(new String[0]));
+        List<String> temp = new ArrayList<>(list);
+        temp.add(order.buildUrl());
+        getObject().setOrders(temp.toArray(new String[0]));
     }
 
     @Override

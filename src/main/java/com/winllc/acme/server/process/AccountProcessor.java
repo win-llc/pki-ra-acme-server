@@ -11,6 +11,8 @@ import com.winllc.acme.server.model.data.OrderListData;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
@@ -24,11 +26,14 @@ deactiv.|                revoke |
         V                       V
    deactivated               revoked
  */
-
+@Component
 public class AccountProcessor implements AcmeDataProcessor<AccountData> {
 
+    @Autowired
     private AccountPersistence accountPersistence;
+    @Autowired
     private OrderPersistence orderPersistence;
+    @Autowired
     private OrderListPersistence orderListPersistence;
 
     public AccountData buildNew(DirectoryData directoryData){

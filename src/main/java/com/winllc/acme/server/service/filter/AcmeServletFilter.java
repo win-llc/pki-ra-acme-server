@@ -13,7 +13,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-@Component
+//@Component
 public class AcmeServletFilter implements Filter {
 
     public static String directoryKey = "directoryData";
@@ -34,7 +34,7 @@ public class AcmeServletFilter implements Filter {
          */
         HttpServletRequest req = (HttpServletRequest) request;
         final String contentType = req.getContentType();
-
+/*
         if (contentType == null || !contentType.equals("application/jose+json")) {
             ((HttpServletResponse) response).sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE, "Unsupported media type.");
         }else {
@@ -44,6 +44,8 @@ public class AcmeServletFilter implements Filter {
             request.setAttribute(directoryKey, directoryData);
             chain.doFilter(request, response);
         }
+
+ */
     }
 
 }

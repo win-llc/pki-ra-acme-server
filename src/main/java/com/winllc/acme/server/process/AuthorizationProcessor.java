@@ -13,6 +13,8 @@ import com.winllc.acme.server.model.data.*;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,11 +40,14 @@ import java.util.Optional;
                  V              V              V
               revoked      deactivated      expired
  */
-
+@Component
 public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationData> {
 
+    @Autowired
     private ChallengeProcessor challengeProcessor;
+    @Autowired
     private AuthorizationPersistence authorizationPersistence;
+    @Autowired
     private OrderProcessor orderProcessor;
 
     @Override

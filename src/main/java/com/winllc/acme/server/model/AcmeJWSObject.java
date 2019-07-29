@@ -1,9 +1,13 @@
 package com.winllc.acme.server.model;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.util.Base64URL;
+import org.jose4j.base64url.Base64Url;
 
+import java.io.IOException;
 import java.text.ParseException;
+import java.util.Map;
 
 public class AcmeJWSObject extends JWSObject {
     public AcmeJWSObject(JWSHeader header, Payload payload) {
@@ -25,29 +29,33 @@ public class AcmeJWSObject extends JWSObject {
     public static AcmeJWSObject parse(final String s)
             throws ParseException {
 
-        Base64URL[] parts = JOSEObject.split(s);
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            Map<String, String> objMap = objectMapper.readValue(s, Map.class);
+            Base64URL part1 = new Base64URL(objMap.get("protected"));
+            Base64URL part2 = new Base64URL(objMap.get("payload"));
+            Base64URL part3 = new Base64URL(objMap.get("signature"));
 
-        if (parts.length != 3) {
-
-            throw new ParseException("Unexpected number of Base64URL parts, must be three", 0);
+            return new AcmeJWSObject(part1, part2, part3);
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new ParseException("fail", 0);
         }
-
-        return new AcmeJWSObject(parts[0], parts[1], parts[2]);
     }
 
     //Section 6.2
     public boolean hasValidHeaderFields(){
-        if(getHeader().getCustomParam("alg") != null &&
+        if(getHeader().getAlgorithm() != null &&
                 getHeader().getCustomParam("nonce") != null &&
                 getHeader().getCustomParam("url") != null &&
-                (getHeader().getCustomParam("jwk") != null || getHeader().getCustomParam("kid") != null)){
+                (getHeader().getJWK() != null || getHeader().getCustomParam("kid") != null)){
             boolean valid = true;
-            String alg = getHeader().getCustomParam("alg").toString();
-            if(alg.equalsIgnoreCase("none") && JWSAlgorithm.Family.HMAC_SHA.contains(JWSAlgorithm.parse(alg))){
+            JWSAlgorithm alg = getHeader().getAlgorithm();
+            if(JWSAlgorithm.Family.HMAC_SHA.contains(alg)){
                 valid = false;
             }
 
-            if(getHeader().getCustomParam("jwk") != null && getHeader().getCustomParam("kid") != null){
+            if(getHeader().getJWK() != null && getHeader().getCustomParam("kid") != null){
                 valid = false;
             }
             return valid;

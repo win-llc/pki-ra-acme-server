@@ -11,6 +11,8 @@ import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.model.data.OrderData;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,10 +36,11 @@ processing ------------+
     V                  V
   valid             invalid
  */
-
+@Component
 public class OrderProcessor implements AcmeDataProcessor<OrderData> {
-
+    @Autowired
     private OrderPersistence orderPersistence;
+    @Autowired
     private AuthorizationProcessor authorizationProcessor;
 
     @Override
@@ -46,6 +49,7 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
         order.setStatus(StatusType.PENDING.toString());
 
         OrderData orderData = new OrderData(order, directoryData);
+        order.setFinalize(orderData.buildUrl()+"/finalize");
 
         return orderData;
     }
@@ -55,6 +59,13 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
     public OrderData buildCurrentOrder(OrderData orderData){
         if(orderData.getObject().isExpired()){
             orderData.getObject().setStatus(StatusType.INVALID.toString());
+            orderData = orderPersistence.save(orderData);
+        }
+
+        boolean allInValidState = allAuthorizationsValidCheck(orderData);
+
+        if (allInValidState) {
+            orderData.getObject().setStatus(StatusType.READY.toString());
             orderData = orderPersistence.save(orderData);
         }
 
@@ -77,10 +88,7 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
         Optional<OrderData> orderDataOptional = orderPersistence.getById(orderId);
         if(orderDataOptional.isPresent()) {
             OrderData orderData = orderDataOptional.get();
-            List<AuthorizationData> authorizations = authorizationProcessor.getCurrentAuthorizationsForOrder(orderData);
-            boolean allInValidState = authorizations.stream()
-                    .map(DataObject::getObject)
-                    .allMatch(a -> a.getStatus().contentEquals(StatusType.VALID.toString()));
+            boolean allInValidState = allAuthorizationsValidCheck(orderData);
 
             if (allInValidState) {
                 orderData.getObject().setStatus(StatusType.READY.toString());
@@ -89,6 +97,13 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
         }else{
             throw new InternalServerException("Could not find order "+orderId);
         }
+    }
+
+    private boolean allAuthorizationsValidCheck(OrderData orderData){
+        List<AuthorizationData> authorizations = authorizationProcessor.getCurrentAuthorizationsForOrder(orderData);
+        return authorizations.stream()
+                .map(DataObject::getObject)
+                .allMatch(a -> a.getStatus().contentEquals(StatusType.VALID.toString()));
     }
 
 }

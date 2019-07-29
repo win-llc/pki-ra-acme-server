@@ -19,6 +19,7 @@ import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.process.ChallengeProcessor;
 import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,9 +34,13 @@ import java.util.Optional;
 @RestController
 public class AuthzService extends BaseService {
 
+    @Autowired
     private AuthorizationPersistence authorizationPersistence;
+    @Autowired
     private AuthorizationProcessor authorizationProcessor;
+    @Autowired
     private ChallengeProcessor challengeProcessor;
+    @Autowired
     private ChallengePersistence challengePersistence;
 
     @RequestMapping(value = "{directory}/new-authz", method = RequestMethod.POST, consumes = "application/jose+json")

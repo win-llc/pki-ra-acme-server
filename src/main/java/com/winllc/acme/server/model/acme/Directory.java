@@ -80,4 +80,17 @@ public class Directory {
     public void setMeta(Meta meta) {
         this.meta = meta;
     }
+
+    @Override
+    public String toString() {
+        return "Directory{" +
+                "newNonce='" + newNonce + '\'' +
+                ", newAccount='" + newAccount + '\'' +
+                ", newOrder='" + newOrder + '\'' +
+                ", newAuthz='" + newAuthz + '\'' +
+                ", revokeCert='" + revokeCert + '\'' +
+                ", keyChange='" + keyChange + '\'' +
+                ", meta=" + meta +
+                '}';
+    }
 }

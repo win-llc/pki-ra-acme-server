@@ -20,6 +20,7 @@ import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,45 +38,53 @@ public class CertService extends BaseService {
 
     private Logger log = LogManager.getLogger(CertService.class);
 
+    @Autowired
+    private CertificatePersistence certificatePersistence;
+
     //Section 7.4.2
     @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST,
             consumes = "application/jose+json")
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException {
-        AcmeURL acmeURL = new AcmeURL(request);
-        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+        try {
+            AcmeURL acmeURL = new AcmeURL(request);
+            DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
 
-        Optional<CertData> optionalCertData = new CertificatePersistence().getById(id);
+            Optional<CertData> optionalCertData = certificatePersistence.getById(id);
 
-        if(optionalCertData.isPresent()) {
-            CertData certData = optionalCertData.get();
+            if (optionalCertData.isPresent()) {
+                CertData certData = optionalCertData.get();
 
-            PayloadAndAccount<String> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, String.class);
+                PayloadAndAccount<String> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, String.class);
 
-            String returnCert = null;
+                String returnCert = null;
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("Content-Type", request.getHeader("Accept"));
+                HttpHeaders headers = new HttpHeaders();
+                headers.add("Content-Type", request.getHeader("Accept"));
 
-            switch (request.getHeader("Accept")){
-                case "application/pem-certificate-chain":
-                    returnCert = certData.buildReturnString();
-                    break;
-                case "application/pkix-cert":
-                    returnCert = certData.getCertChain()[0];
-                    break;
-                case "application/pkcs7-mime":
-                    //TODO
-                    break;
+                switch (request.getHeader("Accept")) {
+                    case "application/pem-certificate-chain":
+                        returnCert = certData.buildReturnString();
+                        break;
+                    case "application/pkix-cert":
+                        returnCert = certData.getCertChain()[0];
+                        break;
+                    case "application/pkcs7-mime":
+                        //TODO
+                        break;
+                }
+
+                return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                        .headers(headers)
+                        .body(returnCert);
+            } else {
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+                problemDetails.setDetail("Could not find Cert Data");
+                return buildBaseResponseEntity(500, directoryData)
+                        .body(problemDetails);
             }
-
-            return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                    .headers(headers)
-                    .body(returnCert);
-        }else{
-            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
-            problemDetails.setDetail("Could not find Cert Data");
-            return buildBaseResponseEntity(500, directoryData)
-                    .body(problemDetails);
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
         }
     }
 

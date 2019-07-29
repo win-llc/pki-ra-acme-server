@@ -60,6 +60,7 @@ public class ProblemDetails {
     }
 
     public ProblemDetails[] getSubproblems() {
+        if(subproblems == null) subproblems = new ProblemDetails[0];
         return subproblems;
     }
 

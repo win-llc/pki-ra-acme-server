@@ -14,10 +14,7 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.io.*;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
+import java.security.cert.*;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -35,6 +32,11 @@ public class CertUtil {
 
     public static PKCS10CertificationRequest csrBase64ToPKC10Object(String csrBase64) throws AcmeServerException {
         try {
+            byte[] base64Encoded = csrBase64.getBytes();
+            org.apache.commons.codec.binary.Base64 b64 = new org.apache.commons.codec.binary.Base64();
+            byte[] data = b64.decode(base64Encoded);
+            return new PKCS10CertificationRequest(data);
+/*
             Reader csrReader = new StringReader(csrBase64);
             try (PEMParser pemParser = new PEMParser(csrReader)) {
                 Object pemObj = pemParser.readObject();
@@ -42,6 +44,8 @@ public class CertUtil {
                     return (PKCS10CertificationRequest) pemObj;
                 }
             }
+
+ */
         } catch (IOException ex) {
             //LOG.error("getPKCS10CertRequest: unable to parse csr: " + ex.getMessage());
         }
@@ -68,7 +72,7 @@ public class CertUtil {
         return dnsNames;
     }
 
-    public static String[] certAndChainsToPemArray(X509Certificate certificate, X509Certificate[] chain) throws CertificateEncodingException {
+    public static String[] certAndChainsToPemArray(X509Certificate certificate, Certificate[] chain) throws CertificateEncodingException {
         String[] full = new String[chain.length + 1];
         full[0] = convertToPem(certificate);
         for(int i = 0; i < chain.length; i++){
@@ -77,7 +81,7 @@ public class CertUtil {
         return full;
     }
 
-    public static String convertToPem(X509Certificate cert) throws CertificateEncodingException {
+    public static String convertToPem(Certificate cert) throws CertificateEncodingException {
         Base64.Encoder encoder = Base64.getEncoder();
         String cert_begin = "-----BEGIN CERTIFICATE-----\n";
         String end_cert = "-----END CERTIFICATE-----";

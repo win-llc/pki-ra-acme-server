@@ -19,12 +19,8 @@ public class CertData extends DataObject<String[]> {
         return buildBaseUrl() + "cert/" + getId();
     }
 
-    @Override
-    public String[] getObject() {
-        return certChain;
-    }
-
     public String[] getCertChain() {
+        if(certChain == null) certChain = new String[0];
         return certChain;
     }
 
@@ -50,9 +46,10 @@ public class CertData extends DataObject<String[]> {
 
     public String buildReturnString(){
         StringBuilder builder = new StringBuilder();
-        for(int i = 0; i < certChain.length; i++){
-            builder.append(certChain[i]);
-            if(i < certChain.length) builder.append(System.lineSeparator());
+        String[] chain = getObject();
+        for(int i = 0; i < chain.length; i++){
+            builder.append(chain[i]);
+            if(i < chain.length) builder.append(System.lineSeparator());
         }
         return builder.toString();
     }

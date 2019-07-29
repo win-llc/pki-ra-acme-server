@@ -20,12 +20,11 @@ import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.CertUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.swing.text.html.Option;
@@ -37,19 +36,26 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 //Section 7.4
+@RestController
 public class OrderService extends BaseService {
 
+    @Autowired
     private OrderProcessor orderProcessor;
+    @Autowired
     private OrderPersistence orderPersistence;
+    @Autowired
     private OrderListPersistence orderListPersistence;
+    @Autowired
     private CertificatePersistence certificatePersistence;
+    @Autowired
     private AccountPersistence accountPersistence;
+    @Autowired
     private AuthorizationProcessor authorizationProcessor;
+    @Autowired
     private DirectoryPersistence directoryPersistence;
 
     @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request, @PathVariable String directory){
-
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
 
@@ -66,11 +72,11 @@ public class OrderService extends BaseService {
                 OrderData orderData = orderProcessor.buildNew(directoryData);
                 Order order = orderData.getObject();
 
-                generateAuthorizationsForOrder(order, directoryData);
-
                 order.setIdentifiers(orderRequest.getIdentifiers());
                 order.setNotAfter(orderRequest.getNotAfter());
                 order.setNotBefore(orderRequest.getNotBefore());
+
+                generateAuthorizationsForOrder(order, directoryData);
 
                 orderData = orderPersistence.save(orderData);
 
@@ -89,7 +95,9 @@ public class OrderService extends BaseService {
                  The body of this response is an order object reflecting the client’s request and any authorizations
                  the client must complete before the certificate will be issued.
                  */
+                //todo must provide location in header
                     return buildBaseResponseEntity(201, directoryData)
+                            .header("Location", orderData.buildUrl())
                             .body(order);
                 }else {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
@@ -115,6 +123,22 @@ public class OrderService extends BaseService {
             return buildBaseResponseEntity(500, directoryData)
                     .body(problemDetails);
         }
+    }
+
+    @RequestMapping(value = "{directory}/order/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
+    public ResponseEntity<?> getOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
+        AcmeURL acmeURL = new AcmeURL(httpServletRequest);
+        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+
+        Optional<OrderData> orderDataOptional = orderPersistence.getById(id);
+        if(orderDataOptional.isPresent()){
+            OrderData orderData = orderDataOptional.get();
+
+            return buildBaseResponseEntity(200, directoryData)
+                    .body(orderData.getObject());
+        }
+
+        return null;
     }
 
     @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")

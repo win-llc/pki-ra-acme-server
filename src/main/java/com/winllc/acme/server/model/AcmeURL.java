@@ -18,13 +18,13 @@ public class AcmeURL {
     public AcmeURL(String url){
         this.url = url;
 
-        String temp = url.replace("https://", "");
+        String temp = url.replace("https://", "").replace("http://", "");
 
         String[] split = temp.split("/");
         this.serverUrl = "https://"+split[0];
         this.directoryIdentifier = split[1];
-        this.acmeAction = split[2];
 
+        if(split.length > 2) this.acmeAction = split[2];
         if(split.length > 3) this.objectId = split[3];
         if(split.length > 4) this.extraAction = split[4];
     }

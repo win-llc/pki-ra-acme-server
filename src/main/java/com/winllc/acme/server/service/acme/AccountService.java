@@ -1,18 +1,15 @@
 package com.winllc.acme.server.service.acme;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.jwk.JWK;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.external.ExternalAccount;
 import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.Account;
-import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.DirectoryData;
@@ -22,6 +19,7 @@ import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.process.AccountProcessor;
 import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.text.ParseException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -39,7 +38,9 @@ import java.util.stream.Collectors;
 @RestController
 public class AccountService extends BaseService {
 
-    private AccountPersistence accountPersistence = new AccountPersistence();
+    @Autowired
+    private AccountPersistence accountPersistence;
+    @Autowired
     private AccountProcessor accountProcessor;
 
     //Section 7.3
@@ -48,6 +49,7 @@ public class AccountService extends BaseService {
         DirectoryData directoryData = Application.directoryDataMap.get(new AcmeURL(request).getDirectoryIdentifier());
 
         String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+
         AcmeJWSObject jwsObject = AcmeJWSObject.parse(body);
 
         //If JWS invalid, don't proceed
@@ -62,23 +64,7 @@ public class AccountService extends BaseService {
 
         AccountRequest accountRequest = AppUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
 
-        //Section 7.3.1
-        Optional<AccountData> accountDataOptional = accountPersistence.getByJwk(jwk);
-        //If account already present, don't recreate
-        if (accountDataOptional.isPresent()) {
-            AccountData accountData = accountDataOptional.get();
 
-            return buildBaseResponseEntity(200, directoryData)
-                    .header("Location", accountData.buildUrl())
-                    .body(accountData.getObject());
-        } else {
-            //If no account exists, but account lookup requested, send error
-            if (accountRequest.getOnlyReturnExisting()) {
-                ProblemDetails problemDetails = new ProblemDetails(ProblemType.ACCOUNT_DOES_NOT_EXIST);
-                return buildBaseResponseEntity(400, directoryData)
-                        .body(problemDetails);
-            }
-        }
 
         //Section 7.3.1 Paragraph 2
         //Not an account lookup at this point, create a new account
@@ -114,13 +100,11 @@ public class AccountService extends BaseService {
 
                     //TODO
                     ExternalAccountProvider accountProvider = Application.externalAccountProviderMap.get(directoryData.getExternalAccountProviderName());
-                    boolean verified = accountProvider.verifyExternalAccountJWS(accountRequest.getExternalAccountBinding());
+                    boolean verified = accountProvider.verifyExternalAccountJWS(jwsObject);
 
                     if (verified) {
-                        ExternalAccount externalAccount = new ExternalAccount();
-                        //TODO
-                        externalAccount.setAccountKey("");
-                        account.setExternalAccountBinding(externalAccount);
+                        accountData.setJwk(jwsObject.getHeader().getJWK().toString());
+                        account.setExternalAccountBinding(jwsObject.getPayload().toJWSObject());
                     } else {
                         //reject and return
                         ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED);
@@ -134,17 +118,35 @@ public class AccountService extends BaseService {
 
                 accountData.setJwk(jwsObject.getHeader().getJWK().toString());
 
-                accountPersistence.save(accountData);
+                accountData = accountPersistence.save(accountData);
 
                 return buildBaseResponseEntity(201, directoryData)
                         .header("Location", accountData.buildUrl())
-                        .body(account);
+                        .body(accountData.getObject());
 
             }else{
                 return buildBaseResponseEntity(500, directoryData)
                         .body(validationError);
             }
 
+        }else{
+            //Section 7.3.1
+            Optional<AccountData> accountDataOptional = accountPersistence.getByJwk(jwk);
+            //If account already present, don't recreate
+            if (accountDataOptional.isPresent()) {
+                AccountData accountData = accountDataOptional.get();
+
+                return buildBaseResponseEntity(200, directoryData)
+                        .header("Location", accountData.buildUrl())
+                        .body(accountData.getObject());
+            } else {
+                //If no account exists, but account lookup requested, send error
+                if (accountRequest.getOnlyReturnExisting()) {
+                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.ACCOUNT_DOES_NOT_EXIST);
+                    return buildBaseResponseEntity(400, directoryData)
+                            .body(problemDetails);
+                }
+            }
         }
         return null;
     }

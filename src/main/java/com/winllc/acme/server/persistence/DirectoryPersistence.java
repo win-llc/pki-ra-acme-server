@@ -2,9 +2,11 @@ package com.winllc.acme.server.persistence;
 
 import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.data.DirectoryData;
+import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
+@Component
 public class DirectoryPersistence implements DataPersistence<DirectoryData> {
     @Override
     public Optional<DirectoryData> getById(String id) {
