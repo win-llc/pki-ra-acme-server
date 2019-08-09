@@ -47,6 +47,7 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
     public OrderData buildNew(DirectoryData directoryData) {
         Order order = new Order();
         order.setStatus(StatusType.PENDING.toString());
+        order.willExpireInMinutes(30);
 
         OrderData orderData = new OrderData(order, directoryData);
         order.setFinalize(orderData.buildUrl()+"/finalize");
@@ -62,11 +63,14 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
             orderData = orderPersistence.save(orderData);
         }
 
-        boolean allInValidState = allAuthorizationsValidCheck(orderData);
+        //Only check authorizations if currently in pending, per specified flow above
+        if(orderData.getObject().getStatus().contentEquals(StatusType.PENDING.toString())) {
+            boolean allInValidState = allAuthorizationsValidCheck(orderData);
 
-        if (allInValidState) {
-            orderData.getObject().setStatus(StatusType.READY.toString());
-            orderData = orderPersistence.save(orderData);
+            if (allInValidState) {
+                orderData.getObject().setStatus(StatusType.READY.toString());
+                orderData = orderPersistence.save(orderData);
+            }
         }
 
         return orderData;
@@ -101,9 +105,14 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
 
     private boolean allAuthorizationsValidCheck(OrderData orderData){
         List<AuthorizationData> authorizations = authorizationProcessor.getCurrentAuthorizationsForOrder(orderData);
-        return authorizations.stream()
-                .map(DataObject::getObject)
-                .allMatch(a -> a.getStatus().contentEquals(StatusType.VALID.toString()));
+        if(authorizations.size() == 0){
+            //If not authorization, assume valid
+            return true;
+        }else {
+            return authorizations.stream()
+                    .map(DataObject::getObject)
+                    .allMatch(a -> a.getStatus().contentEquals(StatusType.VALID.toString()));
+        }
     }
 
 }

@@ -12,6 +12,8 @@ import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
+import sun.misc.BASE64Encoder;
+import sun.security.provider.X509Factory;
 
 import java.io.*;
 import java.security.cert.*;
@@ -82,6 +84,15 @@ public class CertUtil {
     }
 
     public static String convertToPem(Certificate cert) throws CertificateEncodingException {
+        BASE64Encoder encoder = new BASE64Encoder();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(X509Factory.BEGIN_CERT);
+        stringBuilder.append("\n");
+        stringBuilder.append(encoder.encode(cert.getEncoded()));
+        stringBuilder.append("\n");
+        stringBuilder.append(X509Factory.END_CERT);
+        return stringBuilder.toString();
+        /*
         Base64.Encoder encoder = Base64.getEncoder();
         String cert_begin = "-----BEGIN CERTIFICATE-----\n";
         String end_cert = "-----END CERTIFICATE-----";
@@ -89,5 +100,6 @@ public class CertUtil {
         byte[] derCert = cert.getEncoded();
         String pemCertPre = new String(encoder.encode(derCert));
         return cert_begin + pemCertPre + end_cert;
+         */
     }
 }

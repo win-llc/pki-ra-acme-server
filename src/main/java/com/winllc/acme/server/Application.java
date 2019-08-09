@@ -10,6 +10,8 @@ import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.Meta;
 import com.winllc.acme.server.model.data.DirectoryData;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +19,12 @@ import java.util.Map;
 
 public class Application {
 
-    private static String hostname = "localhost:8181";
+    private static String hostname;
+
+    static {
+        hostname = "192.168.1.13"+":8181";
+    }
+
     public static String baseURL = "http://"+hostname+"/";
     public static String directoryName = "acme";
 

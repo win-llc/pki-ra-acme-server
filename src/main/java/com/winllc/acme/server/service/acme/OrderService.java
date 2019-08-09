@@ -76,7 +76,7 @@ public class OrderService extends BaseService {
                 order.setNotAfter(orderRequest.getNotAfter());
                 order.setNotBefore(orderRequest.getNotBefore());
 
-                generateAuthorizationsForOrder(order, directoryData);
+                generateAuthorizationsForOrder(order, payloadAndAccount);
 
                 orderData = orderPersistence.save(orderData);
 
@@ -133,6 +133,7 @@ public class OrderService extends BaseService {
         Optional<OrderData> orderDataOptional = orderPersistence.getById(id);
         if(orderDataOptional.isPresent()){
             OrderData orderData = orderDataOptional.get();
+            orderData = orderProcessor.buildCurrentOrder(orderData);
 
             return buildBaseResponseEntity(200, directoryData)
                     .body(orderData.getObject());
@@ -167,8 +168,6 @@ public class OrderService extends BaseService {
                 if (!problemDetailsOptional.isPresent()) {
                     //if checks pass, return
                     finalizeOrder(orderData, csr);
-
-                    orderData = orderPersistence.save(orderData);
 
                     return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
                             .body(orderData.getObject());
@@ -241,12 +240,12 @@ public class OrderService extends BaseService {
 
 
     //Section 8
-    private void generateAuthorizationsForOrder(Order order, DirectoryData directoryData){
+    private void generateAuthorizationsForOrder(Order order, PayloadAndAccount payloadAndAccount){
         //TODO
         List<String> authorizationUrls = new ArrayList<>();
 
         for(Identifier identifier : order.getIdentifiers()){
-            Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, directoryData);
+            Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount);
             if(authorizationOptional.isPresent()){
                 AuthorizationData authorization = authorizationOptional.get();
                 authorizationUrls.add(authorization.buildUrl());
@@ -276,6 +275,8 @@ public class OrderService extends BaseService {
 
             order.getObject().setStatus(StatusType.VALID.toString());
             order.getObject().setCertificate(certData.buildUrl());
+
+            orderPersistence.save(order);
 
         }catch (Exception e){
             e.printStackTrace();

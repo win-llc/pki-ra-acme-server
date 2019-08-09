@@ -1,8 +1,10 @@
 package com.winllc.acme.server.model.acme;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.commons.lang3.StringUtils;
 
 //RFC8555 Section 7.1.3
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Order extends ExpiresObject {
     //required
     private Identifier[] identifiers;

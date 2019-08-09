@@ -123,8 +123,9 @@ public class AppUtil {
              */
 
             String nonce = jwsObject.getNonce();
-            //Verify nonce has not been used
-            if (Application.unUsedNonces.contains(nonce) && !Application.usedNonces.contains(nonce)) {
+            //Verify nonce has not been used, TODO add back
+            //if (Application.unUsedNonces.contains(nonce) && !Application.usedNonces.contains(nonce)) {
+            if (!Application.usedNonces.contains(nonce)) {
                 Application.usedNonces.add(nonce);
             } else {
                 //NONCE has been used before, possible replay attack

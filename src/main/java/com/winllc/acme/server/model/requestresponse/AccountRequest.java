@@ -18,6 +18,8 @@ public class AccountRequest {
     //optional
     private AcmeJWSObject externalAccountBinding;
 
+    private String resource;
+
     public String getStatus() {
         return status;
     }
@@ -56,6 +58,14 @@ public class AccountRequest {
 
     public void setExternalAccountBinding(AcmeJWSObject externalAccountBinding) {
         this.externalAccountBinding = externalAccountBinding;
+    }
+
+    public String getResource() {
+        return resource;
+    }
+
+    public void setResource(String resource) {
+        this.resource = resource;
     }
 
     public JWSObject buildExternalAccount() throws IOException {

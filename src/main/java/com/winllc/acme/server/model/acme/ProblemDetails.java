@@ -2,6 +2,7 @@ package com.winllc.acme.server.model.acme;
 
 import com.winllc.acme.server.contants.ProblemType;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -71,7 +72,8 @@ public class ProblemDetails {
     public void addSubproblem(ProblemDetails problemDetails){
         if(subproblems == null) subproblems = new ProblemDetails[0];
         List<ProblemDetails> list = Arrays.asList(subproblems);
-        list.add(problemDetails);
-        subproblems = list.toArray(new ProblemDetails[0]);
+        List<ProblemDetails> temp = new ArrayList<>(list);
+        temp.add(problemDetails);
+        subproblems = temp.toArray(new ProblemDetails[0]);
     }
 }

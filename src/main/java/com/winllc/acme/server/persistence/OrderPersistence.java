@@ -8,11 +8,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class OrderPersistence implements DataPersistence<OrderData> {
 
-    private Map<String, OrderData> orderDataMap = new HashMap<>();
+    private Map<String, OrderData> orderDataMap = new ConcurrentHashMap<>();
 
     @Override
     public Optional<OrderData> getById(String id) {

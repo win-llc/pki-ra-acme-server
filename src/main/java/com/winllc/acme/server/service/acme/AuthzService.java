@@ -8,6 +8,7 @@ import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.external.CertificateAuthority;
+import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.*;
 import com.winllc.acme.server.model.data.AuthorizationData;
@@ -52,10 +53,9 @@ public class AuthzService extends BaseService {
                 Identifier identifier = payloadAndAccount.getPayload();
 
                 if (serverWillingToIssueForIdentifier(identifier, directoryData, false)) {
-                    Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, directoryData);
+                    Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount);
                     if(authorizationOptional.isPresent()){
                         AuthorizationData authorizationData = authorizationOptional.get();
-                        authorizationData.setAccountId(payloadAndAccount.getAccountData().getId());
 
                         authorizationData = authorizationPersistence.save(authorizationData);
 
@@ -101,17 +101,23 @@ public class AuthzService extends BaseService {
             AuthorizationData authorizationData = optionalAuthorizationData.get();
 
             try {
-                PayloadAndAccount<Authorization> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Authorization.class);
-                Authorization authorization = payloadAndAccount.getPayload();
+                AcmeJWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
+                PayloadAndAccount payloadAndAccount;
+                if (jwsObject.getPayload().toString().contentEquals("")) {
+                    payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, authorizationData.getAccountId(), String.class);
+                }else{
+                    payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, authorizationData.getAccountId(), Authorization.class);
+                    Authorization authorization = (Authorization) payloadAndAccount.getPayload();
 
-                //Section 7.5.2
-                if (authorization.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
-                    authorizationData.getObject().setStatus(StatusType.DEACTIVATED.toString());
-                    authorizationPersistence.save(authorizationData);
+                    //Section 7.5.2
+                    if (authorization.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
+                        authorizationData.getObject().setStatus(StatusType.DEACTIVATED.toString());
+                        authorizationPersistence.save(authorizationData);
 
-                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(authorizationData.getObject());
+                        return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .body(authorizationData.getObject());
+                    }
                 }
 
                 AuthorizationData refreshedAuthorization = authorizationProcessor.buildCurrentAuthorization(authorizationData);
@@ -119,7 +125,7 @@ public class AuthzService extends BaseService {
                 return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                         .header("Link", "TODO")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .body(refreshedAuthorization);
+                        .body(refreshedAuthorization.getObject());
 
             } catch (Exception e) {
                 e.printStackTrace();

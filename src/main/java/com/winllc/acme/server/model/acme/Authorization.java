@@ -1,9 +1,12 @@
 package com.winllc.acme.server.model.acme;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.Arrays;
 import java.util.List;
 
 //RFC8555 Section 7.1.4
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Authorization extends ExpiresObject {
     //required
     private Identifier identifier;

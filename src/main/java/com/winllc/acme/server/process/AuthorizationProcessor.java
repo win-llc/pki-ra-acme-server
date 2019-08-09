@@ -13,6 +13,7 @@ import com.winllc.acme.server.model.data.*;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
+import com.winllc.acme.server.util.PayloadAndAccount;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -46,6 +47,8 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     @Autowired
     private ChallengeProcessor challengeProcessor;
     @Autowired
+    private ChallengePersistence challengePersistence;
+    @Autowired
     private AuthorizationPersistence authorizationPersistence;
     @Autowired
     private OrderProcessor orderProcessor;
@@ -60,6 +63,14 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
         return authorizationData;
     }
 
+    public AuthorizationData buildNew(PayloadAndAccount payloadAndAccount) {
+        AuthorizationData authorization = buildNew(payloadAndAccount.getDirectoryData());
+
+        authorization.setAccountId(payloadAndAccount.getAccountData().getId());
+
+        return authorization;
+    }
+
     //Make sure the current challenge objects are sent with the authorization object
     //Section 7.5.1
     public AuthorizationData buildCurrentAuthorization(AuthorizationData authorizationData){
@@ -72,10 +83,11 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     }
 
     //Based off the directory, get the CA, which has the rules for how to build authorizations for identifiers
-    public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, DirectoryData directory){
+    public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, PayloadAndAccount payloadAndAccount){
+        DirectoryData directory = payloadAndAccount.getDirectoryData();
         CertificateAuthority ca = Application.availableCAs.get(directory.getMapsToCertificateAuthorityName());
 
-        AuthorizationData authorizationData = buildNew(directory);
+        AuthorizationData authorizationData = buildNew(payloadAndAccount);
         Authorization authorization = authorizationData.getObject();
         authorization.setIdentifier(identifier);
 
@@ -91,20 +103,20 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
                     Challenge challenge = challengeData.getObject();
                     challenge.setUrl(challengeData.buildUrl());
                     //TODO fill in and save
-
+                    challengePersistence.save(challengeData);
 
                     authorization.addChallenge(challenge);
                 }
             }
         }
 
-        //only save if a challenge was needed
-        if(authorization.getChallenges().length > 0){
-            new AuthorizationPersistence().save(authorizationData);
-            return Optional.of(authorizationData);
-        }else{
-            return Optional.empty();
+        //if not challenges needed, mark as valid
+        if(authorization.getChallenges().length == 0){
+            authorization.setStatus(StatusType.VALID.toString());
         }
+
+        authorizationData = authorizationPersistence.save(authorizationData);
+        return Optional.of(authorizationData);
     }
 
     //If a challenge is marked valid, authorization should be marked valid, unless it's expired

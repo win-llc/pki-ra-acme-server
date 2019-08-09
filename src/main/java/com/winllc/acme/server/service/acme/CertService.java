@@ -71,6 +71,8 @@ public class CertService extends BaseService {
                     case "application/pkcs7-mime":
                         //TODO
                         break;
+                    default:
+                        returnCert = certData.buildReturnString();
                 }
 
                 return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())

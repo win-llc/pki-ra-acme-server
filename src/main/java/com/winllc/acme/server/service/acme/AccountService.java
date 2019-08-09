@@ -326,8 +326,8 @@ public class AccountService extends BaseService {
     }
 
     private boolean validateEmail(String email) {
-        String regex = "^[\\w-_\\.+]*[\\w-_\\.]\\@([\\w]+\\.)+[\\w]+[\\w]$";
-        return email.matches(regex);
+        String regex = "^[\\w-_.+]*[\\w-_.]@([\\w]+\\.)+[\\w]+[\\w]$";
+        return email.replace("mailto:","").matches(regex);
     }
 
     private boolean checkChangeInTermsOfService(AccountData accountData, DirectoryData directory) {
