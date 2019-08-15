@@ -1,6 +1,7 @@
 package com.winllc.acme.server.process;
 
 import com.winllc.acme.server.Application;
+import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.external.CAValidationRule;
@@ -90,6 +91,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
         AuthorizationData authorizationData = buildNew(payloadAndAccount);
         Authorization authorization = authorizationData.getObject();
         authorization.setIdentifier(identifier);
+        authorization.willExpireInMinutes(60);
 
         //Check if CA requires extra validation for identifier
         for(CAValidationRule rule : ca.getValidationRules()){
@@ -102,6 +104,11 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
                     challengeData.setAuthorizationId(authorizationData.getId());
                     Challenge challenge = challengeData.getObject();
                     challenge.setUrl(challengeData.buildUrl());
+                    if(rule.isRequireHttpChallenge()) {
+                        challenge.setType(ChallengeType.HTTP.toString());
+                    }else{
+                        challenge.setType(ChallengeType.DNS.toString());
+                    }
                     //TODO fill in and save
                     challengePersistence.save(challengeData);
 

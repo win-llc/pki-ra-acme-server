@@ -39,4 +39,12 @@ public class AuthorizationData extends DataObject<Authorization> {
     public void setAccountId(String accountId) {
         this.accountId = accountId;
     }
+
+    @Override
+    public String toString() {
+        return "AuthorizationData{" +
+                "orderId='" + orderId + '\'' +
+                ", accountId='" + accountId + '\'' +
+                "} " + super.toString();
+    }
 }

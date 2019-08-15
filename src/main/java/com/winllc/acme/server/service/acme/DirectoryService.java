@@ -4,6 +4,8 @@ import com.winllc.acme.server.Application;
 import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.data.DirectoryData;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +17,8 @@ import javax.servlet.http.HttpServletRequest;
 //Section 7.1.1
 @RestController
 public class DirectoryService {
+
+    private static final Logger log = LogManager.getLogger(DirectoryService.class);
 
     @RequestMapping(method = RequestMethod.GET, value = "{directoryName}/directory")
     public ResponseEntity<?> directory(HttpServletRequest request, @PathVariable String directoryName){

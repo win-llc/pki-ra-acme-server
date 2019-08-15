@@ -10,10 +10,13 @@ public class OrderData extends DataObject<Order> {
         super(obj, directoryData);
     }
 
-
     @Override
     public String buildUrl() {
         return buildBaseUrl() + "order/" + getId();
     }
 
+    @Override
+    public String toString() {
+        return "OrderData{} " + super.toString();
+    }
 }

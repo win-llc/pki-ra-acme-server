@@ -7,6 +7,7 @@ import com.winllc.acme.server.challenge.HttpChallenge;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.AcmeURL;
@@ -20,6 +21,8 @@ import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.process.ChallengeProcessor;
 import com.winllc.acme.server.util.AppUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,14 +38,16 @@ import java.util.Optional;
 @RestController
 public class AuthzService extends BaseService {
 
+    private static final Logger log = LogManager.getLogger(AuthzService.class);
+
     @Autowired
     private AuthorizationPersistence authorizationPersistence;
     @Autowired
     private AuthorizationProcessor authorizationProcessor;
     @Autowired
-    private ChallengeProcessor challengeProcessor;
-    @Autowired
     private ChallengePersistence challengePersistence;
+    @Autowired
+    private HttpChallenge httpChallenge;
 
     @RequestMapping(value = "{directory}/new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newAuthz(HttpServletRequest request, @PathVariable String directory) {
@@ -94,7 +99,6 @@ public class AuthzService extends BaseService {
     //Section 7.5
     @RequestMapping(value = "{directory}/authz/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> authz(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
-
         Optional<AuthorizationData> optionalAuthorizationData = authorizationPersistence.getById(id);
 
         if (optionalAuthorizationData.isPresent()) {
@@ -104,7 +108,7 @@ public class AuthzService extends BaseService {
                 AcmeJWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
                 PayloadAndAccount payloadAndAccount;
                 if (jwsObject.getPayload().toString().contentEquals("")) {
-                    payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, authorizationData.getAccountId(), String.class);
+                    payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, request, authorizationData.getAccountId(), String.class);
                 }else{
                     payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, authorizationData.getAccountId(), Authorization.class);
                     Authorization authorization = (Authorization) payloadAndAccount.getPayload();
@@ -146,16 +150,24 @@ public class AuthzService extends BaseService {
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
         Optional<ChallengeData> optionalChallengeData = challengePersistence.getById(id);
-        AcmeURL acmeURL = new AcmeURL(request);
-        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = Application.directoryDataMap.get(directory);
+
+        AcmeJWSObject jwsObjectFromHttpRequest;
+        try {
+            jwsObjectFromHttpRequest = AppUtil.getJWSObjectFromHttpRequest(request);
+            log.info(jwsObjectFromHttpRequest);
+        } catch (AcmeServerException e) {
+            e.printStackTrace();
+        }
         if (optionalChallengeData.isPresent()) {
             ChallengeData challengeData = optionalChallengeData.get();
             Challenge challenge = challengeData.getObject();
+            Optional<AuthorizationData> authOptional = authorizationPersistence.getById(challengeData.getAuthorizationId());
 
-            ChallengeType challengeType = ChallengeType.valueOf(challenge.getType());
+            ChallengeType challengeType = ChallengeType.getValue(challenge.getType());
             switch (challengeType) {
                 case HTTP:
-                    new HttpChallenge().verify(challengeData);
+                    httpChallenge.verify(challengeData);
                     break;
                 case DNS:
                     new DnsChallenge().verify(challengeData);
@@ -164,6 +176,7 @@ public class AuthzService extends BaseService {
             //Get the current challenge and return 200
             Optional<ChallengeData> challengeDataOptional = challengePersistence.getById(challengeData.getId());
             return buildBaseResponseEntity(200, directoryData)
+                    .header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
                     .body(challengeDataOptional.get().getObject());
         }else{
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);

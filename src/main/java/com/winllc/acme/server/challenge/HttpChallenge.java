@@ -5,11 +5,17 @@ import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.ChallengeProcessor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
 //Section 8.3
+@Component
 public class HttpChallenge implements ChallengeVerification {
 
+    @Autowired
     private ChallengePersistence challengePersistence;
+    @Autowired
     private ChallengeProcessor challengeProcessor;
 
     public void verify(ChallengeData challenge){
@@ -38,7 +44,7 @@ public class HttpChallenge implements ChallengeVerification {
         @Override
         public void run() {
             //TODO
-            boolean success = false;
+            boolean success = true;
 
             try {
                 challenge = challengeProcessor.validation(challenge, success);

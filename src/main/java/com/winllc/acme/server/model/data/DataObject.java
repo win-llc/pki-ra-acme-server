@@ -54,4 +54,14 @@ public abstract class DataObject<T> {
     public String getDirectory() {
         return directory;
     }
+
+    @Override
+    public String toString() {
+        return "DataObject{" +
+                "id='" + id + '\'' +
+                ", object=" + object +
+                ", accountId='" + accountId + '\'' +
+                ", directory='" + directory + '\'' +
+                '}';
+    }
 }

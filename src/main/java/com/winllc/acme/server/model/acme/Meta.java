@@ -1,6 +1,8 @@
 package com.winllc.acme.server.model.acme;
 
 
+import java.util.Arrays;
+
 /**
  * "meta": {
  *        "termsOfService": "https://example.com/acme/terms/2017-5-30",
@@ -45,5 +47,15 @@ public class Meta {
 
     public void setExternalAccountRequired(boolean externalAccountRequired) {
         this.externalAccountRequired = externalAccountRequired;
+    }
+
+    @Override
+    public String toString() {
+        return "Meta{" +
+                "termsOfService='" + termsOfService + '\'' +
+                ", website='" + website + '\'' +
+                ", caaIdentities=" + Arrays.toString(caaIdentities) +
+                ", externalAccountRequired=" + externalAccountRequired +
+                '}';
     }
 }

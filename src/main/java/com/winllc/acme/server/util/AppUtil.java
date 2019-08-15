@@ -63,16 +63,16 @@ public class AppUtil {
         //Should contain account URL
         AcmeURL kid = new AcmeURL(jwsObject.getHeader().getKeyID());
 
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, kid.getObjectId().get(), clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, kid.getObjectId().get(), clazz);
     }
 
     public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,
                                                                                        String accountId, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, accountId, clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, accountId, clazz);
     }
 
-    public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject,
+    public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
                                                                                        String accountId, Class<T> clazz) throws AcmeServerException {
 
         //Section 6.2
@@ -84,13 +84,11 @@ public class AppUtil {
         //The URL must match the URL in the JWS Header
         //Section 6.4
         String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
-        //TODO add back
-        /*
+
         if(!headerUrl.contentEquals(httpServletRequest.getRequestURL())){
+            log.debug("Header URL and Request URL did not match");
             throw new AcmeServerException(ProblemType.UNAUTHORIZED);
         }
-
-         */
 
         Optional<AccountData> optionalAccount = accountPersistence.getByAccountId(accountId);
         if(optionalAccount.isPresent()) {
@@ -124,8 +122,8 @@ public class AppUtil {
 
             String nonce = jwsObject.getNonce();
             //Verify nonce has not been used, TODO add back
-            //if (Application.unUsedNonces.contains(nonce) && !Application.usedNonces.contains(nonce)) {
             if (!Application.usedNonces.contains(nonce)) {
+            //if (!Application.usedNonces.contains(nonce)) {
                 Application.usedNonces.add(nonce);
             } else {
                 //NONCE has been used before, possible replay attack

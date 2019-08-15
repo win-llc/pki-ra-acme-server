@@ -1,9 +1,13 @@
 package com.winllc.acme.server.model.acme;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jose.JWSObject;
 
+import java.util.Arrays;
+
 //RFC8555 Section 7.1.2
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Account extends BaseAcmeObject<Account> {
 
     //optional
@@ -54,5 +58,17 @@ public class Account extends BaseAcmeObject<Account> {
     @Override
     public boolean isValid() {
         return orders != null;
+    }
+
+    @Override
+    public String toString() {
+        return "Account{" +
+                "contact=" + Arrays.toString(contact) +
+                ", termsOfServiceAgreed=" + termsOfServiceAgreed +
+                ", externalAccountBinding=" + externalAccountBinding +
+                ", orders='" + orders + '\'' +
+                ", status='" + status + '\'' +
+                ", resource='" + resource + '\'' +
+                '}';
     }
 }

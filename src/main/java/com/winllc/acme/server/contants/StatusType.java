@@ -20,4 +20,11 @@ public enum StatusType {
     public String toString() {
         return value;
     }
+
+    public static StatusType getValue(String val) {
+        for(StatusType type : values()){
+            if(type.value.contentEquals(val)) return type;
+        }
+        throw new IllegalArgumentException("Invalid StatusType: "+val);
+    }
 }

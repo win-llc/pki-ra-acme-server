@@ -36,4 +36,11 @@ public class AccountData extends DataObject<Account> {
         this.lastAgreedToTermsOfServiceOn = lastAgreedToTermsOfServiceOn;
     }
 
+    @Override
+    public String toString() {
+        return "AccountData{" +
+                "jwk='" + jwk + '\'' +
+                ", lastAgreedToTermsOfServiceOn=" + lastAgreedToTermsOfServiceOn +
+                "} " + super.toString();
+    }
 }

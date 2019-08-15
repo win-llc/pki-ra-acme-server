@@ -24,4 +24,11 @@ public class ChallengeData extends DataObject<Challenge> {
     public void setAuthorizationId(String authorizationId) {
         this.authorizationId = authorizationId;
     }
+
+    @Override
+    public String toString() {
+        return "ChallengeData{" +
+                "authorizationId='" + authorizationId + '\'' +
+                "} " + super.toString();
+    }
 }

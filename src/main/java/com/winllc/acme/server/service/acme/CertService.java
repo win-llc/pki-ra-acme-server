@@ -93,19 +93,19 @@ public class CertService extends BaseService {
     //Section 7.6
     @RequestMapping(value = "{directory}/revoke-cert", method = RequestMethod.POST,
             consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> certRevoke(HttpServletRequest request, @PathVariable String id) {
+    public ResponseEntity<?> certRevoke(HttpServletRequest request, @PathVariable String directory) {
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
         CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
         try {
             //TODO verify signature from either account key or certificate
-            JWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
+            //JWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
             PayloadAndAccount<RevokeCertRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, RevokeCertRequest.class);
             RevokeCertRequest revokeCertRequest = payloadAndAccount.getPayload();
 
             boolean signedByCert = true;
             if(signedByCert) {
-                JWSVerifier verifier = new RSASSAVerifier((RSAKey) jwsObject.getHeader().getJWK().toPublicJWK());
+                //JWSVerifier verifier = new RSASSAVerifier((RSAKey) jwsObject.getHeader().getJWK().toPublicJWK());
             }else{
 
             }

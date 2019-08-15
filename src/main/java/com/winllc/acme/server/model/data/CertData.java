@@ -3,6 +3,8 @@ package com.winllc.acme.server.model.data;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.model.acme.Directory;
 
+import java.util.Arrays;
+
 public class CertData extends DataObject<String[]> {
 
     //First index is cert
@@ -52,5 +54,14 @@ public class CertData extends DataObject<String[]> {
             if(i < chain.length) builder.append(System.lineSeparator());
         }
         return builder.toString();
+    }
+
+    @Override
+    public String toString() {
+        return "CertData{" +
+                "certChain=" + Arrays.toString(certChain) +
+                ", issuerDn='" + issuerDn + '\'' +
+                ", serialNumber=" + serialNumber +
+                "} " + super.toString();
     }
 }

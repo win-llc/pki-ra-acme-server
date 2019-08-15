@@ -3,6 +3,8 @@ package com.winllc.acme.server.model.acme;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Arrays;
+
 //RFC8555 Section 7.1.3
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Order extends ExpiresObject {
@@ -80,5 +82,21 @@ public class Order extends ExpiresObject {
     @Override
     public boolean isValid() {
         return identifiers != null && StringUtils.isNotBlank(finalize);
+    }
+
+    @Override
+    public String toString() {
+        return "Order{" +
+                "identifiers=" + Arrays.toString(identifiers) +
+                ", notBefore='" + notBefore + '\'' +
+                ", notAfter='" + notAfter + '\'' +
+                ", error=" + error +
+                ", authorizations=" + Arrays.toString(authorizations) +
+                ", finalize='" + finalize + '\'' +
+                ", certificate='" + certificate + '\'' +
+                ", expires='" + expires + '\'' +
+                ", status='" + status + '\'' +
+                ", resource='" + resource + '\'' +
+                '}';
     }
 }

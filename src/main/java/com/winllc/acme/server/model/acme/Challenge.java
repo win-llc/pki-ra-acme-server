@@ -1,8 +1,10 @@
 package com.winllc.acme.server.model.acme;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.commons.lang3.StringUtils;
 
 //RFC8555 Section 8
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Challenge extends BaseAcmeObject {
     //required
     private String type;
@@ -10,6 +12,8 @@ public class Challenge extends BaseAcmeObject {
     private String url;
     //optional
     private String validated;
+    //required
+    private String token;
     //optional
     private ProblemDetails error;
 
@@ -37,6 +41,14 @@ public class Challenge extends BaseAcmeObject {
         this.validated = validated;
     }
 
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
     public ProblemDetails getError() {
         return error;
     }
@@ -47,6 +59,18 @@ public class Challenge extends BaseAcmeObject {
 
     @Override
     public boolean isValid() {
-        return StringUtils.isNotBlank(type) && StringUtils.isNotBlank(url);
+        return StringUtils.isNotBlank(type) && StringUtils.isNotBlank(url) && StringUtils.isNotBlank(token);
+    }
+
+    @Override
+    public String toString() {
+        return "Challenge{" +
+                "type='" + type + '\'' +
+                ", url='" + url + '\'' +
+                ", validated='" + validated + '\'' +
+                ", error=" + error +
+                ", status='" + status + '\'' +
+                ", resource='" + resource + '\'' +
+                '}';
     }
 }

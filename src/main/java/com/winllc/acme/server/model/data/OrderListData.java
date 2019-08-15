@@ -58,5 +58,8 @@ public class OrderListData extends DataObject<OrderList> {
         }
     }
 
-
+    @Override
+    public String toString() {
+        return "OrderListData{} " + super.toString();
+    }
 }

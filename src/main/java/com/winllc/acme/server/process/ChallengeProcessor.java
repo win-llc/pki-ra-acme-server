@@ -8,9 +8,11 @@ import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Base64;
 import java.util.List;
 
 @Component
@@ -45,13 +47,17 @@ valid              invalid
         Challenge challenge = new Challenge();
         challenge.setStatus(StatusType.PENDING.toString());
 
+        String token = RandomStringUtils.random(50);
+        String tokenBase64 = Base64.getEncoder().encodeToString(token.getBytes());
+        challenge.setToken(tokenBase64);
+
         ChallengeData challengeData = new ChallengeData(challenge, directoryData);
 
         return challengeData;
     }
 
     public ChallengeData processing(ChallengeData challengeData) throws InternalServerException {
-        StatusType status = StatusType.valueOf(challengeData.getObject().getStatus());
+        StatusType status = StatusType.getValue(challengeData.getObject().getStatus());
         if(status == StatusType.PENDING || status == StatusType.PROCESSING){
             challengeData.getObject().setStatus(StatusType.PROCESSING.toString());
             return challengeData;
@@ -61,7 +67,7 @@ valid              invalid
     }
 
     public ChallengeData validation(ChallengeData challengeData, boolean success) throws InternalServerException {
-        StatusType status = StatusType.valueOf(challengeData.getObject().getStatus());
+        StatusType status = StatusType.getValue(challengeData.getObject().getStatus());
         if(status == StatusType.PROCESSING){
             if(success){
                 challengeData.getObject().setStatus(StatusType.VALID.toString());

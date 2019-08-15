@@ -67,4 +67,15 @@ public class DirectoryData extends DataObject<Directory> {
     public void setTermsOfServiceLastUpdatedOn(Date termsOfServiceLastUpdatedOn) {
         this.termsOfServiceLastUpdatedOn = termsOfServiceLastUpdatedOn;
     }
+
+    @Override
+    public String toString() {
+        return "DirectoryData{" +
+                "name='" + name + '\'' +
+                ", allowPreAuthorization=" + allowPreAuthorization +
+                ", mapsToCertificateAuthorityName='" + mapsToCertificateAuthorityName + '\'' +
+                ", externalAccountProviderName='" + externalAccountProviderName + '\'' +
+                ", termsOfServiceLastUpdatedOn=" + termsOfServiceLastUpdatedOn +
+                "} " + super.toString();
+    }
 }

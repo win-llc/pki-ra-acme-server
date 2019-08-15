@@ -1,5 +1,6 @@
 package com.winllc.acme.server.model.acme;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.winllc.acme.server.contants.ProblemType;
 
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 
 //RFC7807
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ProblemDetails {
     private String type;
     private String title;
@@ -75,5 +77,17 @@ public class ProblemDetails {
         List<ProblemDetails> temp = new ArrayList<>(list);
         temp.add(problemDetails);
         subproblems = temp.toArray(new ProblemDetails[0]);
+    }
+
+    @Override
+    public String toString() {
+        return "ProblemDetails{" +
+                "type='" + type + '\'' +
+                ", title='" + title + '\'' +
+                ", status=" + status +
+                ", detail='" + detail + '\'' +
+                ", instance='" + instance + '\'' +
+                ", subproblems=" + Arrays.toString(subproblems) +
+                '}';
     }
 }

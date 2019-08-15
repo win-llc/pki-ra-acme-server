@@ -12,6 +12,7 @@ import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
+import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 import sun.security.provider.X509Factory;
 
@@ -24,8 +25,9 @@ import java.util.List;
 public class CertUtil {
 
 
-    public static X509Certificate base64ToCert(String certB64) throws CertificateException {
-        byte[] encodedCert = Base64.getDecoder().decode(certB64);
+    public static X509Certificate base64ToCert(String certB64) throws CertificateException, IOException {
+        BASE64Decoder decoder = new BASE64Decoder();
+        byte[] encodedCert = decoder.decodeBuffer(certB64);
         ByteArrayInputStream inputStream = new ByteArrayInputStream(encodedCert);
 
         CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
@@ -91,7 +93,7 @@ public class CertUtil {
         stringBuilder.append(encoder.encode(cert.getEncoded()));
         stringBuilder.append("\n");
         stringBuilder.append(X509Factory.END_CERT);
-        return stringBuilder.toString();
+        return stringBuilder.toString().replaceAll("(?m)^[ \t]*\r?\n", "");
         /*
         Base64.Encoder encoder = Base64.getEncoder();
         String cert_begin = "-----BEGIN CERTIFICATE-----\n";

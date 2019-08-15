@@ -2,6 +2,7 @@ package com.winllc.acme.server.model.acme;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -36,8 +37,9 @@ public class Authorization extends ExpiresObject {
         if(challenges == null) challenges = new Challenge[0];
 
         List<Challenge> list = Arrays.asList(challenges);
-        list.add(challenge);
-        challenges = list.toArray(new Challenge[0]);
+        List<Challenge> temp = new ArrayList<>(list);
+        temp.add(challenge);
+        challenges = temp.toArray(new Challenge[0]);
     }
 
     public Boolean getWildcard() {
@@ -51,5 +53,17 @@ public class Authorization extends ExpiresObject {
     @Override
     public boolean isValid() {
         return identifier != null && challenges != null;
+    }
+
+    @Override
+    public String toString() {
+        return "Authorization{" +
+                "identifier=" + identifier +
+                ", challenges=" + Arrays.toString(challenges) +
+                ", wildcard=" + wildcard +
+                ", expires='" + expires + '\'' +
+                ", status='" + status + '\'' +
+                ", resource='" + resource + '\'' +
+                '}';
     }
 }
