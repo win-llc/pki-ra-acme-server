@@ -1,10 +1,13 @@
 package com.winllc.acme.server.model.data;
 
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.acme.Directory;
 
 import java.sql.Timestamp;
+import java.text.ParseException;
 
 public class AccountData extends DataObject<Account> {
 
@@ -26,6 +29,15 @@ public class AccountData extends DataObject<Account> {
 
     public void setJwk(String jwk) {
         this.jwk = jwk;
+    }
+
+    public JWK buildJwk(){
+        try {
+            return JWK.parse(jwk);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Could not parse", e);
+        }
     }
 
     public Timestamp getLastAgreedToTermsOfServiceOn() {

@@ -48,8 +48,12 @@ valid              invalid
         challenge.setStatus(StatusType.PENDING.toString());
 
         String token = RandomStringUtils.random(50);
-        String tokenBase64 = Base64.getEncoder().encodeToString(token.getBytes());
-        challenge.setToken(tokenBase64);
+        //String tokenBase64 = Base64.getEncoder().encodeToString(token.getBytes()).replace("/","+").replace("-", "+");
+        //challenge.setToken(tokenBase64);
+
+        Base64.Encoder urlEncoder = java.util.Base64.getUrlEncoder().withoutPadding();
+        String encoded = urlEncoder.encodeToString(token.getBytes());
+        challenge.setToken(encoded);
 
         ChallengeData challengeData = new ChallengeData(challenge, directoryData);
 
