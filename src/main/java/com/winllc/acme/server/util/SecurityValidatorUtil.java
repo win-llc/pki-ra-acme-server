@@ -14,10 +14,10 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.MalformedRequest;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AccountPersistence;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -25,7 +25,6 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.text.ParseException;
@@ -33,11 +32,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
-public class AppUtil {
+public class SecurityValidatorUtil {
 
-    private static final Logger log = LogManager.getLogger(AppUtil.class);
+    private static final Logger log = LogManager.getLogger(SecurityValidatorUtil.class);
 
     private static AccountPersistence accountPersistence;
+    @Autowired
+    private DirectoryDataService directoryDataService;
 
     @Autowired
     public void setAccountPersistence(AccountPersistence accountPersistence) {
@@ -51,13 +52,7 @@ public class AppUtil {
         return RandomStringUtils.random(length, useLetters, useNumbers);
     }
 
-    public static String generateNonce(){
-        String nonce = AppUtil.generateRandomString(10);
-        Application.unUsedNonces.add(nonce);
-        return nonce;
-    }
-
-    public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest, Class<T> clazz) throws AcmeServerException {
+    public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
 
         //Should contain account URL
@@ -66,13 +61,13 @@ public class AppUtil {
         return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, kid.getObjectId().get(), clazz);
     }
 
-    public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,
+    public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,
                                                                                        String accountId, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
         return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, accountId, clazz);
     }
 
-    public static <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
+    public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
                                                                                        String accountId, Class<T> clazz) throws AcmeServerException {
 
         //Section 6.2
@@ -80,7 +75,7 @@ public class AppUtil {
            //todo add back throw new AcmeServerException(ProblemType.MALFORMED);
         }
 
-        DirectoryData directoryData = Application.directoryDataMap.get(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.getByName(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
         //The URL must match the URL in the JWS Header
         //Section 6.4
         String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
@@ -122,9 +117,9 @@ public class AppUtil {
 
             String nonce = jwsObject.getNonce();
             //Verify nonce has not been used, TODO add back
-            if (!Application.usedNonces.contains(nonce)) {
+            if (!NonceUtil.checkNonceUsed(nonce)) {
             //if (!Application.usedNonces.contains(nonce)) {
-                Application.usedNonces.add(nonce);
+                NonceUtil.markNonceUsed(nonce);
             } else {
                 //NONCE has been used before, possible replay attack
                 //Section 6.5.2
@@ -204,17 +199,6 @@ public class AppUtil {
         throw new AcmeServerException(ProblemType.BAD_SIGNATURE_ALGORITHM);
     }
 
-    public static <T> List<List<T>> getPages(Collection<T> c, Integer pageSize) {
-        if (c == null)
-            return Collections.emptyList();
-        List<T> list = new ArrayList<T>(c);
-        if (pageSize == null || pageSize <= 0 || pageSize > list.size())
-            pageSize = list.size();
-        int numPages = (int) Math.ceil((double)list.size() / (double)pageSize);
-        List<List<T>> pages = new ArrayList<>(numPages);
-        for (int pageNum = 0; pageNum < numPages;)
-            pages.add(list.subList(pageNum * pageSize, Math.min(++pageNum * pageSize, list.size())));
-        return pages;
-    }
+
 
 }

@@ -1,16 +1,10 @@
 package com.winllc.acme.server.service.filter;
 
-import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.DirectoryPersistence;
-import com.winllc.acme.server.service.internal.DirectoryDataService;
-import com.winllc.acme.server.util.AppUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 //@Component

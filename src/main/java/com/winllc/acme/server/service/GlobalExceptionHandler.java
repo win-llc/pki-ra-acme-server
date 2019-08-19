@@ -7,6 +7,8 @@ import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.service.acme.BaseService;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,10 +19,13 @@ import javax.servlet.http.HttpServletRequest;
 @ControllerAdvice
 public class GlobalExceptionHandler extends BaseService {
 
+    @Autowired
+    private DirectoryDataService directoryDataService;
+
     @ExceptionHandler(value = { Exception.class })
     protected ResponseEntity<?> handleException(Exception ex, HttpServletRequest request){
         AcmeURL acmeURL = new AcmeURL(request);
-        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
 
         ProblemDetails problemDetails;
         if(ex instanceof AcmeServerException){

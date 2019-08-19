@@ -1,6 +1,5 @@
 package com.winllc.acme.server.service.acme;
 
-import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.challenge.DnsChallenge;
 import com.winllc.acme.server.challenge.HttpChallenge;
@@ -10,7 +9,6 @@ import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.*;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
@@ -18,8 +16,9 @@ import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.AuthorizationProcessor;
-import com.winllc.acme.server.process.ChallengeProcessor;
-import com.winllc.acme.server.util.AppUtil;
+import com.winllc.acme.server.service.internal.CertificateAuthorityService;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,11 +47,19 @@ public class AuthzService extends BaseService {
     private ChallengePersistence challengePersistence;
     @Autowired
     private HttpChallenge httpChallenge;
+    @Autowired
+    private DnsChallenge dnsChallenge;
+    @Autowired
+    private DirectoryDataService directoryDataService;
+    @Autowired
+    private SecurityValidatorUtil securityValidatorUtil;
+    @Autowired
+    private CertificateAuthorityService certificateAuthorityService;
 
     @RequestMapping(value = "{directory}/new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newAuthz(HttpServletRequest request, @PathVariable String directory) {
         try {
-            PayloadAndAccount<Identifier> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Identifier.class);
+            PayloadAndAccount<Identifier> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Identifier.class);
             DirectoryData directoryData = payloadAndAccount.getDirectoryData();
             if(directoryData.isAllowPreAuthorization()) {
                 Identifier identifier = payloadAndAccount.getPayload();
@@ -82,14 +89,18 @@ public class AuthzService extends BaseService {
             }else{
                 //Pre-auth not allowed
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
+
+                log.error(problemDetails);
+
                 return buildBaseResponseEntity(403, directoryData)
                         .body(problemDetails);
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             problemDetails.setDetail(e.getMessage());
+
+            log.error(problemDetails, e);
 
             return ResponseEntity.status(500)
                     .body(problemDetails);
@@ -105,18 +116,20 @@ public class AuthzService extends BaseService {
             AuthorizationData authorizationData = optionalAuthorizationData.get();
 
             try {
-                AcmeJWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
+                AcmeJWSObject jwsObject = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
                 PayloadAndAccount payloadAndAccount;
                 if (jwsObject.getPayload().toString().contentEquals("")) {
-                    payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, request, authorizationData.getAccountId(), String.class);
+                    payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, request, authorizationData.getAccountId(), String.class);
                 }else{
-                    payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, authorizationData.getAccountId(), Authorization.class);
+                    payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, authorizationData.getAccountId(), Authorization.class);
                     Authorization authorization = (Authorization) payloadAndAccount.getPayload();
 
                     //Section 7.5.2
                     if (authorization.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
                         authorizationData.getObject().setStatus(StatusType.DEACTIVATED.toString());
                         authorizationPersistence.save(authorizationData);
+
+                        log.info("Setting authorization to deactivated: "+authorizationData);
 
                         return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -126,21 +139,26 @@ public class AuthzService extends BaseService {
 
                 AuthorizationData refreshedAuthorization = authorizationProcessor.buildCurrentAuthorization(authorizationData);
 
+                log.info("Returning current authorization: "+refreshedAuthorization);
+
                 return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                         .header("Link", "TODO")
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(refreshedAuthorization.getObject());
 
             } catch (Exception e) {
-                e.printStackTrace();
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
                 problemDetails.setDetail(e.getMessage());
+
+                log.error(problemDetails, e);
 
                 return ResponseEntity.status(500)
                         .body(problemDetails);
             }
         }else {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            log.error(problemDetails);
+
             return ResponseEntity.status(500)
                     .body(problemDetails);
         }
@@ -150,11 +168,11 @@ public class AuthzService extends BaseService {
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
         Optional<ChallengeData> optionalChallengeData = challengePersistence.getById(id);
-        DirectoryData directoryData = Application.directoryDataMap.get(directory);
+        DirectoryData directoryData = directoryDataService.getByName(directory);
 
         AcmeJWSObject jwsObjectFromHttpRequest;
         try {
-            jwsObjectFromHttpRequest = AppUtil.getJWSObjectFromHttpRequest(request);
+            jwsObjectFromHttpRequest = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
             log.info(jwsObjectFromHttpRequest);
         } catch (AcmeServerException e) {
             e.printStackTrace();
@@ -170,7 +188,7 @@ public class AuthzService extends BaseService {
                     httpChallenge.verify(challengeData);
                     break;
                 case DNS:
-                    new DnsChallenge().verify(challengeData);
+                    dnsChallenge.verify(challengeData);
                     break;
             }
             //Get the current challenge and return 200
@@ -181,13 +199,15 @@ public class AuthzService extends BaseService {
         }else{
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             problemDetails.setDetail("Could not find challenge");
+            log.error(problemDetails);
+
             return buildBaseResponseEntity(500, directoryData)
                     .body(problemDetails);
         }
     }
 
     private boolean serverWillingToIssueForIdentifier(Identifier identifier, DirectoryData directoryData, boolean allowWildcards) {
-        CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
+        CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
 
         if(!allowWildcards && identifier.getValue().startsWith("*")){
             return false;

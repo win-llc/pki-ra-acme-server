@@ -2,14 +2,10 @@ package com.winllc.acme.server.external;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSObject;
-import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.util.AppUtil;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -40,11 +36,6 @@ public class ExternalAccountProviderImpl implements ExternalAccountProvider {
         return name;
     }
 
-    @Override
-    public DirectoryData getLinkedDirectory() {
-        return Application.directoryDataMap.get(linkedDirectoryName);
-    }
-
     /*
         The ACME client then computes a binding JWS to indicate the external account holder’s approval of the ACME account key.
         The payload of this JWS is the ACME account key being registered, in JWK form. The protected header of the JWS MUST meet the following criteria:
@@ -56,7 +47,7 @@ public class ExternalAccountProviderImpl implements ExternalAccountProvider {
          */
     @Override
     public boolean verifyExternalAccountJWS(AcmeJWSObject outerObject) throws AcmeServerException {
-        AcmeJWSObject innerObject = AppUtil.getPayloadFromJWSObject(outerObject, AcmeJWSObject.class);
+        AcmeJWSObject innerObject = SecurityValidatorUtil.getPayloadFromJWSObject(outerObject, AcmeJWSObject.class);
 
         JWSHeader header = outerObject.getHeader();
 

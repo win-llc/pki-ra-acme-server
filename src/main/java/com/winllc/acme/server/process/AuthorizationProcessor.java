@@ -53,6 +53,8 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     private AuthorizationPersistence authorizationPersistence;
     @Autowired
     private OrderProcessor orderProcessor;
+    @Autowired
+    private CertificateAuthorityService certificateAuthorityService;
 
     @Override
     public AuthorizationData buildNew(DirectoryData directoryData) {
@@ -86,30 +88,27 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     //Based off the directory, get the CA, which has the rules for how to build authorizations for identifiers
     public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, PayloadAndAccount payloadAndAccount){
         DirectoryData directory = payloadAndAccount.getDirectoryData();
-        CertificateAuthority ca = Application.availableCAs.get(directory.getMapsToCertificateAuthorityName());
+        CertificateAuthority ca = certificateAuthorityService.getByName(directory.getMapsToCertificateAuthorityName());
 
         AuthorizationData authorizationData = buildNew(payloadAndAccount);
         Authorization authorization = authorizationData.getObject();
         authorization.setIdentifier(identifier);
         authorization.willExpireInMinutes(60);
 
-        //Check if CA requires extra validation for identifier
-        for(CAValidationRule rule : ca.getValidationRules()){
-            //If type matches rule type
-            if(identifier.getType().contentEquals(rule.getIdentifierType())){
-                //And identifier base domain matches
-                if(identifier.getValue().endsWith(rule.getBaseDomainName())){
+        if(ca.canIssueToIdentifier(identifier)){
+
+            List<ChallengeType> identifierChallengeRequirements = ca.getIdentifierChallengeRequirements(identifier);
+
+            //Check if CA requires extra validation for identifier
+            if(identifierChallengeRequirements != null){
+                for(ChallengeType challengeType : identifierChallengeRequirements){
                     ChallengeData challengeData = challengeProcessor.buildNew(directory);
                     //Needed for referencing later
                     challengeData.setAuthorizationId(authorizationData.getId());
                     Challenge challenge = challengeData.getObject();
                     challenge.setUrl(challengeData.buildUrl());
-                    if(rule.isRequireHttpChallenge()) {
-                        challenge.setType(ChallengeType.HTTP.toString());
-                    }else{
-                        challenge.setType(ChallengeType.DNS.toString());
-                    }
-                    //TODO fill in and save
+                    challenge.setType(challengeType.toString());
+
                     challengePersistence.save(challengeData);
 
                     authorization.addChallenge(challenge);

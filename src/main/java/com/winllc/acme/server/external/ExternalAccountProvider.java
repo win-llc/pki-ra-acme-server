@@ -10,7 +10,6 @@ import com.winllc.acme.server.model.data.DirectoryData;
 public interface ExternalAccountProvider {
 
     String getName();
-    DirectoryData getLinkedDirectory();
     boolean verifyExternalAccountJWS(AcmeJWSObject jwsObject) throws AcmeServerException;
 
     //For verification of JWS sent from client

@@ -1,6 +1,7 @@
 package com.winllc.acme.server.external;
 
 import com.winllc.acme.server.model.acme.Identifier;
+import org.apache.commons.lang3.StringUtils;
 
 //A set of rules will be associated with each CA, rules dictate how challenges created for orders
 public class CAValidationRule {
@@ -9,6 +10,7 @@ public class CAValidationRule {
     private boolean requireDnsChallenge;
     private boolean requireHttpChallenge;
     private boolean allowIssuance;
+    private boolean allowHostnameIssuance;
 
     public String getIdentifierType() {
         return identifierType;
@@ -50,8 +52,21 @@ public class CAValidationRule {
         this.allowIssuance = allowIssuance;
     }
 
+    public boolean isAllowHostnameIssuance() {
+        return allowHostnameIssuance;
+    }
+
+    public void setAllowHostnameIssuance(boolean allowHostnameIssuance) {
+        this.allowHostnameIssuance = allowHostnameIssuance;
+    }
+
     public boolean canIssueToIdentifier(Identifier identifier){
-        if(identifier.getType().contentEquals(identifierType) && identifier.getValue().endsWith(baseDomainName)){
+        if(!identifier.getValue().contains(".") && allowHostnameIssuance){
+            return true;
+        }
+
+        if(StringUtils.isNotBlank(identifierType) && StringUtils.isNotBlank(baseDomainName) &&
+                identifier.getType().contentEquals(identifierType) && identifier.getValue().endsWith(baseDomainName)){
             return allowIssuance;
         }else{
             return false;

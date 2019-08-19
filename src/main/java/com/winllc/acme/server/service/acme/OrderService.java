@@ -6,7 +6,6 @@ import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.external.CAValidationRule;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.*;
@@ -17,7 +16,8 @@ import com.winllc.acme.server.persistence.*;
 import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.process.OrderProcessor;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
-import com.winllc.acme.server.util.AppUtil;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.CertUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.LogManager;
@@ -25,11 +25,9 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.swing.text.html.Option;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,14 +52,18 @@ public class OrderService extends BaseService {
     @Autowired
     private AuthorizationProcessor authorizationProcessor;
     @Autowired
-    private DirectoryPersistence directoryPersistence;
+    private DirectoryDataService directoryDataService;
+    @Autowired
+    private SecurityValidatorUtil securityValidatorUtil;
+    @Autowired
+    private CertificateAuthorityService certificateAuthorityService;
 
     @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request, @PathVariable String directory) {
-        DirectoryData directoryData = Application.directoryDataMap.get(directory);
+        DirectoryData directoryData = directoryDataService.getByName(directory);
 
         try {
-            PayloadAndAccount<OrderRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, OrderRequest.class);
+            PayloadAndAccount<OrderRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, OrderRequest.class);
 
             OrderRequest orderRequest = payloadAndAccount.getPayload();
             AccountData accountData = payloadAndAccount.getAccountData();
@@ -105,6 +107,9 @@ public class OrderService extends BaseService {
                 } else {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
                     problemDetails.setDetail("Could not find Order List");
+
+                    log.error(problemDetails);
+
                     return buildBaseResponseEntity(500, directoryData)
                             .body(problemDetails);
                 }
@@ -116,6 +121,7 @@ public class OrderService extends BaseService {
                 it should indicate the required changes using an appropriate error type and description.
                  */
                 ProblemDetails problemDetails = problemDetailsOptional.get();
+                log.error(problemDetails);
                 return buildBaseResponseEntity(403, directoryData)
                         .body(problemDetails);
             }
@@ -131,29 +137,37 @@ public class OrderService extends BaseService {
     @RequestMapping(value = "{directory}/order/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> getOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
         AcmeURL acmeURL = new AcmeURL(httpServletRequest);
-        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
 
         Optional<OrderData> orderDataOptional = orderPersistence.getById(id);
         if (orderDataOptional.isPresent()) {
             OrderData orderData = orderDataOptional.get();
             orderData = orderProcessor.buildCurrentOrder(orderData);
 
+            log.debug("Returning order: "+orderData);
+
             return buildBaseResponseEntity(200, directoryData)
                     .body(orderData.getObject());
-        }
+        }else{
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+            problemDetails.setDetail("Could not find order with ID: "+id);
 
-        return null;
+            log.error(problemDetails);
+
+            return buildBaseResponseEntity(500, directoryData)
+                    .body(problemDetails);
+        }
     }
 
     @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
         AcmeURL acmeURL = new AcmeURL(httpServletRequest);
-        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
 
         PayloadAndAccount<CertificateRequest> certificateRequestPayloadAndAccount = null;
         try {
             certificateRequestPayloadAndAccount =
-                    AppUtil.verifyJWSAndReturnPayloadForExistingAccount(httpServletRequest, CertificateRequest.class);
+                    securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(httpServletRequest, CertificateRequest.class);
         } catch (AcmeServerException e) {
             log.error(e);
             ProblemDetails problemDetails = new ProblemDetails(e.getProblemType());
@@ -179,6 +193,9 @@ public class OrderService extends BaseService {
                             .body(orderData.getObject());
                 } else {
                     ProblemDetails problemDetails = problemDetailsOptional.get();
+
+                    log.error(problemDetails);
+
                     return buildBaseResponseEntity(500, directoryData)
                             .body(problemDetails);
                 }
@@ -206,7 +223,7 @@ public class OrderService extends BaseService {
         if (orderListDataOptional.isPresent()) {
             OrderListData orderListData = orderListDataOptional.get();
 
-            DirectoryData directoryData = directoryPersistence.getByName(orderListData.getDirectory());
+            DirectoryData directoryData = directoryDataService.getByName(orderListData.getDirectory());
 
             OrderList orderList = orderListData.getObject();
             if (cursor != null) {
@@ -222,6 +239,9 @@ public class OrderService extends BaseService {
         } else {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             problemDetails.setDetail("Could not find Order List");
+
+            log.error(problemDetails);
+
             return ResponseEntity.status(500)
                     .body(problemDetails);
         }
@@ -230,7 +250,7 @@ public class OrderService extends BaseService {
     //Return problem details if CA can't issue, return empty if can fulfill
     private Optional<ProblemDetails> caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData) {
 
-        CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
+        CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
         ProblemDetails problemDetails = new ProblemDetails(ProblemType.COMPOUND);
         //If allowed to issue to all identifiers, return true
         int allowedToIssueTo = 0;
@@ -272,8 +292,8 @@ public class OrderService extends BaseService {
         “valid”: The server has issued the certificate and provisioned its URL to the “certificate” field of the order. Download the certificate.
          */
 
-        DirectoryData directoryData = Application.directoryDataMap.get(order.getDirectory());
-        CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
+        DirectoryData directoryData = directoryDataService.getByName(order.getDirectory());
+        CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
 
         try {
             X509Certificate certificate = ca.issueCertificate(order, CertUtil.csrBase64ToPKC10Object(csr));
@@ -287,7 +307,7 @@ public class OrderService extends BaseService {
             orderPersistence.save(order);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Could not finalize order", e);
             throw new InternalServerException("Could not issue certificate", e);
         }
     }

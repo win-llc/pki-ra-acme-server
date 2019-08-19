@@ -1,22 +1,19 @@
 package com.winllc.acme.server.service.acme;
 
-import com.nimbusds.jose.JWSObject;
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
-import com.nimbusds.jose.jwk.RSAKey;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.RevocationReason;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.CertData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.model.requestresponse.RevokeCertRequest;
 import com.winllc.acme.server.persistence.CertificatePersistence;
-import com.winllc.acme.server.util.AppUtil;
+import com.winllc.acme.server.service.internal.CertificateAuthorityService;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,6 +37,12 @@ public class CertService extends BaseService {
 
     @Autowired
     private CertificatePersistence certificatePersistence;
+    @Autowired
+    private DirectoryDataService directoryDataService;
+    @Autowired
+    private SecurityValidatorUtil securityValidatorUtil;
+    @Autowired
+    private CertificateAuthorityService certificateAuthorityService;
 
     //Section 7.4.2
     @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST,
@@ -47,14 +50,14 @@ public class CertService extends BaseService {
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException {
         try {
             AcmeURL acmeURL = new AcmeURL(request);
-            DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
+            DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
 
             Optional<CertData> optionalCertData = certificatePersistence.getById(id);
 
             if (optionalCertData.isPresent()) {
                 CertData certData = optionalCertData.get();
 
-                PayloadAndAccount<String> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, String.class);
+                PayloadAndAccount<String> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, String.class);
 
                 String returnCert = null;
 
@@ -75,17 +78,22 @@ public class CertService extends BaseService {
                         returnCert = certData.buildReturnString();
                 }
 
+                log.debug("Returning certificate");
+
                 return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                         .headers(headers)
                         .body(returnCert);
             } else {
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
                 problemDetails.setDetail("Could not find Cert Data");
+
+                log.error(problemDetails);
+
                 return buildBaseResponseEntity(500, directoryData)
                         .body(problemDetails);
             }
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Error retrieving Cert Data", e);
             return ResponseEntity.status(500).build();
         }
     }
@@ -95,12 +103,12 @@ public class CertService extends BaseService {
             consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> certRevoke(HttpServletRequest request, @PathVariable String directory) {
         AcmeURL acmeURL = new AcmeURL(request);
-        DirectoryData directoryData = Application.directoryDataMap.get(acmeURL.getDirectoryIdentifier());
-        CertificateAuthority ca = Application.availableCAs.get(directoryData.getMapsToCertificateAuthorityName());
+        DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
+        CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
         try {
             //TODO verify signature from either account key or certificate
             //JWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
-            PayloadAndAccount<RevokeCertRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, RevokeCertRequest.class);
+            PayloadAndAccount<RevokeCertRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, RevokeCertRequest.class);
             RevokeCertRequest revokeCertRequest = payloadAndAccount.getPayload();
 
             boolean signedByCert = true;
@@ -130,10 +138,11 @@ public class CertService extends BaseService {
             }
 
         } catch (Exception e) {
-            log.error(e);
-
             ProblemDetails error = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             error.setDetail(e.getMessage());
+
+            log.error(error, e);
+
             return buildBaseResponseEntity(500, directoryData)
                     .body(error);
         }

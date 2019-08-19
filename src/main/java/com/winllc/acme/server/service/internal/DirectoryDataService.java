@@ -1,42 +1,85 @@
 package com.winllc.acme.server.service.internal;
 
+import com.winllc.acme.server.Application;
 import com.winllc.acme.server.model.acme.Directory;
+import com.winllc.acme.server.model.acme.Meta;
 import com.winllc.acme.server.model.data.DirectoryData;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import javax.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin/directory")
 public class DirectoryDataService {
     //TODO CRUD service for Directory Data
 
+    private Map<String, DirectoryData> directoryDataMap = new HashMap<>();
+
+    @PostConstruct
+    private void postConstruct(){
+        //TODO remove this
+
+        String directoryName = "acme";
+
+        String directoryBaseUrl = Application.baseURL+directoryName+"/";
+        Directory directory = new Directory();
+        directory.setNewNonce(directoryBaseUrl+"new-nonce");
+        directory.setNewAccount(directoryBaseUrl+"new-account");
+        directory.setNewOrder(directoryBaseUrl+"new-order");
+        directory.setNewAuthz(directoryBaseUrl+"new-authz");
+        directory.setRevokeCert(directoryBaseUrl+"revoke-cert");
+        directory.setKeyChange(directoryBaseUrl+"key-change");
+
+        Meta meta = new Meta();
+        meta.setTermsOfService(Application.baseURL+"acme");
+        meta.setWebsite(Application.baseURL);
+        meta.setCaaIdentities(new String[]{Application.hostname});
+        meta.setExternalAccountRequired(false);
+
+        directory.setMeta(meta);
+
+        DirectoryData directoryData = new DirectoryData(directory);
+        directoryData.setAllowPreAuthorization(true);
+        directoryData.setName(directoryName);
+        directoryData.setMapsToCertificateAuthorityName("ca1");
+
+        addDirectory(directoryData);
+    }
+
+
     @GetMapping
-    public ResponseEntity<?> getAll(){
+    public List<DirectoryData> getAll(){
         //TODO
-        return null;
+        return new ArrayList<>(directoryDataMap.values());
     }
 
     @GetMapping("/byName/{name}")
-    public ResponseEntity<?> getByName(@PathVariable String name){
+    public DirectoryData getByName(String name){
         //TODO
-        return null;
+        return directoryDataMap.get(name);
     }
 
     @PostMapping("/add")
-    public ResponseEntity<?> addDirectory(DirectoryData directoryData){
+    public DirectoryData addDirectory(DirectoryData directoryData){
         //TODO
-        return null;
+        directoryDataMap.put(directoryData.getName(), directoryData);
+        return directoryData;
     }
 
     @PostMapping("/update")
-    public ResponseEntity<?> updateDirectory(DirectoryData directoryData){
+    public DirectoryData updateDirectory(DirectoryData directoryData){
         //TODO
-        return null;
+        return addDirectory(directoryData);
     }
 
     @GetMapping("/delete/{name}")
-    public ResponseEntity<?> deleteDirectory(@PathVariable String name){
+    public void deleteDirectory(@PathVariable String name){
         //TODO
-        return null;
+        directoryDataMap.remove(name);
     }
 }

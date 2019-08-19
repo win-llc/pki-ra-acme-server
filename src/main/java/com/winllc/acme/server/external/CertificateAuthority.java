@@ -1,5 +1,7 @@
 package com.winllc.acme.server.external;
 
+import com.winllc.acme.server.contants.ChallengeType;
+import com.winllc.acme.server.model.acme.Challenge;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.OrderData;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
@@ -17,4 +19,5 @@ public interface CertificateAuthority {
     Certificate[] getTrustChain();
     List<CAValidationRule> getValidationRules();
     boolean canIssueToIdentifier(Identifier identifier);
+    List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier);
 }

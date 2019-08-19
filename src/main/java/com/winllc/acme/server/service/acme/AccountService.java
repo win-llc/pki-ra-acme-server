@@ -1,6 +1,5 @@
 package com.winllc.acme.server.service.acme;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
@@ -17,7 +16,8 @@ import com.winllc.acme.server.model.requestresponse.AccountRequest;
 import com.winllc.acme.server.model.requestresponse.KeyChangeRequest;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.process.AccountProcessor;
-import com.winllc.acme.server.util.AppUtil;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,7 +32,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.text.ParseException;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -46,20 +45,26 @@ public class AccountService extends BaseService {
     private AccountPersistence accountPersistence;
     @Autowired
     private AccountProcessor accountProcessor;
+    @Autowired
+    private DirectoryDataService directoryDataService;
+    @Autowired
+    private SecurityValidatorUtil securityValidatorUtil;
 
     //Section 7.3
     @RequestMapping(value = "{directory}/new-account", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> request(HttpServletRequest request, @PathVariable String directory) throws Exception {
         log.debug("new-account request");
-        DirectoryData directoryData = Application.directoryDataMap.get(new AcmeURL(request).getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.getByName(new AcmeURL(request).getDirectoryIdentifier());
 
         String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
 
         AcmeJWSObject jwsObject = AcmeJWSObject.parse(body);
 
         //If JWS invalid, don't proceed
-        if (!AppUtil.verifyJWS(jwsObject)) {
+        if (!SecurityValidatorUtil.verifyJWS(jwsObject)) {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED);
+
+            log.error(problemDetails);
 
             return buildBaseResponseEntity(500, directoryData)
                     .body(problemDetails);
@@ -67,7 +72,7 @@ public class AccountService extends BaseService {
 
         String jwk = jwsObject.getHeader().getJWK().toJSONString();
 
-        AccountRequest accountRequest = AppUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
+        AccountRequest accountRequest = SecurityValidatorUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
 
         //Section 7.3.1 Paragraph 2
         //Not an account lookup at this point, create a new account
@@ -79,6 +84,8 @@ public class AccountService extends BaseService {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
                     problemDetails.setDetail("Terms of Service agreement required");
                     problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
+
+                    log.error(problemDetails);
 
                     return buildBaseResponseEntity(403, directoryData)
                             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
@@ -98,6 +105,9 @@ public class AccountService extends BaseService {
                     //If external account required, but none provided, return error
                     if(accountRequest.getExternalAccountBinding() == null){
                         ProblemDetails problemDetails = new ProblemDetails(ProblemType.EXTERNAL_ACCOUNT_REQUIRED);
+
+                        log.error(problemDetails);
+
                         return buildBaseResponseEntity(403, directoryData)
                                 .body(problemDetails);
                     }
@@ -114,6 +124,9 @@ public class AccountService extends BaseService {
                         //reject and return
                         ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED);
                         problemDetails.setDetail("Could not verify external account");
+
+                        log.error(problemDetails);
+
                         return buildBaseResponseEntity(403, directoryData)
                                 .body(problemDetails);
                     }
@@ -132,6 +145,7 @@ public class AccountService extends BaseService {
                         .body(accountData.getObject());
 
             }else{
+                log.error(validationError);
                 return buildBaseResponseEntity(500, directoryData)
                         .body(validationError);
             }
@@ -161,12 +175,11 @@ public class AccountService extends BaseService {
     //Section 7.3.2
     @RequestMapping(value = "{directory}/acct/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> update(@PathVariable String id, HttpServletRequest request, @PathVariable String directory) throws Exception {
-        PayloadAndAccount<AccountRequest> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
+        PayloadAndAccount<AccountRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
 
         AccountRequest accountRequest = payloadAndAccount.getPayload();
         DirectoryData directoryData = payloadAndAccount.getDirectoryData();
         Optional<AccountData> optionalAccountData = accountPersistence.getByAccountId(id);
-
 
         if (optionalAccountData.isPresent()) {
             AccountData accountData = optionalAccountData.get();
@@ -207,6 +220,9 @@ public class AccountService extends BaseService {
             }else{
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
                 problemDetails.setDetail("Account deactivated, can't update");
+
+                log.error(problemDetails);
+
                 return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
                         .body(problemDetails);
 
@@ -214,6 +230,9 @@ public class AccountService extends BaseService {
         }else {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             problemDetails.setDetail("Could not find account");
+
+            log.error(problemDetails);
+
             return buildBaseResponseEntity(500, payloadAndAccount.getDirectoryData())
                     .body(problemDetails);
         }
@@ -223,7 +242,7 @@ public class AccountService extends BaseService {
     @RequestMapping(value = "{directory}/key-change", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> keyRollover(HttpServletRequest httpRequest, @PathVariable String directory) throws Exception {
 
-        PayloadAndAccount<AcmeJWSObject> payloadAndAccount = AppUtil.verifyJWSAndReturnPayloadForExistingAccount(httpRequest, AcmeJWSObject.class);
+        PayloadAndAccount<AcmeJWSObject> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(httpRequest, AcmeJWSObject.class);
         AccountData accountData = payloadAndAccount.getAccountData();
 
         if (validateJWSForKeyChange(payloadAndAccount, payloadAndAccount.getPayload())) {
@@ -243,6 +262,8 @@ public class AccountService extends BaseService {
 
             //TODO
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
+
+            log.error(problemDetails);
 
             //TODO, only for conflict
             return buildBaseResponseEntity(409, payloadAndAccount.getDirectoryData())
@@ -266,7 +287,7 @@ public class AccountService extends BaseService {
 
         //Check that the inner JWS verifies using the key in its “jwk” field.
         try {
-            verified = AppUtil.verifyJWS(innerJws);
+            verified = SecurityValidatorUtil.verifyJWS(innerJws);
         } catch (AcmeServerException e) {
             log.error("Could not verify JWS", e);
             return false;
@@ -274,7 +295,7 @@ public class AccountService extends BaseService {
 
         //Check that the payload of the inner JWS is a well-formed keyChange object (as described above).
         try {
-            keyChangeRequest = AppUtil.getPayloadFromJWSObject(innerJws, KeyChangeRequest.class);
+            keyChangeRequest = SecurityValidatorUtil.getPayloadFromJWSObject(innerJws, KeyChangeRequest.class);
         } catch (AcmeServerException e) {
             log.error("Could not parse payload", e);
             return false;

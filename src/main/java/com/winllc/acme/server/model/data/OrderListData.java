@@ -1,10 +1,7 @@
 package com.winllc.acme.server.model.data;
 
-import com.sun.org.apache.xpath.internal.operations.Or;
-import com.winllc.acme.server.Application;
-import com.winllc.acme.server.model.acme.Order;
 import com.winllc.acme.server.model.acme.OrderList;
-import com.winllc.acme.server.util.AppUtil;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,12 +40,12 @@ public class OrderListData extends DataObject<OrderList> {
 
 
     public int getNumberOfPages(){
-        return AppUtil.getPages(Arrays.asList(getObject().getOrders()), pageSize).size();
+        return getPages(Arrays.asList(getObject().getOrders()), pageSize).size();
     }
 
     public OrderList buildPaginatedOrderList(int page){
         String[] orders = getObject().getOrders();
-        List<List<String>> pages = AppUtil.getPages(Arrays.asList(orders), pageSize);
+        List<List<String>> pages = getPages(Arrays.asList(orders), pageSize);
         if(pages.size() < page){
             OrderList orderList = new OrderList();
             orderList.setOrders(pages.get(page).toArray(new String[0]));

@@ -1,5 +1,6 @@
 package com.winllc.acme.server.external;
 
+import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.OrderData;
@@ -118,7 +119,10 @@ public class InternalCertAuthority implements CertificateAuthority {
         rule.setRequireHttpChallenge(true);
         rule.setIdentifierType(IdentifierType.DNS.toString());
 
-        return Stream.of(rule).collect(Collectors.toList());
+        CAValidationRule rule2 = new CAValidationRule();
+        rule2.setAllowHostnameIssuance(true);
+
+        return Stream.of(rule, rule2).collect(Collectors.toList());
     }
 
 
@@ -135,6 +139,20 @@ public class InternalCertAuthority implements CertificateAuthority {
         return false;
     }
 
+    @Override
+    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier) {
+        Set<ChallengeType> challengeTypes = new HashSet<>();
+        if(canIssueToIdentifier(identifier)){
+            for (CAValidationRule rule : getValidationRules()) {
+                if(rule.canIssueToIdentifier(identifier)){
+                    if(rule.isRequireHttpChallenge()) challengeTypes.add(ChallengeType.HTTP);
+                    if(rule.isRequireDnsChallenge()) challengeTypes.add(ChallengeType.DNS);
+                }
+            }
+            return new ArrayList<>(challengeTypes);
+        }
+        return null;
+    }
 
     private X509Certificate signCSR(OrderData orderData, PKCS10CertificationRequest csr, int validity, KeyStore keystore, String alias, char[] password) throws Exception {
         try {
@@ -185,11 +203,14 @@ public class InternalCertAuthority implements CertificateAuthority {
                 certgen.addExtension(X509Extension.extendedKeyUsage, false, eku);
             }
 
+            List<GeneralName> generalNameList = new ArrayList<>();
             for (Identifier identifier : orderData.getObject().getIdentifiers()) {
                 GeneralName altName = new GeneralName(GeneralName.dNSName, identifier.getValue());
-                GeneralNames subjectAltName = new GeneralNames(altName);
-                certgen.addExtension(X509Extensions.SubjectAlternativeName, false, subjectAltName);
+                generalNameList.add(altName);
             }
+
+            GeneralNames subjectAltName = new GeneralNames(generalNameList.toArray(new GeneralName[0]));
+            certgen.addExtension(X509Extensions.SubjectAlternativeName, false, subjectAltName);
 
             AsymmetricKeyParameter foo = PrivateKeyFactory.createKey(cakey.getEncoded());
             ContentSigner signer = new BcRSAContentSignerBuilder(sigAlgId, digAlgId).build(foo);
