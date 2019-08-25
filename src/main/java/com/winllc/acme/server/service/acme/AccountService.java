@@ -1,5 +1,7 @@
 package com.winllc.acme.server.service.acme;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.jwk.JWK;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
@@ -32,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.text.ParseException;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -119,7 +122,14 @@ public class AccountService extends BaseService {
                     if (verified) {
                         log.debug("External Account verified");
                         accountData.setJwk(jwsObject.getHeader().getJWK().toString());
-                        account.setExternalAccountBinding(jwsObject.getPayload().toJWSObject());
+
+                        JWSObject externalAccountJWS = accountRequest.buildExternalAccountJWSObject();
+
+                        if(externalAccountJWS != null) {
+                            account.setExternalAccountBinding(accountRequest.getExternalAccountBinding().toJson());
+                        }else{
+                            throw new Exception("Could not build JWS External Account Object");
+                        }
                     } else {
                         //reject and return
                         ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED);

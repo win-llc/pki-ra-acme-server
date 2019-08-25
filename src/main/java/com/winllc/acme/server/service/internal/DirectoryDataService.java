@@ -39,7 +39,7 @@ public class DirectoryDataService {
         meta.setTermsOfService(Application.baseURL+"acme");
         meta.setWebsite(Application.baseURL);
         meta.setCaaIdentities(new String[]{Application.hostname});
-        meta.setExternalAccountRequired(false);
+        meta.setExternalAccountRequired(true);
 
         directory.setMeta(meta);
 
@@ -47,6 +47,7 @@ public class DirectoryDataService {
         directoryData.setAllowPreAuthorization(true);
         directoryData.setName(directoryName);
         directoryData.setMapsToCertificateAuthorityName("ca1");
+        directoryData.setExternalAccountProviderName("daveCo");
 
         addDirectory(directoryData);
     }

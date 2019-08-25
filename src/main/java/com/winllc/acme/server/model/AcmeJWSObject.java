@@ -10,6 +10,7 @@ import java.text.ParseException;
 import java.util.Map;
 
 public class AcmeJWSObject extends JWSObject {
+
     public AcmeJWSObject(JWSHeader header, Payload payload) {
         super(header, payload);
     }

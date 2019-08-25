@@ -1,10 +1,14 @@
 package com.winllc.acme.server.model.requestresponse;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.util.Base64URL;
 import com.winllc.acme.server.model.AcmeJWSObject;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.util.Base64;
 
 public class AccountRequest {
     //optional
@@ -16,7 +20,8 @@ public class AccountRequest {
     //optional
     private Boolean onlyReturnExisting = false;
     //optional
-    private AcmeJWSObject externalAccountBinding;
+    @JsonProperty("externalAccountBinding")
+    private ExternalAccountBinding externalAccountBinding;
 
     private String resource;
 
@@ -52,11 +57,11 @@ public class AccountRequest {
         this.onlyReturnExisting = onlyReturnExisting;
     }
 
-    public AcmeJWSObject getExternalAccountBinding() {
+    public ExternalAccountBinding getExternalAccountBinding() {
         return externalAccountBinding;
     }
 
-    public void setExternalAccountBinding(AcmeJWSObject externalAccountBinding) {
+    public void setExternalAccountBinding(ExternalAccountBinding externalAccountBinding) {
         this.externalAccountBinding = externalAccountBinding;
     }
 
@@ -68,8 +73,16 @@ public class AccountRequest {
         this.resource = resource;
     }
 
+    public JWSObject buildExternalAccountJWSObject() throws ParseException {
+        return JWSObject.parse(externalAccountBinding.toString());
+    }
+
+
+    /*
     public JWSObject buildExternalAccount() throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.readValue(externalAccountBinding.getPayload().toJSONObject().toJSONString(), JWSObject.class);
     }
+
+     */
 }

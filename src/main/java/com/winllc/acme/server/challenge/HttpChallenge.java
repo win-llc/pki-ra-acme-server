@@ -49,7 +49,7 @@ public class HttpChallenge implements ChallengeVerification {
 
             new VerificationRunner(challenge).run();
         }catch (InternalServerException e){
-            e.printStackTrace();
+            log.error("Could not run verify process", e);
         }
     }
 

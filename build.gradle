@@ -32,6 +32,10 @@ dependencies {
     // https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15
     //compile group: 'org.bouncycastle', name: 'bcprov-jdk15', version: '1.46'
 
+    // https://mvnrepository.com/artifact/dnsjava/dnsjava
+    compile group: 'dnsjava', name: 'dnsjava', version: '2.1.9'
+
+
     // https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.9'
 

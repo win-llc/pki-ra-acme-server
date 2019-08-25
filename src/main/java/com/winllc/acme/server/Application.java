@@ -27,10 +27,10 @@ public class Application {
     static {
         externalAccountProviderMap = new HashMap<>();
 
-        //ExternalAccountProvider accountProvider = new ExternalAccountProviderImpl("daveCo", directoryData.getName(),
-        //        "http://localhost:8080/account/verify");
+        ExternalAccountProvider accountProvider = new ExternalAccountProviderImpl("daveCo", "acme",
+                "http://localhost:8080/account/verify");
 
-        //externalAccountProviderMap.put(accountProvider.getName(), accountProvider);
+        externalAccountProviderMap.put(accountProvider.getName(), accountProvider);
 
     }
 }

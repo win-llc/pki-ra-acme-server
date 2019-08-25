@@ -18,7 +18,7 @@ public class Account extends BaseAcmeObject<Account> {
     private Boolean termsOfServiceAgreed;
     //optional
     @JsonProperty
-    private JWSObject externalAccountBinding;
+    private String externalAccountBinding;
     //required
     @JsonProperty
     private String orders;
@@ -39,11 +39,11 @@ public class Account extends BaseAcmeObject<Account> {
         this.termsOfServiceAgreed = termsOfServiceAgreed;
     }
 
-    public JWSObject getExternalAccountBinding() {
+    public String getExternalAccountBinding() {
         return externalAccountBinding;
     }
 
-    public void setExternalAccountBinding(JWSObject externalAccountBinding) {
+    public void setExternalAccountBinding(String externalAccountBinding) {
         this.externalAccountBinding = externalAccountBinding;
     }
 
