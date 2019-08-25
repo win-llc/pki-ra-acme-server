@@ -22,15 +22,4 @@ public class Application {
     public static String hostname = "192.168.1.13"+":8181";
     public static String baseURL = "http://"+hostname+"/";
 
-    public static Map<String, ExternalAccountProvider> externalAccountProviderMap;
-
-    static {
-        externalAccountProviderMap = new HashMap<>();
-
-        ExternalAccountProvider accountProvider = new ExternalAccountProviderImpl("daveCo", "acme",
-                "http://localhost:8080/account/verify");
-
-        externalAccountProviderMap.put(accountProvider.getName(), accountProvider);
-
-    }
 }

@@ -40,6 +40,11 @@ public class ExternalAccountProviderImpl implements ExternalAccountProvider {
         this.accountVerificationUrl = accountVerificationUrl;
     }
 
+    public ExternalAccountProviderImpl(ExternalAccountProviderSettings settings){
+        this.name = settings.getName();
+        this.accountVerificationUrl = settings.getAccountVerificationUrl();
+    }
+
     @Override
     public String getName() {
         return name;

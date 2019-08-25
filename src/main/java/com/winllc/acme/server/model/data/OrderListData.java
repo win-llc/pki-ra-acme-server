@@ -46,7 +46,7 @@ public class OrderListData extends DataObject<OrderList> {
     public OrderList buildPaginatedOrderList(int page){
         String[] orders = getObject().getOrders();
         List<List<String>> pages = getPages(Arrays.asList(orders), pageSize);
-        if(pages.size() < page){
+        if(pages.size() > page){
             OrderList orderList = new OrderList();
             orderList.setOrders(pages.get(page).toArray(new String[0]));
             return orderList;

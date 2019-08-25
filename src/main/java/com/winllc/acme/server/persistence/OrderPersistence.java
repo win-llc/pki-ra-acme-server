@@ -4,10 +4,7 @@ import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -28,6 +25,14 @@ public class OrderPersistence implements DataPersistence<OrderData> {
 
     public List<OrderData> getOrdersForAccount(AccountData accountData){
         //TODO
-        return null;
+
+        List<OrderData> orders = new ArrayList<>();
+        for(OrderData orderData : orderDataMap.values()){
+            if(orderData.getAccountId().contentEquals(accountData.getId())){
+                orders.add(orderData);
+            }
+        }
+
+        return orders;
     }
 }

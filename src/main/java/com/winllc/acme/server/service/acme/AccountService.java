@@ -11,6 +11,7 @@ import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.AcmeURL;
 import com.winllc.acme.server.model.acme.Account;
+import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.DirectoryData;
@@ -19,8 +20,10 @@ import com.winllc.acme.server.model.requestresponse.KeyChangeRequest;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.process.AccountProcessor;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +36,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
 import java.text.ParseException;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -52,6 +57,8 @@ public class AccountService extends BaseService {
     private DirectoryDataService directoryDataService;
     @Autowired
     private SecurityValidatorUtil securityValidatorUtil;
+    @Autowired
+    private ExternalAccountProviderService externalAccountProviderService;
 
     //Section 7.3
     @RequestMapping(value = "{directory}/new-account", method = RequestMethod.POST, consumes = "application/jose+json")
@@ -74,112 +81,119 @@ public class AccountService extends BaseService {
         }
 
         String jwk = jwsObject.getHeader().getJWK().toJSONString();
-
         AccountRequest accountRequest = SecurityValidatorUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
 
         //Section 7.3.1 Paragraph 2
-        //Not an account lookup at this point, create a new account
         if (!accountRequest.getOnlyReturnExisting()) {
             //If terms of service exist, ensure client has agreed
-            if (directoryData.getObject().getMeta().getTermsOfService() != null) {
-                if (!accountRequest.getTermsOfServiceAgreed()) {
-                    log.debug("Has not agreed to ToS");
-                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
-                    problemDetails.setDetail("Terms of Service agreement required");
-                    problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
+            return processCreateNewAccount(accountRequest, directoryData, jwsObject);
+        }else{
+            return processReturnExisting(directoryData, jwk);
+        }
+    }
+
+    private ResponseEntity<?> processCreateNewAccount(AccountRequest accountRequest, DirectoryData directoryData, AcmeJWSObject jwsObject) throws Exception{
+        AccountData accountData = accountProcessor.buildNew(directoryData);
+
+        if (directoryData.getObject().getMeta().getTermsOfService() != null) {
+            if (!accountRequest.getTermsOfServiceAgreed()) {
+                log.debug("Has not agreed to ToS");
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
+                problemDetails.setDetail("Terms of Service agreement required");
+                problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
+
+                log.error(problemDetails);
+
+                return buildBaseResponseEntity(403, directoryData)
+                        .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                        .body(problemDetails);
+            }else{
+                //If ToS agreed to, update last agreed to date
+                accountData.setLastAgreedToTermsOfServiceOn(Timestamp.valueOf(LocalDateTime.now()));
+            }
+        }
+
+        //Validate the data in the account request for valid syntax and format
+        ProblemDetails validationError = validateAccountRequest(accountRequest);
+        if (validationError == null) {
+
+
+            Account account = accountData.getObject();
+
+            //If external account required, perform further validation
+            if (directoryData.getObject().getMeta().isExternalAccountRequired()) {
+                //If external account required, but none provided, return error
+                if(accountRequest.getExternalAccountBinding() == null){
+                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.EXTERNAL_ACCOUNT_REQUIRED);
 
                     log.error(problemDetails);
 
                     return buildBaseResponseEntity(403, directoryData)
-                            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                            .body(problemDetails);
+                }
+
+                //TODO
+                ExternalAccountProvider accountProvider = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
+                boolean verified = accountProvider.verifyExternalAccountJWS(jwsObject);
+
+                if (verified) {
+                    log.debug("External Account verified");
+                    accountData.setJwk(jwsObject.getHeader().getJWK().toString());
+
+                    JWSObject externalAccountJWS = accountRequest.buildExternalAccountJWSObject();
+
+                    if(externalAccountJWS != null) {
+                        account.setExternalAccountBinding(accountRequest.getExternalAccountBinding().toJson());
+                    }else{
+                        throw new Exception("Could not build JWS External Account Object");
+                    }
+                } else {
+                    //reject and return
+                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED);
+                    problemDetails.setDetail("Could not verify external account");
+
+                    log.error(problemDetails);
+
+                    return buildBaseResponseEntity(403, directoryData)
                             .body(problemDetails);
                 }
             }
 
-            //Validate the data in the account request for valid syntax and format
-            ProblemDetails validationError = validateAccountRequest(accountRequest);
-            if (validationError == null) {
+            account.setContact(accountRequest.getContact());
 
-                AccountData accountData = accountProcessor.buildNew(directoryData);
-                Account account = accountData.getObject();
+            accountData.setJwk(jwsObject.getHeader().getJWK().toString());
 
-                //If external account required, perform further validation
-                if (directoryData.getObject().getMeta().isExternalAccountRequired()) {
-                    //If external account required, but none provided, return error
-                    if(accountRequest.getExternalAccountBinding() == null){
-                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.EXTERNAL_ACCOUNT_REQUIRED);
+            accountData = accountPersistence.save(accountData);
 
-                        log.error(problemDetails);
+            log.info("Account created: "+ accountData);
 
-                        return buildBaseResponseEntity(403, directoryData)
-                                .body(problemDetails);
-                    }
-
-                    //TODO
-                    ExternalAccountProvider accountProvider = Application.externalAccountProviderMap.get(directoryData.getExternalAccountProviderName());
-                    boolean verified = accountProvider.verifyExternalAccountJWS(jwsObject);
-
-                    if (verified) {
-                        log.debug("External Account verified");
-                        accountData.setJwk(jwsObject.getHeader().getJWK().toString());
-
-                        JWSObject externalAccountJWS = accountRequest.buildExternalAccountJWSObject();
-
-                        if(externalAccountJWS != null) {
-                            account.setExternalAccountBinding(accountRequest.getExternalAccountBinding().toJson());
-                        }else{
-                            throw new Exception("Could not build JWS External Account Object");
-                        }
-                    } else {
-                        //reject and return
-                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED);
-                        problemDetails.setDetail("Could not verify external account");
-
-                        log.error(problemDetails);
-
-                        return buildBaseResponseEntity(403, directoryData)
-                                .body(problemDetails);
-                    }
-                }
-
-                account.setContact(accountRequest.getContact());
-
-                accountData.setJwk(jwsObject.getHeader().getJWK().toString());
-
-                accountData = accountPersistence.save(accountData);
-
-                log.info("Account created: "+ accountData);
-
-                return buildBaseResponseEntity(201, directoryData)
-                        .header("Location", accountData.buildUrl())
-                        .body(accountData.getObject());
-
-            }else{
-                log.error(validationError);
-                return buildBaseResponseEntity(500, directoryData)
-                        .body(validationError);
-            }
+            return buildBaseResponseEntity(201, directoryData)
+                    .header("Location", accountData.buildUrl())
+                    .body(accountData.getObject());
 
         }else{
-            //Section 7.3.1
-            Optional<AccountData> accountDataOptional = accountPersistence.getByJwk(jwk);
-            //If account already present, don't recreate
-            if (accountDataOptional.isPresent()) {
-                AccountData accountData = accountDataOptional.get();
-
-                return buildBaseResponseEntity(200, directoryData)
-                        .header("Location", accountData.buildUrl())
-                        .body(accountData.getObject());
-            } else {
-                //If no account exists, but account lookup requested, send error
-                if (accountRequest.getOnlyReturnExisting()) {
-                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.ACCOUNT_DOES_NOT_EXIST);
-                    return buildBaseResponseEntity(400, directoryData)
-                            .body(problemDetails);
-                }
-            }
+            log.error(validationError);
+            return buildBaseResponseEntity(500, directoryData)
+                    .body(validationError);
         }
-        return null;
+    }
+
+    private ResponseEntity<?> processReturnExisting(DirectoryData directoryData, String jwk){
+        //Section 7.3.1
+        Optional<AccountData> accountDataOptional = accountPersistence.getByJwk(jwk);
+        //If account already present, don't recreate
+        if (accountDataOptional.isPresent()) {
+            AccountData accountData = accountDataOptional.get();
+
+            return buildBaseResponseEntity(200, directoryData)
+                    .header("Location", accountData.buildUrl())
+                    .body(accountData.getObject());
+        } else {
+            //If no account exists, but account lookup requested, send error
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.ACCOUNT_DOES_NOT_EXIST);
+            return buildBaseResponseEntity(400, directoryData)
+                    .body(problemDetails);
+        }
     }
 
     //Section 7.3.2
@@ -196,7 +210,7 @@ public class AccountService extends BaseService {
 
             if(!accountData.getObject().getStatus().equalsIgnoreCase(StatusType.DEACTIVATED.toString())) {
                 //Section 7.3.6
-                if (accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
+                if (StringUtils.isNotBlank(accountRequest.getStatus()) && accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
 
                     accountData = accountProcessor.deactivateAccount(accountData);
 

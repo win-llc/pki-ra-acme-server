@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +50,7 @@ public class DirectoryDataService {
         directoryData.setName(directoryName);
         directoryData.setMapsToCertificateAuthorityName("ca1");
         directoryData.setExternalAccountProviderName("daveCo");
+        directoryData.setTermsOfServiceLastUpdatedOn(Date.valueOf(LocalDate.now().minusMonths(1)));
 
         addDirectory(directoryData);
     }

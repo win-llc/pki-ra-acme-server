@@ -223,7 +223,7 @@ public class OrderService extends BaseService {
         if (orderListDataOptional.isPresent()) {
             OrderListData orderListData = orderListDataOptional.get();
 
-            DirectoryData directoryData = directoryDataService.getByName(orderListData.getDirectory());
+            DirectoryData directoryData = directoryDataService.getByName(directory);
 
             OrderList orderList = orderListData.getObject();
             if (cursor != null) {
