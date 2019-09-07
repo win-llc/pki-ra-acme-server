@@ -75,7 +75,7 @@ public class SecurityValidatorUtil {
            //todo add back throw new AcmeServerException(ProblemType.MALFORMED);
         }
 
-        DirectoryData directoryData = directoryDataService.getByName(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.findByName(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
         //The URL must match the URL in the JWS Header
         //Section 6.4
         String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
@@ -182,19 +182,19 @@ public class SecurityValidatorUtil {
 
 
     //TODO better understand this
-    public static JWSVerifier buildVerifierFromJWS(JWSObject jwsObject, JWK jwkToVerify) throws JOSEException, AcmeServerException {
+    private static JWSVerifier buildVerifierFromJWS(JWSObject jwsObject, JWK jwkToVerify) throws JOSEException, AcmeServerException {
         JWSAlgorithm jwsAlgorithm = jwsObject.getHeader().getAlgorithm();
 
         if(JWSAlgorithm.Family.EC.contains(jwsAlgorithm)){
             return new ECDSAVerifier((ECKey) jwsObject.getHeader().getJWK().toPublicJWK());
         }else if(JWSAlgorithm.Family.ED.contains(jwsAlgorithm)){
-
+            throw new RuntimeException("Not supported: "+jwsAlgorithm.getName());
         }else if(JWSAlgorithm.Family.HMAC_SHA.contains(jwsAlgorithm)){
-
+            throw new RuntimeException("Not supported: "+jwsAlgorithm.getName());
         }else if(JWSAlgorithm.Family.RSA.contains(jwsAlgorithm)){
             return new RSASSAVerifier((RSAKey) jwkToVerify.toPublicJWK());
         }else if(JWSAlgorithm.Family.SIGNATURE.contains(jwsAlgorithm)){
-
+            throw new RuntimeException("Not supported: "+jwsAlgorithm.getName());
         }
         throw new AcmeServerException(ProblemType.BAD_SIGNATURE_ALGORITHM);
     }

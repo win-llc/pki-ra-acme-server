@@ -64,7 +64,7 @@ public class AccountService extends BaseService {
     @RequestMapping(value = "{directory}/new-account", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> request(HttpServletRequest request, @PathVariable String directory) throws Exception {
         log.debug("new-account request");
-        DirectoryData directoryData = directoryDataService.getByName(new AcmeURL(request).getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.findByName(new AcmeURL(request).getDirectoryIdentifier());
 
         String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
 

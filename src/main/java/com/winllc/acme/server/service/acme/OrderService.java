@@ -60,7 +60,7 @@ public class OrderService extends BaseService {
 
     @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request, @PathVariable String directory) {
-        DirectoryData directoryData = directoryDataService.getByName(directory);
+        DirectoryData directoryData = directoryDataService.findByName(directory);
 
         try {
             PayloadAndAccount<OrderRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, OrderRequest.class);
@@ -68,7 +68,7 @@ public class OrderService extends BaseService {
             OrderRequest orderRequest = payloadAndAccount.getPayload();
             AccountData accountData = payloadAndAccount.getAccountData();
 
-            Optional<ProblemDetails> problemDetailsOptional = caCanFulfill(orderRequest, directoryData);
+            Optional<ProblemDetails> problemDetailsOptional = caCanFulfill(orderRequest, directoryData, accountData);
             if (orderRequest.isValid() && !problemDetailsOptional.isPresent()) {
 
                 //CA can fulfill
@@ -137,7 +137,7 @@ public class OrderService extends BaseService {
     @RequestMapping(value = "{directory}/order/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> getOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
         AcmeURL acmeURL = new AcmeURL(httpServletRequest);
-        DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
 
         Optional<OrderData> orderDataOptional = orderPersistence.getById(id);
         if (orderDataOptional.isPresent()) {
@@ -162,7 +162,7 @@ public class OrderService extends BaseService {
     @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
         AcmeURL acmeURL = new AcmeURL(httpServletRequest);
-        DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
 
         PayloadAndAccount<CertificateRequest> certificateRequestPayloadAndAccount = null;
         try {
@@ -223,7 +223,7 @@ public class OrderService extends BaseService {
         if (orderListDataOptional.isPresent()) {
             OrderListData orderListData = orderListDataOptional.get();
 
-            DirectoryData directoryData = directoryDataService.getByName(directory);
+            DirectoryData directoryData = directoryDataService.findByName(directory);
 
             OrderList orderList = orderListData.getObject();
             if (cursor != null) {
@@ -248,14 +248,14 @@ public class OrderService extends BaseService {
     }
 
     //Return problem details if CA can't issue, return empty if can fulfill
-    private Optional<ProblemDetails> caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData) {
+    private Optional<ProblemDetails> caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData, AccountData accountData) {
 
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
         ProblemDetails problemDetails = new ProblemDetails(ProblemType.COMPOUND);
         //If allowed to issue to all identifiers, return true
         int allowedToIssueTo = 0;
         for (Identifier identifier : orderRequest.getIdentifiers()) {
-            if (!ca.canIssueToIdentifier(identifier)) {
+            if (!ca.canIssueToIdentifier(identifier, accountData)) {
                 ProblemDetails temp = new ProblemDetails(ProblemType.UNSUPPORTED_IDENTIFIER);
                 temp.setDetail("CA can't issue for: " + identifier);
                 problemDetails.addSubproblem(temp);
@@ -292,7 +292,7 @@ public class OrderService extends BaseService {
         “valid”: The server has issued the certificate and provisioned its URL to the “certificate” field of the order. Download the certificate.
          */
 
-        DirectoryData directoryData = directoryDataService.getByName(order.getDirectory());
+        DirectoryData directoryData = directoryDataService.findByName(order.getDirectory());
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
 
         try {

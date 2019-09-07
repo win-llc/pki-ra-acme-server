@@ -95,9 +95,9 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
         authorization.setIdentifier(identifier);
         authorization.willExpireInMinutes(60);
 
-        if(ca.canIssueToIdentifier(identifier)){
+        if(ca.canIssueToIdentifier(identifier, payloadAndAccount.getAccountData())){
 
-            List<ChallengeType> identifierChallengeRequirements = ca.getIdentifierChallengeRequirements(identifier);
+            List<ChallengeType> identifierChallengeRequirements = ca.getIdentifierChallengeRequirements(identifier, payloadAndAccount.getAccountData());
 
             //Check if CA requires extra validation for identifier
             if(identifierChallengeRequirements != null){

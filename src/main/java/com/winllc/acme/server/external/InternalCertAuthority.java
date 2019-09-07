@@ -1,8 +1,10 @@
 package com.winllc.acme.server.external;
 
+import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.model.acme.Identifier;
+import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -41,7 +43,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class InternalCertAuthority implements CertificateAuthority {
+public class InternalCertAuthority extends AbstractCertAuthority {
 
     private String name;
     private String caKeystorePassword = "password";
@@ -51,13 +53,8 @@ public class InternalCertAuthority implements CertificateAuthority {
     private List<X509Certificate> issuedCerts = new ArrayList<>();
     private List<X509Certificate> revokedCerts = new ArrayList<>();
 
-    public InternalCertAuthority(String name) {
-        this.name = name;
-    }
-
-    @Override
-    public String getName() {
-        return name;
+    public InternalCertAuthority(CertificateAuthoritySettings settings) {
+        super(settings);
     }
 
     @Override
@@ -111,7 +108,7 @@ public class InternalCertAuthority implements CertificateAuthority {
     }
 
     @Override
-    public List<CAValidationRule> getValidationRules() {
+    public List<CAValidationRule> getValidationRules(AccountData accountData) {
         //todo
         CAValidationRule rule = new CAValidationRule();
         rule.setBaseDomainName("winllc.com");
@@ -127,11 +124,11 @@ public class InternalCertAuthority implements CertificateAuthority {
 
 
     @Override
-    public boolean canIssueToIdentifier(Identifier identifier) {
+    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) {
         //no rules, can issue
-        if(getValidationRules().size() == 0) return true;
+        if(getValidationRules(accountData).size() == 0) return true;
 
-        for (CAValidationRule rule : getValidationRules()) {
+        for (CAValidationRule rule : getValidationRules(accountData)) {
             if(rule.canIssueToIdentifier(identifier)){
                 return true;
             }
@@ -140,10 +137,10 @@ public class InternalCertAuthority implements CertificateAuthority {
     }
 
     @Override
-    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier) {
+    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) {
         Set<ChallengeType> challengeTypes = new HashSet<>();
-        if(canIssueToIdentifier(identifier)){
-            for (CAValidationRule rule : getValidationRules()) {
+        if(canIssueToIdentifier(identifier, accountData)){
+            for (CAValidationRule rule : getValidationRules(accountData)) {
                 if(rule.canIssueToIdentifier(identifier)){
                     if(rule.isRequireHttpChallenge()) challengeTypes.add(ChallengeType.HTTP);
                     if(rule.isRequireDnsChallenge()) challengeTypes.add(ChallengeType.DNS);

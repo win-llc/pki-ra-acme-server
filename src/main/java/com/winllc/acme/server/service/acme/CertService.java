@@ -50,7 +50,7 @@ public class CertService extends BaseService {
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException {
         try {
             AcmeURL acmeURL = new AcmeURL(request);
-            DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
+            DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
 
             Optional<CertData> optionalCertData = certificatePersistence.getById(id);
 
@@ -103,7 +103,7 @@ public class CertService extends BaseService {
             consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> certRevoke(HttpServletRequest request, @PathVariable String directory) {
         AcmeURL acmeURL = new AcmeURL(request);
-        DirectoryData directoryData = directoryDataService.getByName(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
         try {
             //TODO verify signature from either account key or certificate

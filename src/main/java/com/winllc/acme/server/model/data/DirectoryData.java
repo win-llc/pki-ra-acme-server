@@ -1,8 +1,11 @@
 package com.winllc.acme.server.model.data;
 
+import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.model.acme.Directory;
+import com.winllc.acme.server.model.acme.Meta;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 public class DirectoryData extends DataObject<Directory> {
@@ -14,6 +17,36 @@ public class DirectoryData extends DataObject<Directory> {
 
     public DirectoryData(Directory obj) {
         super(obj);
+    }
+
+    public static DirectoryData buildFromSettings(DirectoryDataSettings settings){
+
+        String directoryBaseUrl = Application.baseURL+settings.getName()+"/";
+        Directory directory = new Directory();
+        directory.setNewNonce(directoryBaseUrl+"new-nonce");
+        directory.setNewAccount(directoryBaseUrl+"new-account");
+        directory.setNewOrder(directoryBaseUrl+"new-order");
+        directory.setNewAuthz(directoryBaseUrl+"new-authz");
+        directory.setRevokeCert(directoryBaseUrl+"revoke-cert");
+        directory.setKeyChange(directoryBaseUrl+"key-change");
+
+        Meta meta = new Meta();
+        meta.setTermsOfService(settings.getMetaTermsOfService());
+        meta.setWebsite(Application.baseURL);
+        meta.setCaaIdentities(settings.getMetaCaaIdentities());
+        meta.setExternalAccountRequired(settings.isMetaExternalAccountRequired());
+
+        directory.setMeta(meta);
+
+        DirectoryData directoryData = new DirectoryData(directory);
+        directoryData.setAllowPreAuthorization(settings.isAllowPreAuthorization());
+        directoryData.setName(settings.getName());
+        directoryData.setMapsToCertificateAuthorityName(settings.getMapsToCertificateAuthorityName());
+        directoryData.setExternalAccountProviderName(settings.getExternalAccountProviderName());
+        //todo update
+        directoryData.setTermsOfServiceLastUpdatedOn(java.sql.Date.valueOf(LocalDate.now().minusMonths(1)));
+
+        return directoryData;
     }
 
     @Override

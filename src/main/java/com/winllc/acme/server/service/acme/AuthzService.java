@@ -10,6 +10,7 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.acme.*;
+import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.model.data.DirectoryData;
@@ -64,7 +65,7 @@ public class AuthzService extends BaseService {
             if(directoryData.isAllowPreAuthorization()) {
                 Identifier identifier = payloadAndAccount.getPayload();
 
-                if (serverWillingToIssueForIdentifier(identifier, directoryData, false)) {
+                if (serverWillingToIssueForIdentifier(identifier, directoryData, payloadAndAccount.getAccountData(),false)) {
                     Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount);
                     if(authorizationOptional.isPresent()){
                         AuthorizationData authorizationData = authorizationOptional.get();
@@ -168,7 +169,7 @@ public class AuthzService extends BaseService {
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
         Optional<ChallengeData> optionalChallengeData = challengePersistence.getById(id);
-        DirectoryData directoryData = directoryDataService.getByName(directory);
+        DirectoryData directoryData = directoryDataService.findByName(directory);
 
         AcmeJWSObject jwsObjectFromHttpRequest;
         try {
@@ -206,13 +207,13 @@ public class AuthzService extends BaseService {
         }
     }
 
-    private boolean serverWillingToIssueForIdentifier(Identifier identifier, DirectoryData directoryData, boolean allowWildcards) {
+    private boolean serverWillingToIssueForIdentifier(Identifier identifier, DirectoryData directoryData, AccountData accountData, boolean allowWildcards) {
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
 
         if(!allowWildcards && identifier.getValue().startsWith("*")){
             return false;
         }else {
-            return ca.canIssueToIdentifier(identifier);
+            return ca.canIssueToIdentifier(identifier, accountData);
         }
     }
 

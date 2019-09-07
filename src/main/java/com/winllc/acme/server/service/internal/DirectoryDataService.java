@@ -1,9 +1,12 @@
 package com.winllc.acme.server.service.internal;
 
+import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.Meta;
 import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,14 +19,18 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/admin/directory")
-public class DirectoryDataService {
+@RequestMapping("/directoryData")
+public class DirectoryDataService implements SettingsService<DirectoryDataSettings, DirectoryData> {
     //TODO CRUD service for Directory Data
 
-    private Map<String, DirectoryData> directoryDataMap = new HashMap<>();
+    @Autowired
+    private DirectoryDataSettingsPersistence persistence;
+
+    private Map<String, DirectoryData> directoryDataMap;
 
     @PostConstruct
     private void postConstruct(){
+        directoryDataMap = new HashMap<>();
         //TODO remove this
 
         String directoryName = "acme";
@@ -52,38 +59,54 @@ public class DirectoryDataService {
         directoryData.setExternalAccountProviderName("daveCo");
         directoryData.setTermsOfServiceLastUpdatedOn(Date.valueOf(LocalDate.now().minusMonths(1)));
 
-        addDirectory(directoryData);
+        for(DirectoryDataSettings settings : persistence.findAll()){
+            try {
+                load(settings);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        //todo
+        //load(directoryData);
     }
 
 
-    @GetMapping
-    public List<DirectoryData> getAll(){
-        //TODO
-        return new ArrayList<>(directoryDataMap.values());
+    @PostMapping("/save")
+    public void save(@RequestBody DirectoryDataSettings settings) throws Exception {
+        settings = persistence.save(settings);
+        load(settings);
     }
 
-    @GetMapping("/byName/{name}")
-    public DirectoryData getByName(String name){
-        //TODO
+    @GetMapping("/findSettingsByName/{name}")
+    public DirectoryDataSettings findSettingsByName(@PathVariable String name) {
+        return persistence.findByName(name);
+    }
+
+    @GetMapping("/findByName/{name}")
+    public DirectoryData findByName(@PathVariable String name) {
         return directoryDataMap.get(name);
     }
 
-    @PostMapping("/add")
-    public DirectoryData addDirectory(DirectoryData directoryData){
-        //TODO
+    @DeleteMapping("/delete/{name}")
+    public void delete(@PathVariable String name) {
+        //todo
+    }
+
+    @GetMapping("/findAllSettings")
+    public List<DirectoryDataSettings> findAllSettings() {
+        return persistence.findAll();
+    }
+
+    @GetMapping("/findAll")
+    public List<DirectoryData> findAll() {
+        return new ArrayList<>(directoryDataMap.values());
+    }
+
+    @Override
+    public void load(DirectoryDataSettings settings) throws Exception {
+        DirectoryData directoryData = DirectoryData.buildFromSettings(settings);
+
         directoryDataMap.put(directoryData.getName(), directoryData);
-        return directoryData;
-    }
-
-    @PostMapping("/update")
-    public DirectoryData updateDirectory(DirectoryData directoryData){
-        //TODO
-        return addDirectory(directoryData);
-    }
-
-    @GetMapping("/delete/{name}")
-    public void deleteDirectory(@PathVariable String name){
-        //TODO
-        directoryDataMap.remove(name);
     }
 }

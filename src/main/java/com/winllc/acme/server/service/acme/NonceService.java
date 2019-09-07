@@ -23,7 +23,7 @@ public class NonceService {
 
     @RequestMapping(value = "{directory}/new-nonce", method = RequestMethod.HEAD)
     public ResponseEntity<?> newNonceHead(HttpServletRequest request, @PathVariable String directory){
-        DirectoryData directoryData = directoryDataService.getByName(directory);
+        DirectoryData directoryData = directoryDataService.findByName(directory);
         return ResponseEntity.ok()
                 .headers(generateHeaders(directoryData))
                 .build();
@@ -31,7 +31,7 @@ public class NonceService {
 
     @RequestMapping(value = "{directory}/new-nonce", method = RequestMethod.GET)
     public ResponseEntity<?> newNonceGet(HttpServletRequest request, @PathVariable String directory){
-        DirectoryData directoryData = directoryDataService.getByName(directory);
+        DirectoryData directoryData = directoryDataService.findByName(directory);
         return ResponseEntity.noContent()
                 .headers(generateHeaders(directoryData))
                 .build();

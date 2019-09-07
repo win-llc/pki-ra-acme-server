@@ -1,2 +1,4 @@
 rootProject.name = 'ACME Server'
 
+include ":acme-common"
+project(":acme-common").projectDir = file("../acme-common")

@@ -3,9 +3,8 @@ package com.winllc.acme.server.external;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jose.util.Base64URL;
+import com.winllc.acme.common.ExternalAccountProviderSettings;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.AcmeJWSObject;
@@ -28,19 +27,19 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
-public class ExternalAccountProviderImpl implements ExternalAccountProvider {
+public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
 
     private String name;
     private String linkedDirectoryName;
     private String accountVerificationUrl;
 
-    public ExternalAccountProviderImpl(String name, String linkedDirectoryName, String accountVerificationUrl) {
+    public WINLLCExternalAccountProvider(String name, String linkedDirectoryName, String accountVerificationUrl) {
         this.name = name;
         this.linkedDirectoryName = linkedDirectoryName;
         this.accountVerificationUrl = accountVerificationUrl;
     }
 
-    public ExternalAccountProviderImpl(ExternalAccountProviderSettings settings){
+    public WINLLCExternalAccountProvider(ExternalAccountProviderSettings settings){
         this.name = settings.getName();
         this.accountVerificationUrl = settings.getAccountVerificationUrl();
     }
@@ -140,6 +139,8 @@ public class ExternalAccountProviderImpl implements ExternalAccountProvider {
             AcmeServerException exception = new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not verify external account");
             exception.addSuppressed(e);
             throw exception;
+        }finally {
+            httppost.completed();
         }
 
         return false;
