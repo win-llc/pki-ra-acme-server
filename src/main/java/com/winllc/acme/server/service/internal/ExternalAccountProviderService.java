@@ -10,12 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/externalAccountProvider")
-public class ExternalAccountProviderService {
+public class ExternalAccountProviderService implements SettingsService<ExternalAccountProviderSettings, ExternalAccountProvider> {
 
     private static final Logger log = LogManager.getLogger(ExternalAccountProviderService.class);
 
@@ -31,7 +33,11 @@ public class ExternalAccountProviderService {
         settings.setAccountVerificationUrl("http://localhost:8080/account/verify");
         settings.setLinkedDirectoryName("acme");
 
-        load(settings);
+        for(ExternalAccountProviderSettings providerSettings : persistence.findAll()){
+            load(providerSettings);
+        }
+
+        //load(settings);
     }
 
     @GetMapping("/findByName/{name}")
@@ -53,9 +59,29 @@ public class ExternalAccountProviderService {
 
     public void load(ExternalAccountProviderSettings settings){
         //TODO
+        log.info("Loading External Account Provider: "+settings.getName());
         ExternalAccountProvider accountProvider = new WINLLCExternalAccountProvider(settings);
 
         externalAccountProviderMap.put(accountProvider.getName(), accountProvider);
     }
 
+    @GetMapping("/findSettingsByName/{name}")
+    public ExternalAccountProviderSettings findSettingsByName(@PathVariable String name) {
+        return persistence.findByName(name);
+    }
+
+    @DeleteMapping("/delete/{name}")
+    public void delete(@PathVariable String name) {
+        persistence.deleteByName(name);
+    }
+
+    @GetMapping("/findAllSettings")
+    public List<ExternalAccountProviderSettings> findAllSettings() {
+        return new ArrayList<>(persistence.findAll());
+    }
+
+    @GetMapping("/findAll")
+    public List<ExternalAccountProvider> findAll() {
+        return new ArrayList<>(externalAccountProviderMap.values());
+    }
 }

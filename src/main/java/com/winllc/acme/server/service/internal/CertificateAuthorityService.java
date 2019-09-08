@@ -6,6 +6,8 @@ import com.winllc.acme.server.external.InternalCertAuthority;
 import com.winllc.acme.server.external.WINLLCCertAuthority;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.internal.CertificateAuthoritySettingsPersistence;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/certAuthority")
 public class CertificateAuthorityService implements SettingsService<CertificateAuthoritySettings, CertificateAuthority> {
+
+    private static final Logger log = LogManager.getLogger(CertificateAuthorityService.class);
 
     //TODO CRUD service for CA's
 
@@ -37,13 +41,23 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
         settings.setType("internal");
 
         try {
-            load(settings);
+            //load(settings);
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        for(CertificateAuthoritySettings s : settingsPersistence.findAll()){
+            try {
+                load(s);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     public void load(CertificateAuthoritySettings settings) throws Exception {
+        log.info("Loading Certificate Authority: "+settings.getName());
 
         CertificateAuthority ca = null;
         switch (settings.getType()){

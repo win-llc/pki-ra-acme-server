@@ -9,6 +9,7 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.List;
 
 public class WINLLCCertAuthority extends AbstractCertAuthority {
@@ -18,42 +19,44 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public String getName() {
-        return null;
-    }
-
-    @Override
     public boolean revokeCertificate(X509Certificate certificate, int reason) {
+        //todo
         return false;
     }
 
     @Override
     public X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) {
+        //todo
         return null;
     }
 
     @Override
     public boolean isCertificateRevoked(X509Certificate certificate) {
+        //todo
         return false;
     }
 
     @Override
     public Certificate[] getTrustChain() {
+        //todo
         return new Certificate[0];
     }
 
     @Override
     public List<CAValidationRule> getValidationRules(AccountData accountData) {
-        return null;
+        //todo
+        return new ArrayList<>();
     }
 
     @Override
     public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) {
-        return false;
+        //todo
+        return true;
     }
 
     @Override
     public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) {
-        return null;
+        //todo
+        return new ArrayList<>();
     }
 }

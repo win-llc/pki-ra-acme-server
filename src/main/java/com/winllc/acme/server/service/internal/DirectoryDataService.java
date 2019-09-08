@@ -6,6 +6,8 @@ import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.Meta;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +24,8 @@ import java.util.Map;
 @RequestMapping("/directoryData")
 public class DirectoryDataService implements SettingsService<DirectoryDataSettings, DirectoryData> {
     //TODO CRUD service for Directory Data
+
+    private static final Logger log = LogManager.getLogger(DirectoryDataService.class);
 
     @Autowired
     private DirectoryDataSettingsPersistence persistence;
@@ -91,6 +95,7 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
     @DeleteMapping("/delete/{name}")
     public void delete(@PathVariable String name) {
         //todo
+        persistence.deleteByName(name);
     }
 
     @GetMapping("/findAllSettings")
@@ -105,6 +110,7 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
 
     @Override
     public void load(DirectoryDataSettings settings) throws Exception {
+        log.info("Loading Directory Data: "+settings.getName());
         DirectoryData directoryData = DirectoryData.buildFromSettings(settings);
 
         directoryDataMap.put(directoryData.getName(), directoryData);

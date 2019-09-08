@@ -10,4 +10,5 @@ import java.util.List;
 public interface SettingsPersistence<T extends Settings> extends MongoRepository<T, String> {
     T findByName(String name);
     List<T> findAll();
+    void deleteByName(String name);
 }
