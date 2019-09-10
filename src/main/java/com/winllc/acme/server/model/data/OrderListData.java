@@ -12,8 +12,8 @@ import java.util.Optional;
 public class OrderListData extends DataObject<OrderList> {
     private static int pageSize = 10;
 
-    public OrderListData(OrderList obj, DirectoryData directoryData) {
-        super(obj, directoryData);
+    public OrderListData(OrderList object, String directory) {
+        super(object, directory);
     }
 
     public void addOrder(OrderData order){

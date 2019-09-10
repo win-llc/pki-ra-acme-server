@@ -6,20 +6,21 @@ import com.winllc.acme.server.model.acme.Authorization;
 public class AuthorizationData extends DataObject<Authorization> {
 
     private String orderId;
-    private String accountId;
 
     @Override
     public String buildUrl() {
         return buildBaseUrl() + "authz/" + getId();
     }
 
-    public AuthorizationData(Authorization authorization, DirectoryData directoryData){
-        super(authorization, directoryData);
+    private AuthorizationData(){}
+
+    public AuthorizationData(Authorization object, String directory){
+        super(object, directory);
     }
 
-    public AuthorizationData(Authorization authorization, DirectoryData directoryData, OrderData orderData){
-        this(authorization, directoryData);
-        this.orderId = orderData.getId();
+    public AuthorizationData(Authorization authorization, String directory, String orderId){
+        this(authorization, directory);
+        this.orderId = orderId;
     }
 
 
@@ -31,20 +32,12 @@ public class AuthorizationData extends DataObject<Authorization> {
         this.orderId = orderId;
     }
 
-    @Override
-    public String getAccountId() {
-        return accountId;
-    }
-
-    public void setAccountId(String accountId) {
-        this.accountId = accountId;
-    }
 
     @Override
     public String toString() {
         return "AuthorizationData{" +
                 "orderId='" + orderId + '\'' +
-                ", accountId='" + accountId + '\'' +
+                ", accountId='" + getAccountId() + '\'' +
                 "} " + super.toString();
     }
 }

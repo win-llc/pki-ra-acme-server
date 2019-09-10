@@ -68,9 +68,9 @@ public class HttpChallenge implements ChallengeVerification {
 
             try {
 
-                Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.getById(challenge.getAuthorizationId());
+                Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(challenge.getAuthorizationId());
                 AuthorizationData authorizationData = authorizationDataOptional.get();
-                Optional<AccountData> accountDataOptional = accountPersistence.getByAccountId(authorizationData.getAccountId());
+                Optional<AccountData> accountDataOptional = accountPersistence.findById(authorizationData.getAccountId());
 
                 String urlString = "http://"+authorizationDataOptional.get().getObject().getIdentifier().getValue()
                         +"/.well-known/acme-challenge/"+challenge.getObject().getToken();

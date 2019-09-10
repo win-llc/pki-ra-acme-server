@@ -52,7 +52,7 @@ public class CertService extends BaseService {
             AcmeURL acmeURL = new AcmeURL(request);
             DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
 
-            Optional<CertData> optionalCertData = certificatePersistence.getById(id);
+            Optional<CertData> optionalCertData = certificatePersistence.findById(id);
 
             if (optionalCertData.isPresent()) {
                 CertData certData = optionalCertData.get();

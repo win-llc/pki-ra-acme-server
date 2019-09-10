@@ -8,14 +8,16 @@ import com.winllc.acme.server.model.acme.Directory;
 
 import java.sql.Timestamp;
 import java.text.ParseException;
+import java.util.Date;
+
 
 public class AccountData extends DataObject<Account> {
 
     private String jwk;
-    private Timestamp lastAgreedToTermsOfServiceOn;
+    private Date lastAgreedToTermsOfServiceOn;
 
-    public AccountData(Account obj, DirectoryData directoryData) {
-        super(obj, directoryData);
+    public AccountData(Account object, String directory) {
+        super(object, directory);
     }
 
     @Override
@@ -40,11 +42,11 @@ public class AccountData extends DataObject<Account> {
         }
     }
 
-    public Timestamp getLastAgreedToTermsOfServiceOn() {
+    public Date getLastAgreedToTermsOfServiceOn() {
         return lastAgreedToTermsOfServiceOn;
     }
 
-    public void setLastAgreedToTermsOfServiceOn(Timestamp lastAgreedToTermsOfServiceOn) {
+    public void setLastAgreedToTermsOfServiceOn(Date lastAgreedToTermsOfServiceOn) {
         this.lastAgreedToTermsOfServiceOn = lastAgreedToTermsOfServiceOn;
     }
 

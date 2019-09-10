@@ -89,7 +89,7 @@ public class OrderService extends BaseService {
                 Optional<String> objectId = new AcmeURL(accountData.getObject().getOrders()).getObjectId();
                 String orderListId = objectId.get();
 
-                Optional<OrderListData> orderListDataOptional = orderListPersistence.getById(orderListId);
+                Optional<OrderListData> orderListDataOptional = orderListPersistence.findById(orderListId);
                 if (orderListDataOptional.isPresent()) {
                     OrderListData orderListData = orderListDataOptional.get();
                     orderListData.addOrder(orderData);
@@ -139,7 +139,7 @@ public class OrderService extends BaseService {
         AcmeURL acmeURL = new AcmeURL(httpServletRequest);
         DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
 
-        Optional<OrderData> orderDataOptional = orderPersistence.getById(id);
+        Optional<OrderData> orderDataOptional = orderPersistence.findById(id);
         if (orderDataOptional.isPresent()) {
             OrderData orderData = orderDataOptional.get();
             orderData = orderProcessor.buildCurrentOrder(orderData);
@@ -175,7 +175,7 @@ public class OrderService extends BaseService {
                     .body(problemDetails);
         }
 
-        Optional<OrderData> optionalOrderData = orderPersistence.getById(id);
+        Optional<OrderData> optionalOrderData = orderPersistence.findById(id);
         OrderData orderData = orderProcessor.buildCurrentOrder(optionalOrderData.get());
 
         //if order ready to be completed by passing authorization checks
@@ -219,7 +219,7 @@ public class OrderService extends BaseService {
     public ResponseEntity<?> orderList(@PathVariable String id, @PathVariable String directory, @RequestParam(required = false) Integer cursor, HttpServletRequest request) {
         HttpHeaders headers = new HttpHeaders();
 
-        Optional<OrderListData> orderListDataOptional = orderListPersistence.getById(id);
+        Optional<OrderListData> orderListDataOptional = orderListPersistence.findById(id);
         if (orderListDataOptional.isPresent()) {
             OrderListData orderListData = orderListDataOptional.get();
 
@@ -272,7 +272,7 @@ public class OrderService extends BaseService {
         Order order = orderData.getObject();
 
         for (Identifier identifier : order.getIdentifiers()) {
-            Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount);
+            Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount, orderData);
             if (authorizationOptional.isPresent()) {
                 AuthorizationData authorization = authorizationOptional.get();
                 authorization.setOrderId(orderData.getId());
@@ -298,7 +298,7 @@ public class OrderService extends BaseService {
         try {
             X509Certificate certificate = ca.issueCertificate(order, CertUtil.csrBase64ToPKC10Object(csr));
             String[] certWithChains = CertUtil.certAndChainsToPemArray(certificate, ca.getTrustChain());
-            CertData certData = new CertData(certWithChains, directoryData);
+            CertData certData = new CertData(certWithChains, directoryData.getName());
             certData = certificatePersistence.save(certData);
 
             order.getObject().setStatus(StatusType.VALID.toString());

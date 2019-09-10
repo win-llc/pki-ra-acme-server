@@ -180,7 +180,7 @@ public class AccountService extends BaseService {
 
     private ResponseEntity<?> processReturnExisting(DirectoryData directoryData, String jwk){
         //Section 7.3.1
-        Optional<AccountData> accountDataOptional = accountPersistence.getByJwk(jwk);
+        Optional<AccountData> accountDataOptional = accountPersistence.findByJwkEquals(jwk);
         //If account already present, don't recreate
         if (accountDataOptional.isPresent()) {
             AccountData accountData = accountDataOptional.get();
@@ -203,7 +203,7 @@ public class AccountService extends BaseService {
 
         AccountRequest accountRequest = payloadAndAccount.getPayload();
         DirectoryData directoryData = payloadAndAccount.getDirectoryData();
-        Optional<AccountData> optionalAccountData = accountPersistence.getByAccountId(id);
+        Optional<AccountData> optionalAccountData = accountPersistence.findById(id);
 
         if (optionalAccountData.isPresent()) {
             AccountData accountData = optionalAccountData.get();
@@ -347,7 +347,7 @@ public class AccountService extends BaseService {
         }
 
         //Check that no account exists whose account key is the same as the key in the “jwk” header parameter of the inner JWS.
-        Optional<AccountData> existing = accountPersistence.getByJwk(innerJws.getHeader().getJWK().toString());
+        Optional<AccountData> existing = accountPersistence.findByJwkEquals(innerJws.getHeader().getJWK().toString());
         if (existing.isPresent()) return false;
 
         return verified;

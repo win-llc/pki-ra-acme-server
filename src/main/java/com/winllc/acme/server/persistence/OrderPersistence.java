@@ -7,9 +7,11 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
-public class OrderPersistence implements DataPersistence<OrderData> {
+public interface OrderPersistence extends DataPersistence<OrderData> {
 
+    List<OrderData> findAllByAccountIdEquals(String accountId);
+
+    /*
     private Map<String, OrderData> orderDataMap = new ConcurrentHashMap<>();
 
     @Override
@@ -35,4 +37,6 @@ public class OrderPersistence implements DataPersistence<OrderData> {
 
         return orders;
     }
+
+     */
 }

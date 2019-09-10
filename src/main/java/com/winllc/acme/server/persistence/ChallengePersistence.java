@@ -9,9 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@Component
-public class ChallengePersistence implements DataPersistence<ChallengeData> {
+public interface ChallengePersistence extends DataPersistence<ChallengeData> {
 
+    List<ChallengeData> findAllByAuthorizationIdEquals(String id);
+    /*
     private Map<String, ChallengeData> challengeDataMap = new HashMap<>();
 
     @Override
@@ -31,4 +32,6 @@ public class ChallengePersistence implements DataPersistence<ChallengeData> {
         //TODO
         return null;
     }
+
+     */
 }

@@ -7,9 +7,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-@Component
-public class AuthorizationPersistence implements DataPersistence<AuthorizationData> {
+public interface AuthorizationPersistence extends DataPersistence<AuthorizationData> {
 
+    List<AuthorizationData> findAllByOrderIdEquals(String orderId);
+/*
     private Map<String, AuthorizationData> authorizationDataMap = new HashMap<>();
 
     @Override
@@ -29,9 +30,11 @@ public class AuthorizationPersistence implements DataPersistence<AuthorizationDa
         //TODO
         List<AuthorizationData> list = new ArrayList<>();
         for(AuthorizationData ad : authorizationDataMap.values()){
-            if(ad.getOrderId() == orderData.getId()) list.add(ad);
+            if(ad.getOrderId().equals(orderData.getId())) list.add(ad);
         }
 
         return list;
     }
+
+ */
 }

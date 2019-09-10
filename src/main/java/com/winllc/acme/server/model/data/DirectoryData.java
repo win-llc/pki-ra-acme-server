@@ -4,6 +4,7 @@ import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.Meta;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDate;
 import java.util.Date;

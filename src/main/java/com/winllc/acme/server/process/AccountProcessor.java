@@ -43,12 +43,12 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
         //Set order list location, Section 7.1.2.1
         OrderList orderList = new OrderList();
 
-        OrderListData orderListData = new OrderListData(orderList, directoryData);
+        OrderListData orderListData = new OrderListData(orderList, directoryData.getName());
         orderListData = orderListPersistence.save(orderListData);
 
         account.setOrders(orderListData.buildUrl());
 
-        AccountData accountData = new AccountData(account, directoryData);
+        AccountData accountData = new AccountData(account, directoryData.getName());
 
         return accountData;
     }
@@ -86,7 +86,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
 
     //The server SHOULD cancel any pending operations authorized by the account’s key, such as certificate orders
     private void markInProgressAccountObjectsInvalid(AccountData accountData){
-        List<OrderData> orderDataList = orderPersistence.getOrdersForAccount(accountData);
+        List<OrderData> orderDataList = orderPersistence.findAllByAccountIdEquals(accountData.getId());
         orderDataList.forEach(o -> {
             if(!o.getObject().getStatus().contentEquals(StatusType.VALID.toString())) {
                 o.getObject().setStatus(StatusType.INVALID.toString());

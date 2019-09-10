@@ -1,8 +1,10 @@
 package com.winllc.acme.server.persistence;
 
-import java.util.Optional;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.repository.NoRepositoryBean;
 
-public interface DataPersistence<T> {
-    Optional<T> getById(String id);
-    T save(T data);
+
+@NoRepositoryBean
+public interface DataPersistence<T> extends MongoRepository<T, String> {
+
 }

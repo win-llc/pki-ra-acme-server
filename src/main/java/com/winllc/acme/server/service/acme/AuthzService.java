@@ -66,7 +66,7 @@ public class AuthzService extends BaseService {
                 Identifier identifier = payloadAndAccount.getPayload();
 
                 if (serverWillingToIssueForIdentifier(identifier, directoryData, payloadAndAccount.getAccountData(),false)) {
-                    Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount);
+                    Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount, null);
                     if(authorizationOptional.isPresent()){
                         AuthorizationData authorizationData = authorizationOptional.get();
 
@@ -111,7 +111,7 @@ public class AuthzService extends BaseService {
     //Section 7.5
     @RequestMapping(value = "{directory}/authz/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> authz(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
-        Optional<AuthorizationData> optionalAuthorizationData = authorizationPersistence.getById(id);
+        Optional<AuthorizationData> optionalAuthorizationData = authorizationPersistence.findById(id);
 
         if (optionalAuthorizationData.isPresent()) {
             AuthorizationData authorizationData = optionalAuthorizationData.get();
@@ -168,7 +168,7 @@ public class AuthzService extends BaseService {
     //Section 7.5.1
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
-        Optional<ChallengeData> optionalChallengeData = challengePersistence.getById(id);
+        Optional<ChallengeData> optionalChallengeData = challengePersistence.findById(id);
         DirectoryData directoryData = directoryDataService.findByName(directory);
 
         AcmeJWSObject jwsObjectFromHttpRequest;
@@ -181,7 +181,7 @@ public class AuthzService extends BaseService {
         if (optionalChallengeData.isPresent()) {
             ChallengeData challengeData = optionalChallengeData.get();
             Challenge challenge = challengeData.getObject();
-            Optional<AuthorizationData> authOptional = authorizationPersistence.getById(challengeData.getAuthorizationId());
+            Optional<AuthorizationData> authOptional = authorizationPersistence.findById(challengeData.getAuthorizationId());
 
             ChallengeType challengeType = ChallengeType.getValue(challenge.getType());
             switch (challengeType) {
@@ -193,7 +193,7 @@ public class AuthzService extends BaseService {
                     break;
             }
             //Get the current challenge and return 200
-            Optional<ChallengeData> challengeDataOptional = challengePersistence.getById(challengeData.getId());
+            Optional<ChallengeData> challengeDataOptional = challengePersistence.findById(challengeData.getId());
             return buildBaseResponseEntity(200, directoryData)
                     .header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
                     .body(challengeDataOptional.get().getObject());

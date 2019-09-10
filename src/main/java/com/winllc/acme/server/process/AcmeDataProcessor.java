@@ -5,4 +5,5 @@ import com.winllc.acme.server.model.data.DirectoryData;
 
 public interface AcmeDataProcessor<T extends DataObject> {
     T buildNew(DirectoryData directoryData);
+
 }

@@ -8,8 +8,8 @@ public class ChallengeData extends DataObject<Challenge> {
 
     private String authorizationId;
 
-    public ChallengeData(Challenge obj, DirectoryData directoryData) {
-        super(obj, directoryData);
+    public ChallengeData(Challenge object, String directory) {
+        super(object, directory);
     }
 
     @Override

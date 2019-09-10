@@ -8,9 +8,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@Component
-public class OrderListPersistence implements DataPersistence<OrderListData> {
+public interface OrderListPersistence extends DataPersistence<OrderListData> {
 
+    /*
     private Map<String, OrderListData> orderListDataMap = new HashMap<>();
 
     @Override
@@ -23,4 +23,6 @@ public class OrderListPersistence implements DataPersistence<OrderListData> {
         orderListDataMap.put(data.getId(), data);
         return data;
     }
+    ``
+     */
 }

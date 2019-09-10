@@ -7,9 +7,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@Component
-public class AccountPersistence {
+public interface AccountPersistence extends DataPersistence<AccountData> {
 
+    Optional<AccountData> findByJwkEquals(String jwk);
+
+    /*
     private Map<String, AccountData> accountMap = new HashMap<>();
 
     public Optional<AccountData> getByAccountId(String id){
@@ -30,4 +32,6 @@ public class AccountPersistence {
         accountMap.put(account.getId(), account);
         return account;
     }
+
+     */
 }

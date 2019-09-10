@@ -4,7 +4,6 @@ import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.external.CAValidationRule;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.acme.Authorization;
 import com.winllc.acme.server.model.acme.Challenge;
@@ -56,18 +55,29 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     @Autowired
     private CertificateAuthorityService certificateAuthorityService;
 
+    public AuthorizationData buildNew(DirectoryData directoryData, OrderData orderData) {
+        AuthorizationData authorizationData = buildNew(directoryData);
+        if(orderData != null) {
+            authorizationData.setOrderId(orderData.getId());
+        }else{
+            //todo verify this best approach
+            authorizationData.setOrderId("");
+        }
+        return authorizationData;
+    }
+
     @Override
     public AuthorizationData buildNew(DirectoryData directoryData) {
         Authorization authorization = new Authorization();
         authorization.setStatus(StatusType.PENDING.toString());
 
-        AuthorizationData authorizationData = new AuthorizationData(authorization, directoryData);
+        AuthorizationData authorizationData = new AuthorizationData(authorization, directoryData.getName());
 
         return authorizationData;
     }
 
-    public AuthorizationData buildNew(PayloadAndAccount payloadAndAccount) {
-        AuthorizationData authorization = buildNew(payloadAndAccount.getDirectoryData());
+    public AuthorizationData buildNew(PayloadAndAccount payloadAndAccount, OrderData orderData) {
+        AuthorizationData authorization = buildNew(payloadAndAccount.getDirectoryData(), orderData);
 
         authorization.setAccountId(payloadAndAccount.getAccountData().getId());
 
@@ -86,11 +96,11 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     }
 
     //Based off the directory, get the CA, which has the rules for how to build authorizations for identifiers
-    public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, PayloadAndAccount payloadAndAccount){
+    public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, PayloadAndAccount payloadAndAccount, OrderData orderData){
         DirectoryData directory = payloadAndAccount.getDirectoryData();
         CertificateAuthority ca = certificateAuthorityService.getByName(directory.getMapsToCertificateAuthorityName());
 
-        AuthorizationData authorizationData = buildNew(payloadAndAccount);
+        AuthorizationData authorizationData = buildNew(payloadAndAccount, orderData);
         Authorization authorization = authorizationData.getObject();
         authorization.setIdentifier(identifier);
         authorization.willExpireInMinutes(60);
@@ -127,7 +137,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
 
     //If a challenge is marked valid, authorization should be marked valid, unless it's expired
     public AuthorizationData challengeMarkedValid(String authorizationId) throws InternalServerException {
-        Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.getById(authorizationId);
+        Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(authorizationId);
         if(authorizationDataOptional.isPresent()){
             AuthorizationData authorizationData = authorizationDataOptional.get();
 
@@ -158,7 +168,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
 
     //Check if any authorizations are expired and update before returning
     public List<AuthorizationData> getCurrentAuthorizationsForOrder(OrderData orderData){
-        List<AuthorizationData> authorizationDataList = authorizationPersistence.getAllAuthorizationsForOrder(orderData);
+        List<AuthorizationData> authorizationDataList = authorizationPersistence.findAllByOrderIdEquals(orderData.getId());
         for(AuthorizationData authorizationData : authorizationDataList){
             if(authorizationData.getObject().isExpired()){
                 authorizationData.getObject().setStatus(StatusType.EXPIRED.toString());

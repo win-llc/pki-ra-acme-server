@@ -55,7 +55,7 @@ valid              invalid
         String encoded = urlEncoder.encodeToString(token.getBytes());
         challenge.setToken(encoded);
 
-        ChallengeData challengeData = new ChallengeData(challenge, directoryData);
+        ChallengeData challengeData = new ChallengeData(challenge, directoryData.getName());
 
         return challengeData;
     }
@@ -89,7 +89,7 @@ valid              invalid
 
     public List<ChallengeData> getCurrentChallengesForAuthorization(AuthorizationData authorizationData){
         //TODO
-        List<ChallengeData> challengeDataList = challengePersistence.getAllChallengesForAuthorization(authorizationData);
+        List<ChallengeData> challengeDataList = challengePersistence.findAllByAuthorizationIdEquals(authorizationData.getId());
         return null;
     }
 }

@@ -85,7 +85,7 @@ public class SecurityValidatorUtil {
             throw new AcmeServerException(ProblemType.UNAUTHORIZED);
         }
 
-        Optional<AccountData> optionalAccount = accountPersistence.getByAccountId(accountId);
+        Optional<AccountData> optionalAccount = accountPersistence.findById(accountId);
         if(optionalAccount.isPresent()) {
             AccountData accountData = optionalAccount.get();
 

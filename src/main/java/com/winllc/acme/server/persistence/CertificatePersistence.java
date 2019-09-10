@@ -7,9 +7,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@Component
-public class CertificatePersistence implements DataPersistence<CertData> {
+public interface CertificatePersistence extends DataPersistence<CertData> {
 
+    /*
     private Map<String, CertData> certDataMap = new HashMap<>();
 
     @Override
@@ -22,4 +22,6 @@ public class CertificatePersistence implements DataPersistence<CertData> {
         certDataMap.put(data.getId(), data);
         return data;
     }
+
+     */
 }

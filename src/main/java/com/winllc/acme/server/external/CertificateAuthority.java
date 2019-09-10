@@ -1,5 +1,6 @@
 package com.winllc.acme.server.external;
 
+import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.acme.Challenge;

@@ -49,7 +49,7 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
         order.setStatus(StatusType.PENDING.toString());
         order.willExpireInMinutes(30);
 
-        OrderData orderData = new OrderData(order, directoryData);
+        OrderData orderData = new OrderData(order, directoryData.getName());
         order.setFinalize(orderData.buildUrl()+"/finalize");
 
         return orderData;
@@ -89,7 +89,7 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
 
     //When an authorization is marked valid, update status of order if all authorizations are now valid
     public OrderData authorizationMarkedValid(String orderId) throws InternalServerException {
-        Optional<OrderData> orderDataOptional = orderPersistence.getById(orderId);
+        Optional<OrderData> orderDataOptional = orderPersistence.findById(orderId);
         if(orderDataOptional.isPresent()) {
             OrderData orderData = orderDataOptional.get();
             boolean allInValidState = allAuthorizationsValidCheck(orderData);

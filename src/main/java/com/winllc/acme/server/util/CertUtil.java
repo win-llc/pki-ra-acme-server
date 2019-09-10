@@ -4,6 +4,7 @@ import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.DERIA5String;
+import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.pkcs.Attribute;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x509.Extension;
@@ -11,7 +12,9 @@ import org.bouncycastle.asn1.x509.Extensions;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
+import org.bouncycastle.util.io.pem.PemObject;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 import sun.security.provider.X509Factory;
@@ -94,14 +97,16 @@ public class CertUtil {
         stringBuilder.append("\n");
         stringBuilder.append(X509Factory.END_CERT);
         return stringBuilder.toString().replaceAll("(?m)^[ \t]*\r?\n", "");
-        /*
-        Base64.Encoder encoder = Base64.getEncoder();
-        String cert_begin = "-----BEGIN CERTIFICATE-----\n";
-        String end_cert = "-----END CERTIFICATE-----";
+    }
 
-        byte[] derCert = cert.getEncoded();
-        String pemCertPre = new String(encoder.encode(derCert));
-        return cert_begin + pemCertPre + end_cert;
-         */
+    public static String certificationRequestToPEM(PKCS10CertificationRequest csr) throws IOException {
+        PemObject pemCSR = new PemObject("CERTIFICATE REQUEST", csr.getEncoded());
+
+        StringWriter str = new StringWriter();
+        JcaPEMWriter pemWriter = new JcaPEMWriter(str);
+        pemWriter.writeObject(pemCSR);
+        pemWriter.close();
+        str.close();
+        return str.toString();
     }
 }

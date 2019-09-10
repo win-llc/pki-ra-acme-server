@@ -6,8 +6,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-@Component
-public class DirectoryPersistence implements DataPersistence<DirectoryData> {
+public interface DirectoryPersistence extends DataPersistence<DirectoryData> {
+    /*
     @Override
     public Optional<DirectoryData> getById(String id) {
         //TODO
@@ -23,4 +23,6 @@ public class DirectoryPersistence implements DataPersistence<DirectoryData> {
         //TODO
         return null;
     }
+
+     */
 }

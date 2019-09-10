@@ -14,23 +14,25 @@ public abstract class DataObject<T> {
     private String accountId;
     private String directory;
 
+    protected DataObject(){}
+
     public DataObject(T obj) {
         this.id = SecurityValidatorUtil.generateRandomString(10);
         this.object = obj;
         this.directory = "";
     }
 
-    public DataObject(T obj, DirectoryData directory) {
+    public DataObject(T obj, String directory) {
         this.id = SecurityValidatorUtil.generateRandomString(10);
         this.object = obj;
-        this.directory = directory.getName();
+        this.directory = directory;
     }
 
-    public DataObject(T obj, DirectoryData directory, AccountData accountData) {
+    public DataObject(T obj, String directory, String accountId) {
         this.id = SecurityValidatorUtil.generateRandomString(10);
         this.object = obj;
-        this.accountId = accountData.getId();
-        this.directory = directory.getName();
+        this.accountId = accountId;
+        this.directory = directory;
     }
 
     public abstract String buildUrl();
@@ -54,6 +56,10 @@ public abstract class DataObject<T> {
 
     public String getAccountId() {
         return accountId;
+    }
+
+    public void setAccountId(String accountId) {
+        this.accountId = accountId;
     }
 
     public String getDirectory() {

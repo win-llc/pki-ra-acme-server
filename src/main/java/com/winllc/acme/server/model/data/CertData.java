@@ -12,8 +12,8 @@ public class CertData extends DataObject<String[]> {
     private String issuerDn;
     private Long serialNumber;
 
-    public CertData(String[] obj, DirectoryData directoryData) {
-        super(obj, directoryData);
+    public CertData(String[] object, String directory) {
+        super(object, directory);
     }
 
     @Override
