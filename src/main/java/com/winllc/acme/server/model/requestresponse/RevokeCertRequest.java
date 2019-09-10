@@ -1,6 +1,6 @@
 package com.winllc.acme.server.model.requestresponse;
 
-import com.winllc.acme.server.util.CertUtil;
+import com.winllc.acme.common.util.CertUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;

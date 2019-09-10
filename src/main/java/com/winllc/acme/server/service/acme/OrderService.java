@@ -1,5 +1,6 @@
 package com.winllc.acme.server.service.acme;
 
+import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.contants.ProblemType;
@@ -18,7 +19,6 @@ import com.winllc.acme.server.process.OrderProcessor;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
-import com.winllc.acme.server.util.CertUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -199,9 +199,9 @@ public class OrderService extends BaseService {
                     return buildBaseResponseEntity(500, directoryData)
                             .body(problemDetails);
                 }
-            } catch (AcmeServerException e) {
+            } catch (Exception e) {
                 log.error("Could not finalize order", e);
-                ProblemDetails problemDetails = new ProblemDetails(e.getProblemType());
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
                 return buildBaseResponseEntity(500, directoryData)
                         .body(problemDetails);
             }
@@ -324,7 +324,7 @@ public class OrderService extends BaseService {
     If the account is not authorized for the identifiers indicated in the CSR
     If the CSR requests extensions that the CA is not willing to include
      */
-    private Optional<ProblemDetails> validateCsr(String csr, Order order) throws AcmeServerException {
+    private Optional<ProblemDetails> validateCsr(String csr, Order order) throws Exception {
         List<String> dnsNamesInCsr = CertUtil.extractX509CSRDnsNames(csr).stream()
                 .map(String::toUpperCase)
                 .sorted()

@@ -14,8 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.xbill.DNS.*;
 
-import java.net.UnknownHostException;
-import java.util.Iterator;
 
 //Section 8.4
 @Component
@@ -29,15 +27,10 @@ public class DnsChallenge implements ChallengeVerification {
     private ChallengePersistence challengePersistence;
     @Autowired
     private ChallengeProcessor challengeProcessor;
-    @Autowired
-    private AuthorizationPersistence authorizationPersistence;
-    @Autowired
-    private AccountPersistence accountPersistence;
 
 
     public void verify(ChallengeData challenge) {
         //TODO
-
         try {
             challengeProcessor.processing(challenge);
 
@@ -45,10 +38,9 @@ public class DnsChallenge implements ChallengeVerification {
             challengePersistence.save(challenge);
 
             new VerificationRunner(challenge).run();
-        }catch (InternalServerException e){
-            log.error("Could not run verify process", e);
+        }catch (Exception e){
+            log.error("Could not verify", e);
         }
-
     }
 
     private class VerificationRunner implements Runnable {

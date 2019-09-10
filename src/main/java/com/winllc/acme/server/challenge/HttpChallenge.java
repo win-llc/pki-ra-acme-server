@@ -2,8 +2,6 @@ package com.winllc.acme.server.challenge;
 
 import com.nimbusds.jose.jwk.JWK;
 import com.winllc.acme.server.contants.StatusType;
-import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.model.acme.Authorization;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
@@ -48,8 +46,8 @@ public class HttpChallenge implements ChallengeVerification {
             challengePersistence.save(challenge);
 
             new VerificationRunner(challenge).run();
-        }catch (InternalServerException e){
-            log.error("Could not run verify process", e);
+        }catch (Exception e){
+            log.error("Could not verify", e);
         }
     }
 

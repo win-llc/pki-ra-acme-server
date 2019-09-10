@@ -47,7 +47,7 @@ public class CertService extends BaseService {
     //Section 7.4.2
     @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST,
             consumes = "application/jose+json")
-    public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException {
+    public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
         try {
             AcmeURL acmeURL = new AcmeURL(request);
             DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());

@@ -2,13 +2,12 @@ package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
+import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.contants.ChallengeType;
-import com.winllc.acme.server.contants.ProblemType;
-import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
-import com.winllc.acme.server.util.CertUtil;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -21,6 +20,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -54,17 +54,19 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             List<NameValuePair> params = new ArrayList<>(2);
             params.add(new BasicNameValuePair("pkcs10", CertUtil.certificationRequestToPEM(certificationRequest)));
 
+            httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
             //Execute and get the response.
             HttpResponse response = httpclient.execute(httppost);
             HttpEntity entity = response.getEntity();
+
 
             if (entity != null) {
                 if(response.getStatusLine().getStatusCode() == 200){
                     //todo
                 }
-                try (InputStream instream = entity.getContent()) {
-                    //TODO do something useful, return true or false
-                }
+
+                String b64Cert = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
+                return CertUtil.base64ToCert(b64Cert);
             }
         }catch (Exception e){
             e.printStackTrace();

@@ -1,9 +1,7 @@
 package com.winllc.acme.server.process;
 
 import com.winllc.acme.server.contants.StatusType;
-import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.model.acme.Authorization;
 import com.winllc.acme.server.model.acme.Order;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.DataObject;
