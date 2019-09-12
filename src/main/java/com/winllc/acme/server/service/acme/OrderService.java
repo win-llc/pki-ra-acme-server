@@ -228,6 +228,7 @@ public class OrderService extends BaseService {
             OrderList orderList = orderListData.getObject();
             if (cursor != null) {
                 orderList = orderListData.buildPaginatedOrderList(cursor);
+                //todo only add if next page available
                 Optional<String> nextPageLink = orderListData.buildPaginatedLink(cursor);
                 //If a next page is available, add the link
                 nextPageLink.ifPresent(s -> headers.add("Link", s));

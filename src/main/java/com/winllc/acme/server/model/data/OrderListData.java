@@ -35,7 +35,7 @@ public class OrderListData extends DataObject<OrderList> {
             return Optional.empty();
         }
 
-        return Optional.of("<" + buildUrl() + "?cursor=" + currentRequestedPage + 1 + ">;rel=\"next\"");
+        return Optional.of("<" + buildUrl() + "?cursor=" + (currentRequestedPage + 1) + ">;rel=\"next\"");
     }
 
 

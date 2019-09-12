@@ -1,5 +1,6 @@
 package com.winllc.acme.server.external;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.util.CertUtil;
@@ -8,6 +9,7 @@ import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -23,9 +25,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class WINLLCCertAuthority extends AbstractCertAuthority {
 
@@ -93,19 +93,85 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     @Override
     public List<CAValidationRule> getValidationRules(AccountData accountData) {
-        //todo
+        //todo not static
+        String verificationUrl = settings.getExternalValidationRulesUrl()+"/"+"kidtest";
+
+        HttpClient httpclient = HttpClients.createDefault();
+        HttpPost httppost = new HttpPost(verificationUrl);
+
+        try {
+            List<NameValuePair> params = new ArrayList<>(2);
+
+            //httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
+            //Execute and get the response.
+            HttpResponse response = httpclient.execute(httppost);
+            HttpEntity entity = response.getEntity();
+
+
+            if (entity != null) {
+                if(response.getStatusLine().getStatusCode() == 200){
+                    //todo
+                }
+
+                String validationRules = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
+                ObjectMapper objectMapper = new ObjectMapper();
+                ArrayList list = objectMapper.readValue(validationRules, ArrayList.class);
+
+                List<CAValidationRule> rules = new ArrayList<>();
+
+                for(Object obj : list) {
+                    rules.add(objectMapper.convertValue(obj, CAValidationRule.class));
+                }
+
+                return rules;
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            httppost.completed();
+        }
+
         return new ArrayList<>();
     }
 
     @Override
     public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) {
-        //todo
-        return true;
+        //no rules, can issue
+        if(getValidationRules(accountData).size() == 0) return true;
+
+        for (CAValidationRule rule : getValidationRules(accountData)) {
+            if(canIssueToIdentifier(identifier, rule)){
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) {
-        //todo
-        return new ArrayList<>();
+        Set<ChallengeType> challengeTypes = new HashSet<>();
+        if(canIssueToIdentifier(identifier, accountData)){
+            for (CAValidationRule rule : getValidationRules(accountData)) {
+                if(canIssueToIdentifier(identifier, rule)){
+                    if(rule.isRequireHttpChallenge()) challengeTypes.add(ChallengeType.HTTP);
+                    if(rule.isRequireDnsChallenge()) challengeTypes.add(ChallengeType.DNS);
+                }
+            }
+            return new ArrayList<>(challengeTypes);
+        }
+        return null;
+    }
+
+    public boolean canIssueToIdentifier(Identifier identifier, CAValidationRule validationRule){
+        if(!identifier.getValue().contains(".") && validationRule.isAllowHostnameIssuance()){
+            return true;
+        }
+
+        if(StringUtils.isNotBlank(validationRule.getIdentifierType()) && StringUtils.isNotBlank(validationRule.getBaseDomainName()) &&
+                identifier.getType().contentEquals(validationRule.getIdentifierType()) && identifier.getValue().endsWith(validationRule.getBaseDomainName())){
+            return validationRule.isAllowIssuance();
+        }else{
+            return false;
+        }
     }
 }
