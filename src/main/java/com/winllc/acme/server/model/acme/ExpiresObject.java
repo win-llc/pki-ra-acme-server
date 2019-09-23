@@ -7,7 +7,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 public abstract class ExpiresObject<T extends BaseAcmeObject> extends BaseAcmeObject<T>{
-    //TODO verify compliant with RFC3339
+
     private static DateTimeFormatter dtf = DateTimeFormatter
             .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
             .withZone(ZoneId.of("UTC"));

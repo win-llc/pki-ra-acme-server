@@ -31,13 +31,6 @@ public class DirectoryService {
         DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
         Directory directory = directoryData.getObject();
 
-        System.out.println("Found directory"+ directory);
-
-        //Section 7.4.1 paragraph 4
-        if(!directoryData.isAllowPreAuthorization()){
-            directory.setNewAuthz(null);
-        }
-
         return ResponseEntity.ok()
                 .header("Content-Type", "application/json")
                 .body(directory);

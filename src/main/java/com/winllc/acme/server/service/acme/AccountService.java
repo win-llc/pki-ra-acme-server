@@ -132,7 +132,6 @@ public class AccountService extends BaseService {
                             .body(problemDetails);
                 }
 
-                //TODO
                 ExternalAccountProvider accountProvider = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
                 boolean verified = accountProvider.verifyExternalAccountJWS(jwsObject);
 
@@ -274,7 +273,7 @@ public class AccountService extends BaseService {
             String newKey = payloadAndAccount.getPayload().getHeader().getJWK().toString();
             accountData.setJwk(newKey);
 
-            accountPersistence.save(accountData);
+            accountData = accountPersistence.save(accountData);
 
             log.info("key-change success for "+accountData);
 

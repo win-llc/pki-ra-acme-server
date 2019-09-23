@@ -75,15 +75,14 @@ public class AuthzService extends BaseService {
                         return buildBaseResponseEntity(201, directoryData)
                                 .body(authorizationData.getObject());
                     }else{
-                        //TODO get proper problem type
-                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
-                        return buildBaseResponseEntity(500, directoryData)
+                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.REJECTED_IDENTIFIER);
+                        return buildBaseResponseEntity(403, directoryData)
                                 .body(problemDetails);
                     }
 
                 } else {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNSUPPORTED_IDENTIFIER);
-                    //TODO fill out problem details
+                    problemDetails.setDetail("Will not issue to: "+identifier);
                     return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
                             .body(problemDetails);
                 }

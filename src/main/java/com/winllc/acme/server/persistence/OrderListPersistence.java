@@ -10,19 +10,4 @@ import java.util.Optional;
 
 public interface OrderListPersistence extends DataPersistence<OrderListData> {
 
-    /*
-    private Map<String, OrderListData> orderListDataMap = new HashMap<>();
-
-    @Override
-    public Optional<OrderListData> getById(String id) {
-        return Optional.of(orderListDataMap.get(id));
-    }
-
-    @Override
-    public OrderListData save(OrderListData data) {
-        orderListDataMap.put(data.getId(), data);
-        return data;
-    }
-    ``
-     */
 }

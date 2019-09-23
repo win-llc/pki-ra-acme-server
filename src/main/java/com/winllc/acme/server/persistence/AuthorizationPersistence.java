@@ -10,31 +10,5 @@ import java.util.*;
 public interface AuthorizationPersistence extends DataPersistence<AuthorizationData> {
 
     List<AuthorizationData> findAllByOrderIdEquals(String orderId);
-/*
-    private Map<String, AuthorizationData> authorizationDataMap = new HashMap<>();
 
-    @Override
-    public Optional<AuthorizationData> getById(String id) {
-        //TODO
-        return Optional.of(authorizationDataMap.get(id));
-    }
-
-    @Override
-    public AuthorizationData save(AuthorizationData data) {
-        //TODO
-        authorizationDataMap.put(data.getId(), data);
-        return data;
-    }
-
-    public List<AuthorizationData>  getAllAuthorizationsForOrder(OrderData orderData){
-        //TODO
-        List<AuthorizationData> list = new ArrayList<>();
-        for(AuthorizationData ad : authorizationDataMap.values()){
-            if(ad.getOrderId().equals(orderData.getId())) list.add(ad);
-        }
-
-        return list;
-    }
-
- */
 }

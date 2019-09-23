@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/externalAccountProvider")
@@ -24,25 +25,23 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
     @Autowired
     private ExternalAccountProviderSettingsPersistence persistence;
 
-    private Map<String, ExternalAccountProvider> externalAccountProviderMap = new HashMap<>();
+    private Map<String, ExternalAccountProvider> externalAccountProviderMap;
 
     @PostConstruct
     private void postConstruct(){
-        ExternalAccountProviderSettings settings = new ExternalAccountProviderSettings();
-        settings.setName("daveCo");
-        settings.setAccountVerificationUrl("http://localhost:8080/account/verify");
-        settings.setLinkedDirectoryName("acme");
+        externalAccountProviderMap = new ConcurrentHashMap<>();
 
         for(ExternalAccountProviderSettings providerSettings : persistence.findAll()){
-            load(providerSettings);
+            try {
+                load(providerSettings);
+            }catch (Exception e){
+                log.error("Coulc not load External Account Provider: "+providerSettings, e);
+            }
         }
-
-        //load(settings);
     }
 
     @GetMapping("/findByName/{name}")
     public ExternalAccountProvider findByName(@PathVariable String name){
-        //TODO
 
         return externalAccountProviderMap.get(name);
     }
@@ -58,7 +57,6 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
 
 
     public void load(ExternalAccountProviderSettings settings){
-        //TODO
         log.info("Loading External Account Provider: "+settings.getName());
         ExternalAccountProvider accountProvider = new WINLLCExternalAccountProvider(settings);
 

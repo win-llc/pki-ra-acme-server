@@ -9,19 +9,4 @@ import java.util.Optional;
 
 public interface CertificatePersistence extends DataPersistence<CertData> {
 
-    /*
-    private Map<String, CertData> certDataMap = new HashMap<>();
-
-    @Override
-    public Optional<CertData> getById(String id) {
-        return Optional.of(certDataMap.get(id));
-    }
-
-    @Override
-    public CertData save(CertData data) {
-        certDataMap.put(data.getId(), data);
-        return data;
-    }
-
-     */
 }

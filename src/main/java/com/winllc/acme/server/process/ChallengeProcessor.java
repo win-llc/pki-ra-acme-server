@@ -87,9 +87,4 @@ valid              invalid
         }
     }
 
-    public List<ChallengeData> getCurrentChallengesForAuthorization(AuthorizationData authorizationData){
-        //TODO
-        List<ChallengeData> challengeDataList = challengePersistence.findAllByAuthorizationIdEquals(authorizationData.getId());
-        return null;
-    }
 }

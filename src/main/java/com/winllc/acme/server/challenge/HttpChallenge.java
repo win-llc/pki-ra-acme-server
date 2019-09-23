@@ -37,8 +37,6 @@ public class HttpChallenge implements ChallengeVerification {
     private AccountPersistence accountPersistence;
 
     public void verify(ChallengeData challenge){
-        //TODO run verification in separate thread
-
         try {
             challengeProcessor.processing(challenge);
 
@@ -61,41 +59,52 @@ public class HttpChallenge implements ChallengeVerification {
 
         @Override
         public void run() {
-            //TODO
             boolean success = false;
+            int retries = 3;
+            int attempts = 0;
 
-            try {
+            while(attempts < retries && !success) {
+                try {
 
-                Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(challenge.getAuthorizationId());
-                AuthorizationData authorizationData = authorizationDataOptional.get();
-                Optional<AccountData> accountDataOptional = accountPersistence.findById(authorizationData.getAccountId());
+                    Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(challenge.getAuthorizationId());
+                    AuthorizationData authorizationData = authorizationDataOptional.get();
+                    Optional<AccountData> accountDataOptional = accountPersistence.findById(authorizationData.getAccountId());
 
-                String urlString = "http://"+authorizationDataOptional.get().getObject().getIdentifier().getValue()
-                        +"/.well-known/acme-challenge/"+challenge.getObject().getToken();
-                URL url = new URL(urlString);
-                HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                con.setUseCaches(false);
-                con.setRequestMethod("GET");
+                    String urlString = "http://" + authorizationDataOptional.get().getObject().getIdentifier().getValue()
+                            + "/.well-known/acme-challenge/" + challenge.getObject().getToken();
+                    URL url = new URL(urlString);
+                    HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                    con.setUseCaches(false);
+                    con.setRequestMethod("GET");
 
-                String body = readResponseBody(con);
+                    String body = readResponseBody(con);
 
-                JWK jwk = accountDataOptional.get().buildJwk();
-                log.info(jwk.computeThumbprint().toString());
+                    JWK jwk = accountDataOptional.get().buildJwk();
+                    log.info(jwk.computeThumbprint().toString());
 
-                boolean bodyValid = false;
-                String expectedBody = challenge.getObject().getToken()+"."+jwk.computeThumbprint().toString();
-                if(body != null && body.contentEquals(expectedBody)){
-                    bodyValid = true;
+                    boolean bodyValid = false;
+                    String expectedBody = challenge.getObject().getToken() + "." + jwk.computeThumbprint().toString();
+                    if (body != null && body.contentEquals(expectedBody)) {
+                        bodyValid = true;
+                    }
+
+                    int responseCode = con.getResponseCode();
+                    if (responseCode == 200 && bodyValid) success = true;
+
+                    challenge = challengeProcessor.validation(challenge, success);
+
+                    challengePersistence.save(challenge);
+                } catch (Exception e) {
+                    log.error("Could not verify HTTP", e);
+                }finally {
+                    attempts++;
+                    try {
+                        //Sleep 5 seconds before retrying
+                        if(!success) Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        log.error("Could not sleep thread", e);
+                    }
                 }
-
-                int responseCode = con.getResponseCode();
-                if (responseCode == 200 && bodyValid) success = true;
-
-                challenge = challengeProcessor.validation(challenge, success);
-
-                challengePersistence.save(challenge);
-            }catch (Exception e){
-                e.printStackTrace();
             }
         }
 

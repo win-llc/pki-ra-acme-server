@@ -12,26 +12,5 @@ import java.util.Optional;
 public interface ChallengePersistence extends DataPersistence<ChallengeData> {
 
     List<ChallengeData> findAllByAuthorizationIdEquals(String id);
-    /*
-    private Map<String, ChallengeData> challengeDataMap = new HashMap<>();
 
-    @Override
-    public Optional<ChallengeData> getById(String id) {
-        //TODO
-        return Optional.of(challengeDataMap.get(id));
-    }
-
-    @Override
-    public ChallengeData save(ChallengeData data) {
-        //TODO
-        challengeDataMap.put(data.getId(), data);
-        return data;
-    }
-
-    public List<ChallengeData> getAllChallengesForAuthorization(AuthorizationData authorizationData){
-        //TODO
-        return null;
-    }
-
-     */
 }

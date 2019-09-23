@@ -131,9 +131,6 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
                 if(response.getStatusLine().getStatusCode() == 200){
                     return true;
                 }
-                try (InputStream instream = entity.getContent()) {
-                    //TODO do something useful, return true or false
-                }
             }
         }catch (Exception e){
             AcmeServerException exception = new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not verify external account");

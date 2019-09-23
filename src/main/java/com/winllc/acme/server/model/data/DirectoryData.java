@@ -27,7 +27,12 @@ public class DirectoryData extends DataObject<Directory> {
         directory.setNewNonce(directoryBaseUrl+"new-nonce");
         directory.setNewAccount(directoryBaseUrl+"new-account");
         directory.setNewOrder(directoryBaseUrl+"new-order");
-        directory.setNewAuthz(directoryBaseUrl+"new-authz");
+
+        //Only include if allowed, 7.4.1
+        if(settings.isAllowPreAuthorization()) {
+            directory.setNewAuthz(directoryBaseUrl + "new-authz");
+        }
+
         directory.setRevokeCert(directoryBaseUrl+"revoke-cert");
         directory.setKeyChange(directoryBaseUrl+"key-change");
 
@@ -44,8 +49,7 @@ public class DirectoryData extends DataObject<Directory> {
         directoryData.setName(settings.getName());
         directoryData.setMapsToCertificateAuthorityName(settings.getMapsToCertificateAuthorityName());
         directoryData.setExternalAccountProviderName(settings.getExternalAccountProviderName());
-        //todo update
-        directoryData.setTermsOfServiceLastUpdatedOn(java.sql.Date.valueOf(LocalDate.now().minusMonths(1)));
+        directoryData.setTermsOfServiceLastUpdatedOn(settings.getTermsOfServiceLastUpdatedOn());
 
         return directoryData;
     }

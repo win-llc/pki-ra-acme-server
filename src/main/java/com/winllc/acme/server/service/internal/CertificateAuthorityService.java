@@ -17,14 +17,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/certAuthority")
 public class CertificateAuthorityService implements SettingsService<CertificateAuthoritySettings, CertificateAuthority> {
 
     private static final Logger log = LogManager.getLogger(CertificateAuthorityService.class);
-
-    //TODO CRUD service for CA's
 
     @Autowired
     private CertificateAuthoritySettingsPersistence settingsPersistence;
@@ -33,24 +32,13 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
 
     @PostConstruct
     private void postConstruct() {
-        certificateAuthorityMap = new HashMap<>();
-
-        //TODO remove this
-        CertificateAuthoritySettings settings = new CertificateAuthoritySettings();
-        settings.setName("ca1");
-        settings.setType("internal");
-
-        try {
-            //load(settings);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        certificateAuthorityMap = new ConcurrentHashMap<>();
 
         for(CertificateAuthoritySettings s : settingsPersistence.findAll()){
             try {
                 load(s);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Could not load "+s, e);
             }
         }
 
@@ -79,8 +67,6 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
 
     @PostMapping("/save")
     public void save(@RequestBody CertificateAuthoritySettings settings) throws Exception {
-        //TODO persist settings
-
         settingsPersistence.save(settings);
 
         load(settings);
@@ -120,10 +106,4 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
         return certificateAuthorityMap.get(name);
     }
 
-
-    public CertificateAuthority getByDirectoryName(String directoryName){
-        //todo
-        //return caMap.get(directoryData.getMapsToCertificateAuthorityName());
-        return null;
-    }
 }

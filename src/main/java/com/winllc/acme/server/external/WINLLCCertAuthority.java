@@ -5,6 +5,8 @@ import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.contants.ChallengeType;
+import com.winllc.acme.server.contants.ProblemType;
+import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
@@ -19,6 +21,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.io.InputStream;
@@ -28,6 +32,8 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 
 public class WINLLCCertAuthority extends AbstractCertAuthority {
+
+    private static final Logger log = LogManager.getLogger(WINLLCCertAuthority.class);
 
     public WINLLCCertAuthority(CertificateAuthoritySettings settings) {
         super(settings);
@@ -40,7 +46,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) {
+    public X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
         //todo
 
         Map<String, String> additionalSettings = settings.getAdditionalSettings();
@@ -62,21 +68,19 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
             if (entity != null) {
                 if(response.getStatusLine().getStatusCode() == 200){
-                    //todo
+                    String b64Cert = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
+                    return CertUtil.base64ToCert(b64Cert);
                 }
-
-                String b64Cert = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
-                return CertUtil.base64ToCert(b64Cert);
             }
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Could not issuer cert", e);
         }finally {
             httppost.completed();
         }
 
         //todo submit csr to externalCA
 
-        return null;
+        throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not issue certificate");
     }
 
     @Override

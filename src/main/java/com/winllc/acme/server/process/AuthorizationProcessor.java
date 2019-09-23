@@ -119,20 +119,23 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
                     challenge.setUrl(challengeData.buildUrl());
                     challenge.setType(challengeType.toString());
 
-                    challengePersistence.save(challengeData);
+                    challengeData = challengePersistence.save(challengeData);
 
-                    authorization.addChallenge(challenge);
+                    authorization.addChallenge(challengeData.getObject());
                 }
             }
-        }
 
-        //if not challenges needed, mark as valid
-        if(authorization.getChallenges().length == 0){
-            authorization.setStatus(StatusType.VALID.toString());
-        }
+            //if no challenges needed, mark as valid
+            if(authorization.getChallenges().length == 0){
+                authorization.setStatus(StatusType.VALID.toString());
+            }
 
-        authorizationData = authorizationPersistence.save(authorizationData);
-        return Optional.of(authorizationData);
+            authorizationData = authorizationPersistence.save(authorizationData);
+            return Optional.of(authorizationData);
+        }else {
+            //If can't issue for identifier, return no authorization
+            return Optional.empty();
+        }
     }
 
     //If a challenge is marked valid, authorization should be marked valid, unless it's expired
