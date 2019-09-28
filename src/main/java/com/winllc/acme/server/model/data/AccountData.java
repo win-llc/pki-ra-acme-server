@@ -14,6 +14,7 @@ import java.util.Date;
 public class AccountData extends DataObject<Account> {
 
     private String jwk;
+    private String eabKeyIdentifier;
     private Date lastAgreedToTermsOfServiceOn;
 
     public AccountData(Account object, String directory) {
@@ -23,6 +24,14 @@ public class AccountData extends DataObject<Account> {
     @Override
     public String buildUrl() {
         return buildBaseUrl() + "acct/" + getId();
+    }
+
+    public String getEabKeyIdentifier() {
+        return eabKeyIdentifier;
+    }
+
+    public void setEabKeyIdentifier(String eabKeyIdentifier) {
+        this.eabKeyIdentifier = eabKeyIdentifier;
     }
 
     public String getJwk() {

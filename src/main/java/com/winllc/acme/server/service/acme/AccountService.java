@@ -143,6 +143,7 @@ public class AccountService extends BaseService {
 
                     if(externalAccountJWS != null) {
                         account.setExternalAccountBinding(accountRequest.getExternalAccountBinding().toJson());
+                        accountData.setEabKeyIdentifier(externalAccountJWS.getHeader().getKeyID());
                     }else{
                         throw new Exception("Could not build JWS External Account Object");
                     }

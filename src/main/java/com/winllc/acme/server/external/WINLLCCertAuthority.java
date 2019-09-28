@@ -1,6 +1,7 @@
 package com.winllc.acme.server.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.winllc.acme.common.AdditionalSetting;
 import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.util.CertUtil;
@@ -49,12 +50,12 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     public X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
         //todo
 
-        Map<String, String> additionalSettings = settings.getAdditionalSettings();
+        Optional<AdditionalSetting> optionalSetting = settings.getAdditionalSettingByKey("issueCertUrl");
 
-        String caUrl = additionalSettings.get("caUrl");
+        String issueCertUrl = optionalSetting.get().getValue();
 
         HttpClient httpclient = HttpClients.createDefault();
-        HttpPost httppost = new HttpPost(caUrl);
+        HttpPost httppost = new HttpPost(issueCertUrl);
 
         try {
             List<NameValuePair> params = new ArrayList<>(2);
@@ -95,42 +96,37 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         return new Certificate[0];
     }
 
+    //Get rules applied to specified account from an external source
     @Override
     public List<CAValidationRule> getValidationRules(AccountData accountData) {
-        //todo not static
-        String verificationUrl = settings.getExternalValidationRulesUrl()+"/"+"kidtest";
+        String verificationUrl = settings.getExternalValidationRulesUrl()+"/"+accountData.getEabKeyIdentifier();
 
         HttpClient httpclient = HttpClients.createDefault();
         HttpPost httppost = new HttpPost(verificationUrl);
 
         try {
-            List<NameValuePair> params = new ArrayList<>(2);
-
-            //httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
-            //Execute and get the response.
             HttpResponse response = httpclient.execute(httppost);
             HttpEntity entity = response.getEntity();
 
-
             if (entity != null) {
                 if(response.getStatusLine().getStatusCode() == 200){
-                    //todo
+                    String validationRules = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    ArrayList list = objectMapper.readValue(validationRules, ArrayList.class);
+
+                    List<CAValidationRule> rules = new ArrayList<>();
+
+                    for(Object obj : list) {
+                        rules.add(objectMapper.convertValue(obj, CAValidationRule.class));
+                    }
+
+                    return rules;
+                }else{
+                    log.error("Did not receive expected return code: "+response.getStatusLine().getStatusCode());
                 }
-
-                String validationRules = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
-                ObjectMapper objectMapper = new ObjectMapper();
-                ArrayList list = objectMapper.readValue(validationRules, ArrayList.class);
-
-                List<CAValidationRule> rules = new ArrayList<>();
-
-                for(Object obj : list) {
-                    rules.add(objectMapper.convertValue(obj, CAValidationRule.class));
-                }
-
-                return rules;
             }
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Could not get validation rules", e);
         }finally {
             httppost.completed();
         }

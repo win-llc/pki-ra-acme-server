@@ -3,10 +3,7 @@ package com.winllc.acme.server.process;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.model.acme.Order;
-import com.winllc.acme.server.model.data.AuthorizationData;
-import com.winllc.acme.server.model.data.DataObject;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.data.OrderData;
+import com.winllc.acme.server.model.data.*;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,11 +40,16 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
 
     @Override
     public OrderData buildNew(DirectoryData directoryData) {
+        throw new UnsupportedOperationException();
+    }
+
+    public OrderData buildNew(DirectoryData directoryData, AccountData accountData) {
         Order order = new Order();
         order.setStatus(StatusType.PENDING.toString());
+        //todo dynamic
         order.willExpireInMinutes(30);
 
-        OrderData orderData = new OrderData(order, directoryData.getName());
+        OrderData orderData = new OrderData(order, directoryData.getName(), accountData.getId());
         order.setFinalize(orderData.buildUrl()+"/finalize");
 
         return orderData;

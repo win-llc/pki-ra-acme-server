@@ -6,8 +6,8 @@ import com.winllc.acme.server.model.acme.Order;
 
 public class OrderData extends DataObject<Order> {
 
-    public OrderData(Order object, String directory) {
-        super(object, directory);
+    public OrderData(Order object, String directory, String accountId) {
+        super(object, directory, accountId);
     }
 
     @Override

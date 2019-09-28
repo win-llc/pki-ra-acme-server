@@ -72,7 +72,7 @@ public class OrderService extends BaseService {
             if (orderRequest.isValid() && !problemDetailsOptional.isPresent()) {
 
                 //CA can fulfill
-                OrderData orderData = orderProcessor.buildNew(directoryData);
+                OrderData orderData = orderProcessor.buildNew(directoryData, accountData);
                 Order order = orderData.getObject();
 
                 order.setIdentifiers(orderRequest.getIdentifiers());
@@ -299,7 +299,7 @@ public class OrderService extends BaseService {
         try {
             X509Certificate certificate = ca.issueCertificate(order, CertUtil.csrBase64ToPKC10Object(csr));
             String[] certWithChains = CertUtil.certAndChainsToPemArray(certificate, ca.getTrustChain());
-            CertData certData = new CertData(certWithChains, directoryData.getName());
+            CertData certData = new CertData(certWithChains, directoryData.getName(), order.getAccountId());
             certData = certificatePersistence.save(certData);
 
             order.getObject().setStatus(StatusType.VALID.toString());

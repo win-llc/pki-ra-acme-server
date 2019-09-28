@@ -76,6 +76,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
         return authorizationData;
     }
 
+
     public AuthorizationData buildNew(PayloadAndAccount payloadAndAccount, OrderData orderData) {
         AuthorizationData authorization = buildNew(payloadAndAccount.getDirectoryData(), orderData);
 
