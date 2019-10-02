@@ -1,5 +1,7 @@
 package com.winllc.acme.server.external;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
@@ -12,16 +14,19 @@ import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.requestresponse.AccountRequest;
 import com.winllc.acme.server.model.requestresponse.ExternalAccountBinding;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -31,17 +36,13 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
 
     private String name;
     private String linkedDirectoryName;
+    private String baseUrl;
     private String accountVerificationUrl;
-
-    public WINLLCExternalAccountProvider(String name, String linkedDirectoryName, String accountVerificationUrl) {
-        this.name = name;
-        this.linkedDirectoryName = linkedDirectoryName;
-        this.accountVerificationUrl = accountVerificationUrl;
-    }
 
     public WINLLCExternalAccountProvider(ExternalAccountProviderSettings settings){
         this.name = settings.getName();
         this.accountVerificationUrl = settings.getAccountVerificationUrl();
+        this.baseUrl = settings.getBaseUrl();
     }
 
     @Override
@@ -89,6 +90,44 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
 
         //The “kid” field MUST contain the key identifier provided by the CA
         return verifyAccountBinding(innerObject, outerObject);
+    }
+
+    @Override
+    public List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier) {
+        //todo
+
+        String url = baseUrl+"/account/getCanIssueDomains/"+accountKeyIdentifier;
+
+        HttpClient httpclient = HttpClients.createDefault();
+        HttpGet httpGet = new HttpGet(url);
+
+        try {
+            //Execute and get the response.
+            HttpResponse response = httpclient.execute(httpGet);
+            HttpEntity entity = response.getEntity();
+
+            if (entity != null) {
+                if(response.getStatusLine().getStatusCode() == 200){
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    try {
+                        String result = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
+                        List val = objectMapper.readValue(result, List.class);
+                        return val;
+                    } catch (JsonProcessingException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }catch (Exception e){
+            AcmeServerException exception = new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not verify external account");
+            exception.addSuppressed(e);
+            //todo better error handling
+            e.printStackTrace();
+        }finally {
+            httpGet.completed();
+        }
+
+        return null;
     }
 
     @Override

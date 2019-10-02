@@ -68,6 +68,12 @@ public class SecurityValidatorUtil {
     }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
+                                                                                Class<T> clazz) throws AcmeServerException {
+        AcmeURL kid = new AcmeURL(jwsObject.getHeader().getKeyID());
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, kid.getObjectId().get(), clazz);
+    }
+
+    public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
                                                                                        String accountId, Class<T> clazz) throws AcmeServerException {
 
         //Section 6.2

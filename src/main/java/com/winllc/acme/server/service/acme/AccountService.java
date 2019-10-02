@@ -235,10 +235,11 @@ public class AccountService extends BaseService {
                 } else {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
                     problemDetails.setDetail("Terms of service have changed");
-                    //TODO
-                    problemDetails.setInstance("TODO");
+                    problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
+
                     return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
-                            //TODO headers
+                            .header("Link", "<"+directoryData.getObject().getMeta().getTermsOfService()+">;rel=\"terms-of-service")
+                            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                             .body(problemDetails);
                 }
             }else{
@@ -268,10 +269,9 @@ public class AccountService extends BaseService {
 
         PayloadAndAccount<AcmeJWSObject> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(httpRequest, AcmeJWSObject.class);
         AccountData accountData = payloadAndAccount.getAccountData();
+        String newKey = payloadAndAccount.getPayload().getHeader().getJWK().toString();
 
         if (validateJWSForKeyChange(payloadAndAccount, payloadAndAccount.getPayload())) {
-            //TODO
-            String newKey = payloadAndAccount.getPayload().getHeader().getJWK().toString();
             accountData.setJwk(newKey);
 
             accountData = accountPersistence.save(accountData);
@@ -281,18 +281,26 @@ public class AccountService extends BaseService {
             return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                     .body(accountData.getObject());
         } else {
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("Location", payloadAndAccount.getAccountData().buildUrl());
+            Optional<AccountData> optionalAccount = accountPersistence.findByJwkEquals(newKey);
+            //If account already exists, return conflict error
+            if(optionalAccount.isPresent()){
+                HttpHeaders headers = new HttpHeaders();
+                headers.add("Location", payloadAndAccount.getAccountData().buildUrl());
 
-            //TODO
-            ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
 
-            log.error(problemDetails);
+                log.error(problemDetails);
 
-            //TODO, only for conflict
-            return buildBaseResponseEntity(409, payloadAndAccount.getDirectoryData())
-                    .headers(headers)
-                    .body(problemDetails);
+                return buildBaseResponseEntity(409, payloadAndAccount.getDirectoryData())
+                        .headers(headers)
+                        .body(problemDetails);
+            }else{
+                //Key rollover failed for another reason
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+
+                return buildBaseResponseEntity(500, payloadAndAccount.getDirectoryData())
+                        .body(problemDetails);
+            }
         }
     }
 
@@ -302,7 +310,7 @@ public class AccountService extends BaseService {
         AccountData accountData = payloadAndAccount.getAccountData();
         AcmeJWSObject outerJws = payloadAndAccount.getPayload();
 
-        boolean verified = false;
+        boolean verified;
         KeyChangeRequest keyChangeRequest = null;
         //Check that the JWS protected header of the inner JWS has a “jwk” field.
         if (innerJws.getHeader().getJWK() == null) {

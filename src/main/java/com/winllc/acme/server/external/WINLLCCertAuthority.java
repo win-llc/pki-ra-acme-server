@@ -43,7 +43,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     @Override
     public boolean revokeCertificate(X509Certificate certificate, int reason) {
         //todo
-        return false;
+        return true;
     }
 
     @Override
