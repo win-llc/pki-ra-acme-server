@@ -7,6 +7,7 @@ import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
+import com.winllc.acme.server.contants.RevocationReason;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AccountData;
@@ -26,7 +27,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -41,14 +41,42 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public boolean revokeCertificate(X509Certificate certificate, int reason) {
-        //todo
-        return true;
+    public boolean revokeCertificate(X509Certificate certificate, int reason) throws AcmeServerException {
+        Optional<AdditionalSetting> optionalSetting = settings.getAdditionalSettingByKey("revokeCertUrl");
+
+        String revokeCertUrl = optionalSetting.get().getValue();
+
+        HttpClient httpclient = HttpClients.createDefault();
+        HttpPost httppost = new HttpPost(revokeCertUrl);
+
+        try {
+            List<NameValuePair> params = new ArrayList<>(2);
+            params.add(new BasicNameValuePair("serial", certificate.getSerialNumber().toString()));
+            params.add(new BasicNameValuePair("reason", Integer.toString(reason)));
+
+            httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
+            //Execute and get the response.
+            HttpResponse response = httpclient.execute(httppost);
+            HttpEntity entity = response.getEntity();
+
+            if (entity != null) {
+                if(response.getStatusLine().getStatusCode() == 200){
+                    return true;
+                }else{
+                    return false;
+                }
+            }
+        }catch (Exception e){
+            log.error("Could not issuer cert", e);
+        }finally {
+            httppost.completed();
+        }
+
+        throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not issue certificate");
     }
 
     @Override
     public X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
-        //todo
 
         Optional<AdditionalSetting> optionalSetting = settings.getAdditionalSettingByKey("issueCertUrl");
 
@@ -66,7 +94,6 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             HttpResponse response = httpclient.execute(httppost);
             HttpEntity entity = response.getEntity();
 
-
             if (entity != null) {
                 if(response.getStatusLine().getStatusCode() == 200){
                     String b64Cert = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
@@ -78,8 +105,6 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         }finally {
             httppost.completed();
         }
-
-        //todo submit csr to externalCA
 
         throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not issue certificate");
     }

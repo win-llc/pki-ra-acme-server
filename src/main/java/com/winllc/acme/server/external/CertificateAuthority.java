@@ -17,7 +17,7 @@ import java.util.List;
 public interface CertificateAuthority {
 
     String getName();
-    boolean revokeCertificate(X509Certificate certificate, int reason);
+    boolean revokeCertificate(X509Certificate certificate, int reason) throws AcmeServerException;
     X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) throws AcmeServerException;
     boolean isCertificateRevoked(X509Certificate certificate);
     Certificate[] getTrustChain();
