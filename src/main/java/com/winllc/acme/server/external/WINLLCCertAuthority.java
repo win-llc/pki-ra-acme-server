@@ -12,6 +12,7 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
+import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
@@ -36,8 +37,15 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     private static final Logger log = LogManager.getLogger(WINLLCCertAuthority.class);
 
+    private ExternalAccountProviderService externalAccountProviderService;
+
     public WINLLCCertAuthority(CertificateAuthoritySettings settings) {
         super(settings);
+    }
+
+    public WINLLCCertAuthority(CertificateAuthoritySettings settings, ExternalAccountProviderService service){
+        super(settings);
+        this.externalAccountProviderService = service;
     }
 
     @Override
@@ -124,7 +132,8 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     //Get rules applied to specified account from an external source
     @Override
     public List<CAValidationRule> getValidationRules(AccountData accountData) {
-        String verificationUrl = settings.getExternalValidationRulesUrl()+"/"+accountData.getEabKeyIdentifier();
+        ExternalAccountProvider eap = externalAccountProviderService.findByName(settings.getMapsToExternalAccountProviderName());
+        String verificationUrl = eap.getAccountValidationRulesUrl()+"/"+accountData.getEabKeyIdentifier();
 
         HttpClient httpclient = HttpClients.createDefault();
         HttpPost httppost = new HttpPost(verificationUrl);

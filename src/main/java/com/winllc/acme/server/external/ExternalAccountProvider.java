@@ -14,4 +14,5 @@ public interface ExternalAccountProvider {
     List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier);
     //For verification of JWS sent from client
     String getAccountVerificationUrl();
+    String getAccountValidationRulesUrl();
 }

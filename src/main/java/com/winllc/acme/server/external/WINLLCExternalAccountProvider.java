@@ -38,10 +38,12 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
     private String linkedDirectoryName;
     private String baseUrl;
     private String accountVerificationUrl;
+    private String accountValidationRulesUrl;
 
     public WINLLCExternalAccountProvider(ExternalAccountProviderSettings settings){
         this.name = settings.getName();
         this.accountVerificationUrl = settings.getAccountVerificationUrl();
+        this.accountValidationRulesUrl = settings.getAccountValidationRulesUrl();
         this.baseUrl = settings.getBaseUrl();
     }
 
@@ -133,6 +135,11 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
     @Override
     public String getAccountVerificationUrl() {
         return accountVerificationUrl;
+    }
+
+    @Override
+    public String getAccountValidationRulesUrl() {
+        return accountValidationRulesUrl;
     }
 
     /*

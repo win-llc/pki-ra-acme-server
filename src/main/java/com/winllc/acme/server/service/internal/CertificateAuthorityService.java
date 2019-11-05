@@ -27,6 +27,8 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
 
     @Autowired
     private CertificateAuthoritySettingsPersistence settingsPersistence;
+    @Autowired
+    private ExternalAccountProviderService externalAccountProviderService;
 
     private Map<String, CertificateAuthority> certificateAuthorityMap;
 
@@ -53,7 +55,7 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
                 ca = new InternalCertAuthority(settings);
                 break;
             case "winllc":
-                ca = new WINLLCCertAuthority(settings);
+                ca = new WINLLCCertAuthority(settings, externalAccountProviderService);
                 break;
         }
 
