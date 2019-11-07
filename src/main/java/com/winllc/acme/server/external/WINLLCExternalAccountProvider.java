@@ -22,6 +22,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 
@@ -96,37 +97,12 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
 
     @Override
     public List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier) {
-        //todo
-
-        String url = baseUrl+"/account/getCanIssueDomains/"+accountKeyIdentifier;
-
-        HttpClient httpclient = HttpClients.createDefault();
-        HttpGet httpGet = new HttpGet(url);
+        String url = baseUrl+"/validation/account/getCanIssueDomains/"+accountKeyIdentifier;
 
         try {
-            //Execute and get the response.
-            HttpResponse response = httpclient.execute(httpGet);
-            HttpEntity entity = response.getEntity();
-
-            if (entity != null) {
-                if(response.getStatusLine().getStatusCode() == 200){
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    try {
-                        String result = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
-                        List val = objectMapper.readValue(result, List.class);
-                        return val;
-                    } catch (JsonProcessingException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }catch (Exception e){
-            AcmeServerException exception = new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not verify external account");
-            exception.addSuppressed(e);
-            //todo better error handling
+            return HttpCommandUtil.process(new HttpGet(url), 200, List.class);
+        } catch (AcmeServerException e) {
             e.printStackTrace();
-        }finally {
-            httpGet.completed();
         }
 
         return null;
@@ -157,7 +133,6 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
         Base64URL macKey = jwsObject.getSignature();
         String keyIdentifier = jwsObject.getHeader().getKeyID();
 
-        HttpClient httpclient = HttpClients.createDefault();
         HttpPost httppost = new HttpPost(url);
 
         // Request parameters and other properties.
@@ -169,21 +144,12 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
         try {
             httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
 
-            //Execute and get the response.
-            HttpResponse response = httpclient.execute(httppost);
-            HttpEntity entity = response.getEntity();
+            HttpCommandUtil.process(httppost, 200, String.class);
 
-            if (entity != null) {
-                if(response.getStatusLine().getStatusCode() == 200){
-                    return true;
-                }
-            }
         }catch (Exception e){
             AcmeServerException exception = new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not verify external account");
             exception.addSuppressed(e);
             throw exception;
-        }finally {
-            httppost.completed();
         }
 
         return false;

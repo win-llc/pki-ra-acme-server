@@ -54,7 +54,6 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
         String revokeCertUrl = optionalSetting.get().getValue();
 
-        HttpClient httpclient = HttpClients.createDefault();
         HttpPost httppost = new HttpPost(revokeCertUrl);
 
         try {
@@ -63,24 +62,14 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             params.add(new BasicNameValuePair("reason", Integer.toString(reason)));
 
             httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
-            //Execute and get the response.
-            HttpResponse response = httpclient.execute(httppost);
-            HttpEntity entity = response.getEntity();
 
-            if (entity != null) {
-                if(response.getStatusLine().getStatusCode() == 200){
-                    return true;
-                }else{
-                    return false;
-                }
-            }
+            HttpCommandUtil.process(httppost, 200, String.class);
+
+            return true;
         }catch (Exception e){
             log.error("Could not issuer cert", e);
-        }finally {
-            httppost.completed();
+            return false;
         }
-
-        throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not issue certificate");
     }
 
     @Override
@@ -98,6 +87,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             params.add(new BasicNameValuePair("pkcs10", CertUtil.certificationRequestToPEM(certificationRequest)));
 
             httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
+
             //Execute and get the response.
             HttpResponse response = httpclient.execute(httppost);
             HttpEntity entity = response.getEntity();

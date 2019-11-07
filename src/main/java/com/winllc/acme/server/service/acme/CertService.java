@@ -25,6 +25,7 @@ import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bouncycastle.cms.PKCS7TypedStream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -85,6 +86,7 @@ public class CertService extends BaseService {
                         returnCert = certData.getCertChain()[0];
                         break;
                     case "application/pkcs7-mime":
+
                         //TODO
                         break;
                     default:
@@ -118,9 +120,6 @@ public class CertService extends BaseService {
         DirectoryData directoryData = directoryDataService.findByName(directory);
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
         try {
-            //TODO verify signature from either account key or certificate
-            //JWSObject jwsObject = AppUtil.getJWSObjectFromHttpRequest(request);
-
             AcmeJWSObject jwsObject = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
 
             PayloadAndAccount<RevokeCertRequest> payloadAndAccount = securityValidatorUtil
@@ -134,10 +133,15 @@ public class CertService extends BaseService {
             JWSVerifier verifier = new RSASSAVerifier((RSAPublicKey) certificate.getPublicKey());
             boolean signedByCert = jwsObject.verify(verifier);
 
-            if(signedByCert) {
-                //JWSVerifier verifier = new RSASSAVerifier((RSAKey) jwsObject.getHeader().getJWK().toPublicJWK());
-            }else{
+            //TODO verify signature from either account key or certificate
+            boolean signedByAccountKey = false;
 
+            if(signedByCert) {
+                log.debug("Revocation signed by Cert");
+            }else if(signedByAccountKey){
+                log.debug("Revocation signed by Account Key");
+            }else{
+                throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Not authorized to revoke certificate");
             }
 
             if(accountCanRevokeCertificate(certificate, payloadAndAccount.getAccountData())) {
@@ -202,7 +206,7 @@ public class CertService extends BaseService {
         if(StringUtils.isNotBlank(accountData.getEabKeyIdentifier())){
             //If account tied to an external account, verify
             DirectoryData directoryData = directoryDataService.findByName(accountData.getDirectory());
-            ExternalAccountProvider accountProvider = externalAccountProviderService.findByName(directoryData.getMapsToCertificateAuthorityName());
+            ExternalAccountProvider accountProvider = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
 
             List<String> canIssueToDomains = accountProvider.getCanIssueToDomainsForExternalAccount(accountData.getEabKeyIdentifier());
 
