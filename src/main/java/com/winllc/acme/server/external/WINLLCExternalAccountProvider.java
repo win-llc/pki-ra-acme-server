@@ -1,7 +1,5 @@
 package com.winllc.acme.server.external;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
@@ -10,27 +8,17 @@ import com.winllc.acme.common.ExternalAccountProviderSettings;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.requestresponse.AccountRequest;
-import com.winllc.acme.server.model.requestresponse.ExternalAccountBinding;
+import com.winllc.acme.server.util.HttpCommandUtil;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.utils.HttpClientUtils;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 
 public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
@@ -146,12 +134,11 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
 
             HttpCommandUtil.process(httppost, 200, String.class);
 
+            return true;
         }catch (Exception e){
             AcmeServerException exception = new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not verify external account");
             exception.addSuppressed(e);
             throw exception;
         }
-
-        return false;
     }
 }

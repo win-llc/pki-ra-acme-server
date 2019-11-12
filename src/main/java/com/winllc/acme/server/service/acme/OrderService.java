@@ -162,7 +162,7 @@ public class OrderService extends BaseService {
     @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
         AcmeURL acmeURL = new AcmeURL(httpServletRequest);
-        DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.findByName(directory);
 
         PayloadAndAccount<CertificateRequest> certificateRequestPayloadAndAccount = null;
         try {
@@ -228,14 +228,12 @@ public class OrderService extends BaseService {
             OrderList orderList = orderListData.getObject();
             if (cursor != null) {
                 orderList = orderListData.buildPaginatedOrderList(cursor);
-                //todo only add if next page available
                 Optional<String> nextPageLink = orderListData.buildPaginatedLink(cursor);
                 //If a next page is available, add the link
                 nextPageLink.ifPresent(s -> headers.add("Link", s));
             }
 
-            return buildBaseResponseEntity(200, directoryData)
-                    .headers(headers)
+            return buildBaseResponseEntity(200, directoryData, headers)
                     .body(orderList);
         } else {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);

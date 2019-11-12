@@ -78,7 +78,8 @@ public class SecurityValidatorUtil {
 
         //Section 6.2
         if(!jwsObject.hasValidHeaderFields()){
-           //todo add back throw new AcmeServerException(ProblemType.MALFORMED);
+            log.info("Invalid header field found");
+            throw new AcmeServerException(ProblemType.MALFORMED);
         }
 
         DirectoryData directoryData = directoryDataService.findByName(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
@@ -114,17 +115,9 @@ public class SecurityValidatorUtil {
                 throw new AcmeServerException(ProblemType.MALFORMED);
             }
 
-            //Check if account key and request JWK match
-            /* todo probably not needed if signature verified
-            if (!jwsObject.getHeader().getJWK().equals(accountJWK)) {
-                throw new AcmeServerException(ProblemType.UNAUTHORIZED);
-            }
-             */
-
             String nonce = jwsObject.getNonce();
-            //Verify nonce has not been used, TODO add back
+            //Verify nonce has not been used
             if (!NonceUtil.checkNonceUsed(nonce)) {
-            //if (!Application.usedNonces.contains(nonce)) {
                 NonceUtil.markNonceUsed(nonce);
             } else {
                 //NONCE has been used before, possible replay attack

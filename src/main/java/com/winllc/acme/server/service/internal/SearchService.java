@@ -27,8 +27,6 @@ public class SearchService {
 
     @GetMapping("/findCertsAssociatedWithExternalAccount/{eabKeyIdentifier}")
     public List<String> findCertsAssociatedWithExternalAccount(@PathVariable String eabKeyIdentifier){
-        //todo
-
         List<AccountData> accountDataList = accountPersistence.findAllByEabKeyIdentifierEquals(eabKeyIdentifier);
 
         List<String> allCerts = new ArrayList<>();

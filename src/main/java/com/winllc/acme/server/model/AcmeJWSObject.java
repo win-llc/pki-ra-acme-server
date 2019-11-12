@@ -45,23 +45,36 @@ public class AcmeJWSObject extends JWSObject {
     }
 
     //Section 6.2
-    public boolean hasValidHeaderFields(){
-        if(getHeader().getAlgorithm() != null &&
-                getHeader().getCustomParam("nonce") != null &&
-                getHeader().getCustomParam("url") != null &&
-                (getHeader().getJWK() != null || getHeader().getCustomParam("kid") != null)){
-            boolean valid = true;
-            JWSAlgorithm alg = getHeader().getAlgorithm();
-            if(JWSAlgorithm.Family.HMAC_SHA.contains(alg)){
-                valid = false;
-            }
 
-            if(getHeader().getJWK() != null && getHeader().getCustomParam("kid") != null){
-                valid = false;
-            }
-            return valid;
+    /**
+     * The JWS MUST be in the Flattened JSON Serialization [RFC7515]
+     * The JWS MUST NOT have multiple signatures
+     * The JWS Unencoded Payload Option [RFC7797] MUST NOT be used
+     * The JWS Unprotected Header [RFC7515] MUST NOT be used
+     * The JWS Payload MUST NOT be detached
+     * The JWS Protected Header MUST include the following fields:
+     * “alg” (Algorithm)
+     * This field MUST NOT contain “none” or a Message Authentication Code (MAC) algorithm (e.g. one in which the algorithm registry description mentions MAC/HMAC).
+     * “nonce” (defined in Section 6.5)
+     * “url” (defined in Section 6.4)
+     * Either “jwk” (JSON Web Key) or “kid” (Key ID) as specified below
+     * @return
+     */
+    public boolean hasValidHeaderFields(){
+        JWSHeader header = getHeader();
+
+        if(header.getAlgorithm() == null) return false;
+        if(header.getAlgorithm().getName().contentEquals("none")) return false;
+        if(JWSAlgorithm.Family.HMAC_SHA.contains(header.getAlgorithm())) return false;
+        if(header.getCustomParam("nonce") == null) return false;
+        if(header.getCustomParam("url") == null) return false;
+        if(header.getJWK() == null && header.getKeyID() == null){
+            return false;
+        }else if(header.getJWK() != null && header.getKeyID() != null){
+            return false;
         }
-        return false;
+
+        return true;
     }
 
 }

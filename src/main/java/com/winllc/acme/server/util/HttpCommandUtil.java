@@ -1,4 +1,4 @@
-package com.winllc.acme.server.external;
+package com.winllc.acme.server.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,12 +16,32 @@ import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.impl.client.HttpClients;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.util.function.Function;
 
 public class HttpCommandUtil {
 
     public static <T> T process(HttpRequestBase request, int successCode, Class<T> returnClass) throws AcmeServerException {
+
+        Function<String, T> jsonResultProcess = (content) -> {
+            ObjectMapper objectMapper = new ObjectMapper();
+            if(StringUtils.isNotBlank(content)) {
+                try {
+                    return objectMapper.readValue(content, returnClass);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }else{
+                return null;
+            }
+        };
+
+        return processCustom(request, successCode, jsonResultProcess);
+    }
+
+    public static <T> T processCustom(HttpRequestBase request, int successCode, Function<String, T> func) throws AcmeServerException {
         HttpClient httpclient = HttpClients.createDefault();
 
         try {
@@ -31,13 +51,9 @@ public class HttpCommandUtil {
 
             if (entity != null) {
                 if(response.getStatusLine().getStatusCode() == successCode){
-                    ObjectMapper objectMapper = new ObjectMapper();
+
                     String result = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
-                    if(StringUtils.isNotBlank(result)) {
-                        return objectMapper.readValue(result, returnClass);
-                    }else{
-                        return null;
-                    }
+                    return func.apply(result);
                 }else{
                     throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Invalid response value: "+response.getStatusLine().getStatusCode());
                 }

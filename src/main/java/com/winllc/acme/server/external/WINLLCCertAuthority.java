@@ -7,12 +7,13 @@ import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
-import com.winllc.acme.server.contants.RevocationReason;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.acme.Identifier;
+import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
+import com.winllc.acme.server.util.HttpCommandUtil;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
@@ -20,18 +21,21 @@ import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import java.util.function.Function;
 
 public class WINLLCCertAuthority extends AbstractCertAuthority {
 
@@ -79,7 +83,15 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
         String issueCertUrl = optionalSetting.get().getValue();
 
-        HttpClient httpclient = HttpClients.createDefault();
+        Function<String, X509Certificate> processCert = (content) -> {
+            try {
+                return CertUtil.base64ToCert(content);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        };
+
         HttpPost httppost = new HttpPost(issueCertUrl);
 
         try {
@@ -88,20 +100,15 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
             httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
 
-            //Execute and get the response.
-            HttpResponse response = httpclient.execute(httppost);
-            HttpEntity entity = response.getEntity();
+            X509Certificate certificate = HttpCommandUtil.processCustom(httppost, 200, processCert);
 
-            if (entity != null) {
-                if(response.getStatusLine().getStatusCode() == 200){
-                    String b64Cert = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
-                    return CertUtil.base64ToCert(b64Cert);
-                }
+            if(certificate != null){
+                return certificate;
+            }else{
+                throw new Exception("Failed to build cert");
             }
         }catch (Exception e){
             log.error("Could not issuer cert", e);
-        }finally {
-            httppost.completed();
         }
 
         throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not issue certificate");
@@ -114,9 +121,28 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public Certificate[] getTrustChain() {
-        //todo
-        return new Certificate[0];
+    public Certificate[] getTrustChain() throws AcmeServerException {
+        //todo, internal should not be static
+        String url = settings.getBaseUrl()+"/ca/trustChain/internal";
+
+        Function<String, Certificate[]> processTrustChain = (content) -> {
+            try {
+                return CertUtil.trustChainStringToCertArray(content);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        };
+
+        HttpGet httpGet = new HttpGet(url);
+
+        try {
+            return HttpCommandUtil.processCustom(httpGet, 200, processTrustChain);
+        } catch (AcmeServerException e) {
+            e.printStackTrace();
+            throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve trust chain");
+        }
+
     }
 
     //Get rules applied to specified account from an external source

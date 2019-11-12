@@ -69,7 +69,7 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
 
     @PostMapping("/save")
     public void save(@RequestBody CertificateAuthoritySettings settings) throws Exception {
-        settingsPersistence.save(settings);
+        settings = settingsPersistence.save(settings);
 
         load(settings);
     }

@@ -31,7 +31,8 @@ public class OrderListData extends DataObject<OrderList> {
     //e.g. Link: <https://example.com/acme/orders/rzGoeA?cursor=2>;rel="next"
     public Optional<String> buildPaginatedLink(int currentRequestedPage){
         //only include rel=next if there are more pages
-        if(getNumberOfPages() == currentRequestedPage){
+        int numberOfPages = getNumberOfPages() - 1;
+        if(numberOfPages == currentRequestedPage){
             return Optional.empty();
         }
 
