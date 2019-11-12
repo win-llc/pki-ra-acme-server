@@ -1,7 +1,11 @@
 package com.winllc.acme.server.service.acme;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jose.jwk.KeyConverter;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
@@ -36,8 +40,11 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
 import java.util.List;
 import java.util.Optional;
 
@@ -125,16 +132,8 @@ public class CertService extends BaseService {
             PayloadAndAccount<RevokeCertRequest> payloadAndAccount = securityValidatorUtil
                     .verifyJWSAndReturnPayloadForExistingAccount(jwsObject, request, RevokeCertRequest.class);
 
-            RevokeCertRequest revokeCertRequest = payloadAndAccount.getPayload();
-
-            //TODO before revoking, ensure account owns all of the identifiers associated with the certificate
-            X509Certificate certificate = revokeCertRequest.buildX509Cert();
-
-            JWSVerifier verifier = new RSASSAVerifier((RSAPublicKey) certificate.getPublicKey());
-            boolean signedByCert = jwsObject.verify(verifier);
-
-            //TODO verify signature from either account key or certificate
-            boolean signedByAccountKey = false;
+            boolean signedByAccountKey = signedByAccountKeyCheck(payloadAndAccount, jwsObject);
+            boolean signedByCert = signedByCertCheck(payloadAndAccount, jwsObject);
 
             if(signedByCert) {
                 log.debug("Revocation signed by Cert");
@@ -143,6 +142,9 @@ public class CertService extends BaseService {
             }else{
                 throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Not authorized to revoke certificate");
             }
+
+            RevokeCertRequest revokeCertRequest = payloadAndAccount.getPayload();
+            X509Certificate certificate = revokeCertRequest.buildX509Cert();
 
             if(accountCanRevokeCertificate(certificate, payloadAndAccount.getAccountData())) {
 
@@ -179,6 +181,24 @@ public class CertService extends BaseService {
         }
     }
 
+    private boolean signedByCertCheck(PayloadAndAccount<RevokeCertRequest> payloadAndAccount, JWSObject jwsObject) throws CertificateException, IOException, JOSEException {
+        RevokeCertRequest revokeCertRequest = payloadAndAccount.getPayload();
+        X509Certificate certificate = revokeCertRequest.buildX509Cert();
+
+        JWSVerifier verifier = new RSASSAVerifier((RSAPublicKey) certificate.getPublicKey());
+        return jwsObject.verify(verifier);
+    }
+
+    private boolean signedByAccountKeyCheck(PayloadAndAccount<RevokeCertRequest> payloadAndAccount, JWSObject jwsObject) throws ParseException, JOSEException {
+
+        AccountData accountData = payloadAndAccount.getAccountData();
+
+        RSAKey rsaKey = RSAKey.parse(accountData.buildJwk().toJSONObject());
+
+        JWSVerifier verifier = new RSASSAVerifier(rsaKey);
+        return jwsObject.verify(verifier);
+    }
+
     private Optional<ProblemDetails> validateRevocationRequest(RevokeCertRequest request){
         boolean valid = true;
 
@@ -200,7 +220,6 @@ public class CertService extends BaseService {
     The server MUST also consider a revocation request valid if it is signed with the private key corresponding to the public key in the certificate.
      */
     private boolean accountCanRevokeCertificate(X509Certificate certificate, AccountData accountData){
-        //todo
         List<String> dnsListInCert = CertUtil.getDNSSubjectAlts(certificate);
 
         if(StringUtils.isNotBlank(accountData.getEabKeyIdentifier())){

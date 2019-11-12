@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -32,7 +33,11 @@ public class HttpCommandUtil {
                 if(response.getStatusLine().getStatusCode() == successCode){
                     ObjectMapper objectMapper = new ObjectMapper();
                     String result = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
-                    return objectMapper.readValue(result, returnClass);
+                    if(StringUtils.isNotBlank(result)) {
+                        return objectMapper.readValue(result, returnClass);
+                    }else{
+                        return null;
+                    }
                 }else{
                     throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Invalid response value: "+response.getStatusLine().getStatusCode());
                 }
