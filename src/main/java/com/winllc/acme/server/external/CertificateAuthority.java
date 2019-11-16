@@ -21,7 +21,7 @@ public interface CertificateAuthority {
     X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) throws AcmeServerException;
     boolean isCertificateRevoked(X509Certificate certificate);
     Certificate[] getTrustChain() throws AcmeServerException;
-    List<CAValidationRule> getValidationRules(AccountData accountData);
-    boolean canIssueToIdentifier(Identifier identifier, AccountData accountData);
-    List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData);
+    List<CAValidationRule> getValidationRules(AccountData accountData) throws AcmeServerException;
+    boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) throws AcmeServerException;
+    List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) throws AcmeServerException;
 }

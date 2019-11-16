@@ -9,7 +9,7 @@ import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.requestresponse.AccountRequest;
-import com.winllc.acme.server.util.HttpCommandUtil;
+import com.winllc.acme.common.util.HttpCommandUtil;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -89,7 +89,7 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
 
         try {
             return HttpCommandUtil.process(new HttpGet(url), 200, List.class);
-        } catch (AcmeServerException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 

@@ -247,7 +247,7 @@ public class OrderService extends BaseService {
     }
 
     //Return problem details if CA can't issue, return empty if can fulfill
-    private Optional<ProblemDetails> caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData, AccountData accountData) {
+    private Optional<ProblemDetails> caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData, AccountData accountData) throws AcmeServerException {
 
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
         ProblemDetails problemDetails = new ProblemDetails(ProblemType.COMPOUND);
@@ -266,7 +266,7 @@ public class OrderService extends BaseService {
 
 
     //Section 8
-    private void generateAuthorizationsForOrder(OrderData orderData, PayloadAndAccount payloadAndAccount) {
+    private void generateAuthorizationsForOrder(OrderData orderData, PayloadAndAccount payloadAndAccount) throws AcmeServerException {
         List<String> authorizationUrls = new ArrayList<>();
         Order order = orderData.getObject();
 

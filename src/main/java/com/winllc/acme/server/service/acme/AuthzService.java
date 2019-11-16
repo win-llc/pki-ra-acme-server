@@ -206,7 +206,7 @@ public class AuthzService extends BaseService {
         }
     }
 
-    private boolean serverWillingToIssueForIdentifier(Identifier identifier, DirectoryData directoryData, AccountData accountData, boolean allowWildcards) {
+    private boolean serverWillingToIssueForIdentifier(Identifier identifier, DirectoryData directoryData, AccountData accountData, boolean allowWildcards) throws AcmeServerException {
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
 
         if(!allowWildcards && identifier.getValue().startsWith("*")){

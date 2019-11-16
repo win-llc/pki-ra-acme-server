@@ -9,11 +9,10 @@ import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.acme.ProblemDetails;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
-import com.winllc.acme.server.util.HttpCommandUtil;
+import com.winllc.acme.common.util.HttpCommandUtil;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
@@ -29,10 +28,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.function.Function;
@@ -57,8 +54,9 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         Optional<AdditionalSetting> optionalSetting = settings.getAdditionalSettingByKey("revokeCertUrl");
 
         String revokeCertUrl = optionalSetting.get().getValue();
+        String fullUrl = settings.getBaseUrl()+revokeCertUrl;
 
-        HttpPost httppost = new HttpPost(revokeCertUrl);
+        HttpPost httppost = new HttpPost(fullUrl);
 
         try {
             List<NameValuePair> params = new ArrayList<>(2);
@@ -82,6 +80,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         Optional<AdditionalSetting> optionalSetting = settings.getAdditionalSettingByKey("issueCertUrl");
 
         String issueCertUrl = optionalSetting.get().getValue();
+        String fullUrl = settings.getBaseUrl()+issueCertUrl;
 
         Function<String, X509Certificate> processCert = (content) -> {
             try {
@@ -92,7 +91,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             return null;
         };
 
-        HttpPost httppost = new HttpPost(issueCertUrl);
+        HttpPost httppost = new HttpPost(fullUrl);
 
         try {
             List<NameValuePair> params = new ArrayList<>(2);
@@ -138,7 +137,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
         try {
             return HttpCommandUtil.processCustom(httpGet, 200, processTrustChain);
-        } catch (AcmeServerException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve trust chain");
         }
@@ -147,7 +146,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     //Get rules applied to specified account from an external source
     @Override
-    public List<CAValidationRule> getValidationRules(AccountData accountData) {
+    public List<CAValidationRule> getValidationRules(AccountData accountData) throws AcmeServerException {
         ExternalAccountProvider eap = externalAccountProviderService.findByName(settings.getMapsToExternalAccountProviderName());
         String verificationUrl = eap.getAccountValidationRulesUrl()+"/"+accountData.getEabKeyIdentifier();
 
@@ -173,10 +172,12 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
                     return rules;
                 }else{
                     log.error("Did not receive expected return code: "+response.getStatusLine().getStatusCode());
+                    throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve validation rules");
                 }
             }
         }catch (Exception e){
             log.error("Could not get validation rules", e);
+            throw new AcmeServerException(ProblemType.SERVER_INTERNAL, e.getMessage());
         }finally {
             httppost.completed();
         }
@@ -185,7 +186,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) {
+    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) throws AcmeServerException {
         //no rules, can issue
         if(getValidationRules(accountData).size() == 0) return true;
 
@@ -198,7 +199,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) {
+    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) throws AcmeServerException {
         Set<ChallengeType> challengeTypes = new HashSet<>();
         if(canIssueToIdentifier(identifier, accountData)){
             for (CAValidationRule rule : getValidationRules(accountData)) {
@@ -208,8 +209,9 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
                 }
             }
             return new ArrayList<>(challengeTypes);
+        }else{
+            throw new AcmeServerException(ProblemType.REJECTED_IDENTIFIER, identifier.getValue());
         }
-        return null;
     }
 
     public boolean canIssueToIdentifier(Identifier identifier, CAValidationRule validationRule){

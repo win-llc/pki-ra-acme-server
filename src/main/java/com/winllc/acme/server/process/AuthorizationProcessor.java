@@ -3,6 +3,7 @@ package com.winllc.acme.server.process;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.model.acme.Authorization;
@@ -97,7 +98,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     }
 
     //Based off the directory, get the CA, which has the rules for how to build authorizations for identifiers
-    public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, PayloadAndAccount payloadAndAccount, OrderData orderData){
+    public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, PayloadAndAccount payloadAndAccount, OrderData orderData) throws AcmeServerException {
         DirectoryData directory = payloadAndAccount.getDirectoryData();
         CertificateAuthority ca = certificateAuthorityService.getByName(directory.getMapsToCertificateAuthorityName());
 
