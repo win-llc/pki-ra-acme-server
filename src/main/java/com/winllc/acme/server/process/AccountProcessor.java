@@ -11,6 +11,9 @@ import com.winllc.acme.server.model.data.OrderListData;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
+import com.winllc.acme.server.service.acme.AccountService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +31,7 @@ deactiv.|                revoke |
  */
 @Component
 public class AccountProcessor implements AcmeDataProcessor<AccountData> {
+    private static final Logger log = LogManager.getLogger(AccountProcessor.class);
 
     @Autowired
     private AccountPersistence accountPersistence;
@@ -63,6 +67,8 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
 
             markInProgressAccountObjectsInvalid(accountData);
 
+            log.info("Account deactivated: "+accountData.getId());
+
             return accountData;
         }else{
             throw new InternalServerException("Account was not in state to be set deactivated");
@@ -77,6 +83,8 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
             accountData = accountPersistence.save(accountData);
 
             markInProgressAccountObjectsInvalid(accountData);
+
+            log.info("Account revoked: "+accountData.getId());
 
             return accountData;
         }else{

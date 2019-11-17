@@ -27,8 +27,7 @@ public class DirectoryService {
 
     @RequestMapping(method = RequestMethod.GET, value = "{directoryName}/directory")
     public ResponseEntity<?> directory(HttpServletRequest request, @PathVariable String directoryName){
-        AcmeURL acmeURL = new AcmeURL(request);
-        DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
+        DirectoryData directoryData = directoryDataService.findByName(directoryName);
         Directory directory = directoryData.getObject();
 
         return ResponseEntity.ok()

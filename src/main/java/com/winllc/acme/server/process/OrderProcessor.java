@@ -6,6 +6,9 @@ import com.winllc.acme.server.model.acme.Order;
 import com.winllc.acme.server.model.data.*;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +36,8 @@ processing ------------+
  */
 @Component
 public class OrderProcessor implements AcmeDataProcessor<OrderData> {
+    private static final Logger log = LogManager.getLogger(OrderProcessor.class);
+
     @Autowired
     private OrderPersistence orderPersistence;
     @Autowired
@@ -88,19 +93,24 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
     }
 
     //When an authorization is marked valid, update status of order if all authorizations are now valid
-    public OrderData authorizationMarkedValid(String orderId) throws InternalServerException {
-        Optional<OrderData> orderDataOptional = orderPersistence.findById(orderId);
-        if(orderDataOptional.isPresent()) {
-            OrderData orderData = orderDataOptional.get();
-            boolean allInValidState = allAuthorizationsValidCheck(orderData);
+    public Optional<OrderData> authorizationMarkedValid(String orderId) throws InternalServerException {
+        if(StringUtils.isNotBlank(orderId)) {
+            Optional<OrderData> orderDataOptional = orderPersistence.findById(orderId);
+            if (orderDataOptional.isPresent()) {
+                OrderData orderData = orderDataOptional.get();
+                boolean allInValidState = allAuthorizationsValidCheck(orderData);
 
-            if (allInValidState) {
-                orderData.getObject().setStatus(StatusType.READY.toString());
+                if (allInValidState) {
+                    orderData.getObject().setStatus(StatusType.READY.toString());
+                }
+                return Optional.of(orderData);
+            } else {
+                throw new InternalServerException("Could not find order " + orderId);
             }
-            return orderData;
         }else{
-            throw new InternalServerException("Could not find order "+orderId);
+            log.debug("No Order to update");
         }
+        return Optional.empty();
     }
 
     private boolean allAuthorizationsValidCheck(OrderData orderData){

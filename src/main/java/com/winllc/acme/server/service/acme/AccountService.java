@@ -210,12 +210,21 @@ public class AccountService extends BaseService {
 
             if(!accountData.getObject().getStatus().equalsIgnoreCase(StatusType.DEACTIVATED.toString())) {
                 //Section 7.3.6
-                if (StringUtils.isNotBlank(accountRequest.getStatus()) && accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
+                if (StringUtils.isNotBlank(accountRequest.getStatus())) {
 
-                    accountData = accountProcessor.deactivateAccount(accountData);
+                    boolean updated = false;
+                    if(accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
+                        accountData = accountProcessor.deactivateAccount(accountData);
+                        updated = true;
+                    }else if(accountRequest.getStatus().contentEquals(StatusType.REVOKED.toString())){
+                        accountData = accountProcessor.accountRevoke(accountData);
+                        updated = true;
+                    }
 
-                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                            .body(accountData.getObject());
+                    if(updated) {
+                        return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                                .body(accountData.getObject());
+                    }
                 }
 
                 //Section 7.3.3

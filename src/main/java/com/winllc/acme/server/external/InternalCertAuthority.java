@@ -2,6 +2,7 @@ package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
+import com.winllc.acme.common.CertificateDetails;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.model.acme.Identifier;
@@ -88,6 +89,11 @@ public class InternalCertAuthority extends AbstractCertAuthority {
         }
 
         return null;
+    }
+
+    @Override
+    public Optional<CertificateDetails> getCertificateDetails(String serial) {
+        return Optional.empty();
     }
 
     @Override

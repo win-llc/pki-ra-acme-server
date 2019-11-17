@@ -9,6 +9,8 @@ import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +19,7 @@ import java.util.List;
 
 @Component
 public class ChallengeProcessor implements AcmeDataProcessor<ChallengeData> {
+    private static final Logger log = LogManager.getLogger(ChallengeProcessor.class);
 
     /*
              pending
@@ -48,8 +51,6 @@ valid              invalid
         challenge.setStatus(StatusType.PENDING.toString());
 
         String token = RandomStringUtils.random(50);
-        //String tokenBase64 = Base64.getEncoder().encodeToString(token.getBytes()).replace("/","+").replace("-", "+");
-        //challenge.setToken(tokenBase64);
 
         Base64.Encoder urlEncoder = java.util.Base64.getUrlEncoder().withoutPadding();
         String encoded = urlEncoder.encodeToString(token.getBytes());

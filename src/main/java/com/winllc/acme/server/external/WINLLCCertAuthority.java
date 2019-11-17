@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.winllc.acme.common.AdditionalSetting;
 import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
+import com.winllc.acme.common.CertificateDetails;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
@@ -22,12 +23,14 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -114,6 +117,28 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
+    public Optional<CertificateDetails> getCertificateDetails(String serial) {
+        String fullUrl = settings.getBaseUrl()+"/certDetails/"+settings.getMapsToCaConnectionName();
+        try {
+            URIBuilder builder = new URIBuilder(fullUrl);
+            builder.setParameter("serial", serial);
+            HttpGet httpGet = new HttpGet(builder.build());
+
+            CertificateDetails details = HttpCommandUtil.process(httpGet, 200, CertificateDetails.class);
+
+            if(details != null){
+                return Optional.of(details);
+            }
+
+        } catch (Exception e) {
+            log.error("Could not process", e);
+        }
+
+
+        return Optional.empty();
+    }
+
+    @Override
     public boolean isCertificateRevoked(X509Certificate certificate) {
         //todo
         return false;
@@ -122,13 +147,13 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     @Override
     public Certificate[] getTrustChain() throws AcmeServerException {
         //todo, internal should not be static
-        String url = settings.getBaseUrl()+"/ca/trustChain/internal";
+        String url = settings.getBaseUrl()+"/ca/trustChain/"+settings.getMapsToCaConnectionName();
 
         Function<String, Certificate[]> processTrustChain = (content) -> {
             try {
                 return CertUtil.trustChainStringToCertArray(content);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Conversion failed", e);
             }
             return null;
         };
@@ -138,7 +163,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         try {
             return HttpCommandUtil.processCustom(httpGet, 200, processTrustChain);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Could not process get", e);
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve trust chain");
         }
 

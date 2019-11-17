@@ -15,6 +15,8 @@ import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -44,6 +46,7 @@ import java.util.Optional;
  */
 @Component
 public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationData> {
+    private static final Logger log = LogManager.getLogger(AuthorizationProcessor.class);
 
     @Autowired
     private ChallengeProcessor challengeProcessor;
@@ -63,6 +66,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
         }else{
             //todo verify this best approach
             authorizationData.setOrderId("");
+            log.debug("Authorization does not include Order");
         }
         return authorizationData;
     }
@@ -90,6 +94,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     //Section 7.5.1
     public AuthorizationData buildCurrentAuthorization(AuthorizationData authorizationData){
         if(authorizationData.getObject().isExpired()){
+            log.debug("Marking Authorization expired: "+authorizationData);
             authorizationData.getObject().setStatus(StatusType.EXPIRED.toString());
             authorizationPersistence.save(authorizationData);
         }
