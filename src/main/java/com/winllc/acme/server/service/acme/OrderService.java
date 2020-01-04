@@ -279,6 +279,12 @@ public class OrderService extends BaseService {
             }
         }
 
+        //todo include pre-authorizations from account
+        DirectoryData directoryData = payloadAndAccount.getDirectoryData();
+        if(directoryData.isAllowPreAuthorization() && directoryData.getObject().getMeta().isExternalAccountRequired()){
+            //todo
+        }
+
         order.setAuthorizations(authorizationUrls.toArray(new String[0]));
     }
 

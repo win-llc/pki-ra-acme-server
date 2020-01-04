@@ -87,6 +87,8 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
     public List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier) {
         String url = baseUrl+"/validation/account/getCanIssueDomains/"+accountKeyIdentifier;
 
+        //todo clean up
+
         try {
             return HttpCommandUtil.process(new HttpGet(url), 200, List.class);
         } catch (Exception e) {
@@ -104,6 +106,20 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
     @Override
     public String getAccountValidationRulesUrl() {
         return accountValidationRulesUrl;
+    }
+
+    @Override
+    public List<String> getPreAuthorizationIdentifiers(String accountKeyIdentifier) {
+        //todo
+
+        String url = baseUrl+"/account/preAuthzIdentifiers/"+accountKeyIdentifier;
+
+        try {
+            return HttpCommandUtil.process(new HttpGet(url), 200, List.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /*

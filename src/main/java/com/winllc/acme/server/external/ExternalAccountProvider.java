@@ -15,4 +15,6 @@ public interface ExternalAccountProvider {
     //For verification of JWS sent from client
     String getAccountVerificationUrl();
     String getAccountValidationRulesUrl();
+
+    List<String> getPreAuthorizationIdentifiers(String accountKeyIdentifier);
 }

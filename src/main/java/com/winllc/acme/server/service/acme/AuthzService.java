@@ -176,7 +176,9 @@ public class AuthzService extends BaseService {
             log.info(jwsObjectFromHttpRequest);
         } catch (AcmeServerException e) {
             e.printStackTrace();
+            log.error("Could not parse JWS Object from request", e);
         }
+
         if (optionalChallengeData.isPresent()) {
             ChallengeData challengeData = optionalChallengeData.get();
             Challenge challenge = challengeData.getObject();

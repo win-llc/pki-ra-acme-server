@@ -66,8 +66,7 @@ public class CertService extends BaseService {
     private ExternalAccountProviderService externalAccountProviderService;
 
     //Section 7.4.2
-    @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST,
-            consumes = "application/jose+json")
+    @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST)
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
         try {
             AcmeURL acmeURL = new AcmeURL(request);

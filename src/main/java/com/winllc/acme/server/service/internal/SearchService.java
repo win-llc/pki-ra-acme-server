@@ -1,5 +1,8 @@
 package com.winllc.acme.server.service.internal;
 
+import com.winllc.acme.common.CertSearchParam;
+import com.winllc.acme.common.CertSearchParams;
+import com.winllc.acme.common.NoSqlCertSearchConverter;
 import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.CertData;
@@ -7,10 +10,7 @@ import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.CertificatePersistence;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,5 +44,14 @@ public class SearchService {
         }
 
         return allCerts;
+    }
+
+    @PostMapping("/search/certs")
+    public List<CertData> searchForCerts(CertSearchParam certSearchParam){
+        //todo
+
+        String query = certSearchParam.buildQuery(NoSqlCertSearchConverter.build());
+
+        return null;
     }
 }
