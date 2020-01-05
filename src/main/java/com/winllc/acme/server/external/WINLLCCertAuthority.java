@@ -31,11 +31,14 @@ import org.apache.logging.log4j.Logger;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class WINLLCCertAuthority extends AbstractCertAuthority {
 
@@ -99,6 +102,12 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         try {
             List<NameValuePair> params = new ArrayList<>(2);
             params.add(new BasicNameValuePair("pkcs10", CertUtil.certificationRequestToPEM(certificationRequest)));
+
+            String dnsNames = Stream.of(orderData.getObject().getIdentifiers())
+                    .map(i -> i.getValue())
+                    .collect(Collectors.joining(","));
+
+            if(StringUtils.isNotBlank(dnsNames)) params.add(new BasicNameValuePair("dnsNames", URLEncoder.encode(dnsNames, "UTF-8")));
 
             httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
 
