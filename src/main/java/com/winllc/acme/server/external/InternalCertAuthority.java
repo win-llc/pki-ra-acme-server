@@ -1,5 +1,6 @@
 package com.winllc.acme.server.external;
 
+import com.winllc.acme.common.AccountValidationResponse;
 import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.CertificateDetails;
@@ -116,7 +117,7 @@ public class InternalCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public List<CAValidationRule> getValidationRules(AccountData accountData) {
+    public AccountValidationResponse getValidationRules(AccountData accountData) {
         //todo
         CAValidationRule rule = new CAValidationRule();
         rule.setBaseDomainName("winllc.com");
@@ -127,16 +128,19 @@ public class InternalCertAuthority extends AbstractCertAuthority {
         CAValidationRule rule2 = new CAValidationRule();
         rule2.setAllowHostnameIssuance(true);
 
-        return Stream.of(rule, rule2).collect(Collectors.toList());
+        List<CAValidationRule> rules = Stream.of(rule, rule2).collect(Collectors.toList());
+        AccountValidationResponse response = new AccountValidationResponse();
+        response.setCaValidationRules(rules);
+        return response;
     }
 
 
     @Override
     public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) {
         //no rules, can issue
-        if(getValidationRules(accountData).size() == 0) return true;
+        if(getValidationRules(accountData).getCaValidationRules().size() == 0) return true;
 
-        for (CAValidationRule rule : getValidationRules(accountData)) {
+        for (CAValidationRule rule : getValidationRules(accountData).getCaValidationRules()) {
             if(canIssueToIdentifier(identifier, rule)){
                 return true;
             }
@@ -148,7 +152,7 @@ public class InternalCertAuthority extends AbstractCertAuthority {
     public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) {
         Set<ChallengeType> challengeTypes = new HashSet<>();
         if(canIssueToIdentifier(identifier, accountData)){
-            for (CAValidationRule rule : getValidationRules(accountData)) {
+            for (CAValidationRule rule : getValidationRules(accountData).getCaValidationRules()) {
                 if(canIssueToIdentifier(identifier, rule)){
                     if(rule.isRequireHttpChallenge()) challengeTypes.add(ChallengeType.HTTP);
                     if(rule.isRequireDnsChallenge()) challengeTypes.add(ChallengeType.DNS);
@@ -247,19 +251,6 @@ public class InternalCertAuthority extends AbstractCertAuthority {
         }catch (Exception e){
             e.printStackTrace();
             throw e;
-        }
-    }
-
-    public boolean canIssueToIdentifier(Identifier identifier, CAValidationRule validationRule){
-        if(!identifier.getValue().contains(".") && validationRule.isAllowHostnameIssuance()){
-            return true;
-        }
-
-        if(StringUtils.isNotBlank(validationRule.getIdentifierType()) && StringUtils.isNotBlank(validationRule.getBaseDomainName()) &&
-                identifier.getType().contentEquals(validationRule.getIdentifierType()) && identifier.getValue().endsWith(validationRule.getBaseDomainName())){
-            return validationRule.isAllowIssuance();
-        }else{
-            return false;
         }
     }
 

@@ -1,10 +1,7 @@
 package com.winllc.acme.server.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.winllc.acme.common.AdditionalSetting;
-import com.winllc.acme.common.CAValidationRule;
-import com.winllc.acme.common.CertificateAuthoritySettings;
-import com.winllc.acme.common.CertificateDetails;
+import com.winllc.acme.common.*;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
@@ -180,7 +177,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     //Get rules applied to specified account from an external source
     @Override
-    public List<CAValidationRule> getValidationRules(AccountData accountData) throws AcmeServerException {
+    public AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
         ExternalAccountProvider eap = externalAccountProviderService.findByName(settings.getMapsToExternalAccountProviderName());
         String verificationUrl = eap.getAccountValidationRulesUrl()+"/"+accountData.getEabKeyIdentifier();
 
@@ -195,15 +192,9 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
                 if(response.getStatusLine().getStatusCode() == 200){
                     String validationRules = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
                     ObjectMapper objectMapper = new ObjectMapper();
-                    ArrayList list = objectMapper.readValue(validationRules, ArrayList.class);
+                    AccountValidationResponse validationResponse = objectMapper.readValue(validationRules, AccountValidationResponse.class);
 
-                    List<CAValidationRule> rules = new ArrayList<>();
-
-                    for(Object obj : list) {
-                        rules.add(objectMapper.convertValue(obj, CAValidationRule.class));
-                    }
-
-                    return rules;
+                    return validationResponse;
                 }else{
                     log.error("Did not receive expected return code: "+response.getStatusLine().getStatusCode());
                     throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve validation rules");
@@ -216,15 +207,20 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             httppost.completed();
         }
 
-        return new ArrayList<>();
+        throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Did not get valid response from validation server");
     }
 
     @Override
     public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) throws AcmeServerException {
-        //no rules, can issue
-        if(getValidationRules(accountData).size() == 0) return true;
 
-        for (CAValidationRule rule : getValidationRules(accountData)) {
+        AccountValidationResponse validationResponse = getValidationRules(accountData);
+
+        //if account is not valid, do not issue
+        if(!validationResponse.isAccountIsValid()) return false;
+        //no rules, can issue
+        if(validationResponse.getCaValidationRules().size() == 0) return true;
+
+        for (CAValidationRule rule : validationResponse.getCaValidationRules()) {
             if(canIssueToIdentifier(identifier, rule)){
                 return true;
             }
@@ -236,7 +232,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) throws AcmeServerException {
         Set<ChallengeType> challengeTypes = new HashSet<>();
         if(canIssueToIdentifier(identifier, accountData)){
-            for (CAValidationRule rule : getValidationRules(accountData)) {
+            for (CAValidationRule rule : getValidationRules(accountData).getCaValidationRules()) {
                 if(canIssueToIdentifier(identifier, rule)){
                     if(rule.isRequireHttpChallenge()) challengeTypes.add(ChallengeType.HTTP);
                     if(rule.isRequireDnsChallenge()) challengeTypes.add(ChallengeType.DNS);
@@ -248,16 +244,5 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         }
     }
 
-    public boolean canIssueToIdentifier(Identifier identifier, CAValidationRule validationRule){
-        if(!identifier.getValue().contains(".") && validationRule.isAllowHostnameIssuance()){
-            return true;
-        }
 
-        if(StringUtils.isNotBlank(validationRule.getIdentifierType()) && StringUtils.isNotBlank(validationRule.getBaseDomainName()) &&
-                identifier.getType().contentEquals(validationRule.getIdentifierType()) && identifier.getValue().endsWith(validationRule.getBaseDomainName())){
-            return validationRule.isAllowIssuance();
-        }else{
-            return false;
-        }
-    }
 }

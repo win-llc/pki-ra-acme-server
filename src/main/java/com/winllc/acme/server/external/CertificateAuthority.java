@@ -1,5 +1,6 @@
 package com.winllc.acme.server.external;
 
+import com.winllc.acme.common.AccountValidationResponse;
 import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateDetails;
 import com.winllc.acme.server.contants.ChallengeType;
@@ -24,7 +25,7 @@ public interface CertificateAuthority {
     Optional<CertificateDetails> getCertificateDetails(String serial);
     boolean isCertificateRevoked(X509Certificate certificate);
     Certificate[] getTrustChain() throws AcmeServerException;
-    List<CAValidationRule> getValidationRules(AccountData accountData) throws AcmeServerException;
+    AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException;
     boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) throws AcmeServerException;
     List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) throws AcmeServerException;
 }
