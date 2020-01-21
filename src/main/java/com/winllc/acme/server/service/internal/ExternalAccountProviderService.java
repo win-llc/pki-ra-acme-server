@@ -10,10 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
@@ -47,11 +44,12 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
     }
 
     @PostMapping("/save")
-    public void save(@RequestBody ExternalAccountProviderSettings settings){
-
+    public ExternalAccountProviderSettings save(@RequestBody ExternalAccountProviderSettings settings){
         settings = persistence.save(settings);
 
         load(settings);
+
+        return settings;
     }
 
 
@@ -66,6 +64,15 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
     @GetMapping("/findSettingsByName/{name}")
     public ExternalAccountProviderSettings findSettingsByName(@PathVariable String name) {
         return persistence.findByName(name);
+    }
+
+    @GetMapping("/findSettingsById/{id}")
+    public ExternalAccountProviderSettings findSettingsById(@PathVariable String id) throws Exception {
+        Optional<ExternalAccountProviderSettings> settingsOptional = persistence.findById(id);
+        if(settingsOptional.isPresent()){
+            return settingsOptional.get();
+        }
+        throw new Exception("Could not find settings "+id);
     }
 
     @DeleteMapping("/delete/{name}")

@@ -9,14 +9,12 @@ import com.winllc.acme.server.persistence.internal.CertificateAuthoritySettingsP
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
@@ -68,15 +66,26 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
 
 
     @PostMapping("/save")
-    public void save(@RequestBody CertificateAuthoritySettings settings) throws Exception {
+    public CertificateAuthoritySettings save(@RequestBody CertificateAuthoritySettings settings) throws Exception {
         settings = settingsPersistence.save(settings);
 
         load(settings);
+
+        return settings;
     }
 
     @GetMapping("/findSettingsByName/{name}")
     public CertificateAuthoritySettings findSettingsByName(@PathVariable String name) {
         return settingsPersistence.findByName(name);
+    }
+
+    @GetMapping("/findSettingsById/{id}")
+    public CertificateAuthoritySettings findSettingsById(@PathVariable String id) throws Exception {
+        Optional<CertificateAuthoritySettings> settingsOptional = settingsPersistence.findById(id);
+        if(settingsOptional.isPresent()){
+            return settingsOptional.get();
+        }
+        throw new Exception("Could not find settings "+id);
     }
 
     @GetMapping("/findByName/{name}")
