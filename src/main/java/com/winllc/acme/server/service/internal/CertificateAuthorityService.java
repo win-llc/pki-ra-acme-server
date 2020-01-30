@@ -1,5 +1,6 @@
 package com.winllc.acme.server.service.internal;
 
+import com.winllc.acme.common.AcmeCertAuthorityType;
 import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.external.InternalCertAuthority;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/certAuthority")
@@ -64,6 +67,20 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
         }
     }
 
+    @GetMapping("/acmeCertAuthorityTypes")
+    public List<String> getCertTypes(){
+        return Stream.of(AcmeCertAuthorityType.values())
+                .map(v -> v.getValue())
+                .collect(Collectors.toList());
+    }
+
+    public Map<String, List<String>> getCertAuthorityTypesAndRequiredProperties(){
+
+        WINLLCCertAuthority.getRequiredProperties();
+
+        //todo
+        return null;
+    }
 
     @PostMapping("/save")
     public CertificateAuthoritySettings save(@RequestBody CertificateAuthoritySettings settings) throws Exception {

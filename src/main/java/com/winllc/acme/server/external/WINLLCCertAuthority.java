@@ -185,8 +185,12 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         HttpPost httppost = new HttpPost(verificationUrl);
 
         try {
+
+
             HttpResponse response = httpclient.execute(httppost);
             HttpEntity entity = response.getEntity();
+
+            //AccountValidationResponse validationResponse = HttpCommandUtil.process(httppost, 200, AccountValidationResponse.class);
 
             if (entity != null) {
                 if(response.getStatusLine().getStatusCode() == 200){
@@ -242,6 +246,12 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         }else{
             throw new AcmeServerException(ProblemType.REJECTED_IDENTIFIER, identifier.getValue());
         }
+    }
+
+    public static List<String> getRequiredProperties() {
+        List<String> props = new ArrayList<>();
+        props.add("issueCertUrl");
+        return props;
     }
 
 
