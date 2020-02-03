@@ -81,7 +81,7 @@ public class InternalCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) {
+    public X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) {
         try {
             KeyStore ks = loadKeystore(caKeystoreLocation, caKeystorePassword);
             return signCSR(orderData, certificationRequest, 30, ks, caKeystoreAlias, caKeystorePassword.toCharArray());

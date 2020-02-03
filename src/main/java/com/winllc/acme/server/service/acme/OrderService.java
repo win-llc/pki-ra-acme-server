@@ -20,6 +20,7 @@ import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,8 @@ public class OrderService extends BaseService {
     private OrderPersistence orderPersistence;
     @Autowired
     private OrderListPersistence orderListPersistence;
+    @Autowired
+    private AccountPersistence accountPersistence;
     @Autowired
     private CertificatePersistence certificatePersistence;
     @Autowired
@@ -301,7 +304,14 @@ public class OrderService extends BaseService {
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
 
         try {
-            X509Certificate certificate = ca.issueCertificate(order, CertUtil.csrBase64ToPKC10Object(csr));
+            Optional<AccountData> optionalAccount = accountPersistence.findById(order.getAccountId());
+            String eabKid = null;
+            if(optionalAccount.isPresent()){
+                AccountData accountData = optionalAccount.get();
+                if(StringUtils.isNotBlank(accountData.getEabKeyIdentifier())) eabKid = accountData.getEabKeyIdentifier();
+            }
+
+            X509Certificate certificate = ca.issueCertificate(order, eabKid, CertUtil.csrBase64ToPKC10Object(csr));
             String[] certWithChains = CertUtil.certAndChainsToPemArray(certificate, ca.getTrustChain());
             CertData certData = new CertData(certWithChains, directoryData.getName(), order.getAccountId());
             certData = certificatePersistence.save(certData);

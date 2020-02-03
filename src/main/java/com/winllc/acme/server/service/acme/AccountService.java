@@ -320,7 +320,6 @@ public class AccountService extends BaseService {
         AcmeJWSObject outerJws = payloadAndAccount.getPayload();
 
         boolean verified;
-        KeyChangeRequest keyChangeRequest = null;
         //Check that the JWS protected header of the inner JWS has a “jwk” field.
         if (innerJws.getHeader().getJWK() == null) {
             return false;
@@ -335,6 +334,7 @@ public class AccountService extends BaseService {
         }
 
         //Check that the payload of the inner JWS is a well-formed keyChange object (as described above).
+        KeyChangeRequest keyChangeRequest;
         try {
             keyChangeRequest = SecurityValidatorUtil.getPayloadFromJWSObject(innerJws, KeyChangeRequest.class);
         } catch (AcmeServerException e) {

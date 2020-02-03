@@ -9,6 +9,7 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.OrderData;
+import com.winllc.acme.server.service.acme.AccountService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.common.util.HttpCommandUtil;
 import org.apache.commons.io.IOUtils;
@@ -21,6 +22,7 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.logging.log4j.LogManager;
@@ -78,7 +80,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
+    public X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
 
         Optional<AdditionalSetting> optionalSetting = settings.getAdditionalSettingByKey("issueCertUrl");
 
@@ -97,16 +99,25 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         HttpPost httppost = new HttpPost(fullUrl);
 
         try {
-            List<NameValuePair> params = new ArrayList<>(2);
-            params.add(new BasicNameValuePair("pkcs10", CertUtil.certificationRequestToPEM(certificationRequest)));
-
+            String csr = CertUtil.certificationRequestToPEM(certificationRequest);
             String dnsNames = Stream.of(orderData.getObject().getIdentifiers())
-                    .map(i -> i.getValue())
+                    .map(Identifier::getValue)
                     .collect(Collectors.joining(","));
 
-            if(StringUtils.isNotBlank(dnsNames)) params.add(new BasicNameValuePair("dnsNames", URLEncoder.encode(dnsNames, "UTF-8")));
+            RACertificateRequest raCertificateRequest = new RACertificateRequest(eabKid, csr, dnsNames, settings.getMapsToCaConnectionName());
 
-            httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
+            //List<NameValuePair> params = new ArrayList<>(2);
+            //params.add(new BasicNameValuePair("pkcs10", csr));
+
+            //if(StringUtils.isNotBlank(dnsNames)) params.add(new BasicNameValuePair("dnsNames", URLEncoder.encode(dnsNames, "UTF-8")));
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            String val = objectMapper.writeValueAsString(raCertificateRequest);
+            StringEntity entity = new StringEntity(val);
+
+            httppost.setHeader("Accept", "application/json");
+            httppost.setHeader("Content-type", "application/json");
+            httppost.setEntity(entity);
 
             X509Certificate certificate = HttpCommandUtil.processCustom(httppost, 200, processCert);
 
@@ -185,8 +196,6 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         HttpPost httppost = new HttpPost(verificationUrl);
 
         try {
-
-
             HttpResponse response = httpclient.execute(httppost);
             HttpEntity entity = response.getEntity();
 

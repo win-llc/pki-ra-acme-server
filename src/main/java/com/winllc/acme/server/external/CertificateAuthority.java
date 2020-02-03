@@ -24,7 +24,7 @@ public interface CertificateAuthority {
     String getName();
     AcmeCertAuthorityType getType();
     boolean revokeCertificate(X509Certificate certificate, int reason) throws AcmeServerException;
-    X509Certificate issueCertificate(OrderData orderData, PKCS10CertificationRequest certificationRequest) throws AcmeServerException;
+    X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException;
     Optional<CertificateDetails> getCertificateDetails(String serial);
     boolean isCertificateRevoked(X509Certificate certificate);
     Certificate[] getTrustChain() throws AcmeServerException;
