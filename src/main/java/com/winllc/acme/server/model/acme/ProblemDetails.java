@@ -18,9 +18,16 @@ public class ProblemDetails {
     //Section 6.7.1
     private ProblemDetails[] subproblems;
 
+    public ProblemDetails(ProblemType problemType, Integer status){
+        this.type = problemType.getValue();
+        this.status = status;
+    }
+
     public ProblemDetails(ProblemType problemType){
         this.type = problemType.getValue();
     }
+
+    private ProblemDetails(){}
 
     public String getType() {
         return type;

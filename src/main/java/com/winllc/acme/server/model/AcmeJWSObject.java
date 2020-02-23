@@ -70,11 +70,8 @@ public class AcmeJWSObject extends JWSObject {
         if(header.getCustomParam("url") == null) return false;
         if(header.getJWK() == null && header.getKeyID() == null){
             return false;
-        }else if(header.getJWK() != null && header.getKeyID() != null){
-            return false;
-        }
+        }else return header.getJWK() == null || header.getKeyID() == null;
 
-        return true;
     }
 
 }

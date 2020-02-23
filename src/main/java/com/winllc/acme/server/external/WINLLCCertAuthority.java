@@ -2,6 +2,8 @@ package com.winllc.acme.server.external;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.winllc.acme.common.*;
+import com.winllc.acme.common.ra.RACertificateIssueRequest;
+import com.winllc.acme.common.ra.RACertificateRevokeRequest;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.ProblemType;
@@ -43,6 +45,11 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     private static final Logger log = LogManager.getLogger(WINLLCCertAuthority.class);
 
+    private final String issueCertPath = "/ca/issueCertificate";
+    private final String revokeCertPath = "/ca/revokeCertificate";
+    private final String trustChainPath = "/ca/trustChain/";
+    private final String certDetailsPath = "/ca/certDetails/";
+
     private ExternalAccountProviderService externalAccountProviderService;
 
     public WINLLCCertAuthority(CertificateAuthoritySettings settings) {
@@ -56,23 +63,23 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     @Override
     public boolean revokeCertificate(X509Certificate certificate, int reason) throws AcmeServerException {
-        Optional<AdditionalSetting> optionalSetting = settings.getAdditionalSettingByKey("revokeCertUrl");
+        String fullUrl = settings.getBaseUrl()+revokeCertPath;
 
-        String revokeCertUrl = optionalSetting.get().getValue();
-        String fullUrl = settings.getBaseUrl()+revokeCertUrl;
-
-        HttpPost httppost = new HttpPost(fullUrl);
+        Function<String, Boolean> processReturn = (content) -> {
+            try {
+                return true;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return false;
+        };
 
         try {
-            List<NameValuePair> params = new ArrayList<>(2);
-            params.add(new BasicNameValuePair("serial", certificate.getSerialNumber().toString()));
-            params.add(new BasicNameValuePair("reason", Integer.toString(reason)));
+            RACertificateRevokeRequest revokeRequest = new RACertificateRevokeRequest(settings.getMapsToCaConnectionName());
+            revokeRequest.setReason(reason);
+            revokeRequest.setSerial(certificate.getSerialNumber().toString());
 
-            httppost.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
-
-            HttpCommandUtil.process(httppost, 200, String.class);
-
-            return true;
+            return HttpCommandUtil.processCustomJsonPost(fullUrl, revokeRequest, 200, processReturn);
         }catch (Exception e){
             log.error("Could not issuer cert", e);
             return false;
@@ -81,11 +88,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     @Override
     public X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
-
-        Optional<AdditionalSetting> optionalSetting = settings.getAdditionalSettingByKey("issueCertUrl");
-
-        String issueCertUrl = optionalSetting.get().getValue();
-        String fullUrl = settings.getBaseUrl()+issueCertUrl;
+        String fullUrl = settings.getBaseUrl()+issueCertPath;
 
         Function<String, X509Certificate> processCert = (content) -> {
             try {
@@ -96,30 +99,15 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             return null;
         };
 
-        HttpPost httppost = new HttpPost(fullUrl);
-
         try {
             String csr = CertUtil.certificationRequestToPEM(certificationRequest);
             String dnsNames = Stream.of(orderData.getObject().getIdentifiers())
                     .map(Identifier::getValue)
                     .collect(Collectors.joining(","));
 
-            RACertificateRequest raCertificateRequest = new RACertificateRequest(eabKid, csr, dnsNames, settings.getMapsToCaConnectionName());
+            RACertificateIssueRequest raCertificateRequest = new RACertificateIssueRequest(eabKid, csr, dnsNames, settings.getMapsToCaConnectionName());
 
-            //List<NameValuePair> params = new ArrayList<>(2);
-            //params.add(new BasicNameValuePair("pkcs10", csr));
-
-            //if(StringUtils.isNotBlank(dnsNames)) params.add(new BasicNameValuePair("dnsNames", URLEncoder.encode(dnsNames, "UTF-8")));
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            String val = objectMapper.writeValueAsString(raCertificateRequest);
-            StringEntity entity = new StringEntity(val);
-
-            httppost.setHeader("Accept", "application/json");
-            httppost.setHeader("Content-type", "application/json");
-            httppost.setEntity(entity);
-
-            X509Certificate certificate = HttpCommandUtil.processCustom(httppost, 200, processCert);
+            X509Certificate certificate = HttpCommandUtil.processCustomJsonPost(fullUrl, raCertificateRequest, 200, processCert);
 
             if(certificate != null){
                 return certificate;
@@ -135,7 +123,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     @Override
     public Optional<CertificateDetails> getCertificateDetails(String serial) {
-        String fullUrl = settings.getBaseUrl()+"/certDetails/"+settings.getMapsToCaConnectionName();
+        String fullUrl = settings.getBaseUrl()+certDetailsPath+settings.getMapsToCaConnectionName();
         try {
             URIBuilder builder = new URIBuilder(fullUrl);
             builder.setParameter("serial", serial);
@@ -156,15 +144,19 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public boolean isCertificateRevoked(X509Certificate certificate) {
-        //todo
-        return false;
+    public CertRevocationStatus isCertificateRevoked(X509Certificate certificate) {
+        Optional<CertificateDetails> optionalCertificateDetails = getCertificateDetails(certificate.getSerialNumber().toString());
+        if(optionalCertificateDetails.isPresent()){
+            CertificateDetails certificateDetails = optionalCertificateDetails.get();
+            return certificateDetails.getStatus().equalsIgnoreCase("REVOKED") ? CertRevocationStatus.REVOKED : CertRevocationStatus.VALID;
+        }
+
+        return CertRevocationStatus.UNKNOWN;
     }
 
     @Override
     public Certificate[] getTrustChain() throws AcmeServerException {
-        //todo, internal should not be static
-        String url = settings.getBaseUrl()+"/ca/trustChain/"+settings.getMapsToCaConnectionName();
+        String url = settings.getBaseUrl()+trustChainPath+settings.getMapsToCaConnectionName();
 
         Function<String, Certificate[]> processTrustChain = (content) -> {
             try {
@@ -198,8 +190,6 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         try {
             HttpResponse response = httpclient.execute(httppost);
             HttpEntity entity = response.getEntity();
-
-            //AccountValidationResponse validationResponse = HttpCommandUtil.process(httppost, 200, AccountValidationResponse.class);
 
             if (entity != null) {
                 if(response.getStatusLine().getStatusCode() == 200){
@@ -241,21 +231,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         return false;
     }
 
-    @Override
-    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) throws AcmeServerException {
-        Set<ChallengeType> challengeTypes = new HashSet<>();
-        if(canIssueToIdentifier(identifier, accountData)){
-            for (CAValidationRule rule : getValidationRules(accountData).getCaValidationRules()) {
-                if(canIssueToIdentifier(identifier, rule)){
-                    if(rule.isRequireHttpChallenge()) challengeTypes.add(ChallengeType.HTTP);
-                    if(rule.isRequireDnsChallenge()) challengeTypes.add(ChallengeType.DNS);
-                }
-            }
-            return new ArrayList<>(challengeTypes);
-        }else{
-            throw new AcmeServerException(ProblemType.REJECTED_IDENTIFIER, identifier.getValue());
-        }
-    }
+
 
     public static List<String> getRequiredProperties() {
         List<String> props = new ArrayList<>();

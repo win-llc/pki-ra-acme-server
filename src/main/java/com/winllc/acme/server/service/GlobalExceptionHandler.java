@@ -37,7 +37,6 @@ public class GlobalExceptionHandler extends BaseService {
         System.out.println("Could not process request to: "+request.getRequestURI());
         ex.printStackTrace();
 
-        return buildBaseResponseEntity(500, directoryData)
-                .body(problemDetails);
+        return buildErrorResponseEntity(problemDetails, directoryData);
     }
 }

@@ -3,13 +3,12 @@ package com.winllc.acme.server.exceptions;
 import com.winllc.acme.server.contants.ProblemType;
 
 public class InternalServerException extends AcmeServerException {
-    private InternalServerException(ProblemType problemType) {
-        super(problemType);
+    private InternalServerException(ProblemType problemType, String details) {
+        super(problemType, details);
     }
 
     public InternalServerException(String details){
-        this(ProblemType.SERVER_INTERNAL);
-        this.details = details;
+        this(ProblemType.SERVER_INTERNAL, details);
     }
 
     public InternalServerException(String details, Exception subProblem){

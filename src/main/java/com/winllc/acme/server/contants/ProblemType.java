@@ -27,17 +27,31 @@ public enum ProblemType {
 
     private static final String baseError = "urn:ietf:params:acme:error:";
     private String value;
+    private String noBaseValue;
 
     ProblemType(String value) {
         this.value = baseError+value;
+        this.noBaseValue = value;
     }
 
     public String getValue() {
         return value;
     }
 
+    public String getNoBaseValue(){
+        return noBaseValue;
+    }
+
     @Override
     public String toString() {
         return value;
+    }
+
+    public static ProblemType valueToType(String value){
+        String stripped = value.replace(baseError, "");
+        for(ProblemType pt : values()){
+            if(pt.noBaseValue.contentEquals(value)) return pt;
+        }
+        return null;
     }
 }

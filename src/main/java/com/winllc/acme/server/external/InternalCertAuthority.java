@@ -1,9 +1,6 @@
 package com.winllc.acme.server.external;
 
-import com.winllc.acme.common.AccountValidationResponse;
-import com.winllc.acme.common.CAValidationRule;
-import com.winllc.acme.common.CertificateAuthoritySettings;
-import com.winllc.acme.common.CertificateDetails;
+import com.winllc.acme.common.*;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.model.acme.Identifier;
@@ -111,9 +108,9 @@ public class InternalCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public boolean isCertificateRevoked(X509Certificate certificate) {
+    public CertRevocationStatus isCertificateRevoked(X509Certificate certificate) {
         //TODO
-        return false;
+        return CertRevocationStatus.UNKNOWN;
     }
 
     @Override
@@ -148,20 +145,6 @@ public class InternalCertAuthority extends AbstractCertAuthority {
         return false;
     }
 
-    @Override
-    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) {
-        Set<ChallengeType> challengeTypes = new HashSet<>();
-        if(canIssueToIdentifier(identifier, accountData)){
-            for (CAValidationRule rule : getValidationRules(accountData).getCaValidationRules()) {
-                if(canIssueToIdentifier(identifier, rule)){
-                    if(rule.isRequireHttpChallenge()) challengeTypes.add(ChallengeType.HTTP);
-                    if(rule.isRequireDnsChallenge()) challengeTypes.add(ChallengeType.DNS);
-                }
-            }
-            return new ArrayList<>(challengeTypes);
-        }
-        return null;
-    }
 
 
     private X509Certificate signCSR(OrderData orderData, PKCS10CertificationRequest csr, int validity, KeyStore keystore, String alias, char[] password) throws Exception {

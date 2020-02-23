@@ -1,9 +1,6 @@
 package com.winllc.acme.server.external;
 
-import com.winllc.acme.common.AccountValidationResponse;
-import com.winllc.acme.common.AcmeCertAuthorityType;
-import com.winllc.acme.common.CAValidationRule;
-import com.winllc.acme.common.CertificateDetails;
+import com.winllc.acme.common.*;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.acme.Account;
@@ -26,7 +23,7 @@ public interface CertificateAuthority {
     boolean revokeCertificate(X509Certificate certificate, int reason) throws AcmeServerException;
     X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException;
     Optional<CertificateDetails> getCertificateDetails(String serial);
-    boolean isCertificateRevoked(X509Certificate certificate);
+    CertRevocationStatus isCertificateRevoked(X509Certificate certificate);
     Certificate[] getTrustChain() throws AcmeServerException;
     AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException;
     boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) throws AcmeServerException;
