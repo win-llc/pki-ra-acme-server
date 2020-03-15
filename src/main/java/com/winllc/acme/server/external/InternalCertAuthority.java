@@ -126,7 +126,7 @@ public class InternalCertAuthority extends AbstractCertAuthority {
         rule2.setAllowHostnameIssuance(true);
 
         List<CAValidationRule> rules = Stream.of(rule, rule2).collect(Collectors.toList());
-        AccountValidationResponse response = new AccountValidationResponse();
+        AccountValidationResponse response = new AccountValidationResponse(accountData.getEabKeyIdentifier());
         response.setCaValidationRules(rules);
         return response;
     }
