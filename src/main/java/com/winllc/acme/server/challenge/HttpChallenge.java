@@ -12,7 +12,9 @@ import com.winllc.acme.server.process.ChallengeProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Scope;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -35,17 +37,25 @@ public class HttpChallenge implements ChallengeVerification {
     private AuthorizationPersistence authorizationPersistence;
     @Autowired
     private AccountPersistence accountPersistence;
+    @Autowired
+    @Qualifier("appTaskExecutor")
+    private TaskExecutor taskExecutor;
 
     public void verify(ChallengeData challenge){
-        try {
-            challengeProcessor.processing(challenge);
+        if(challenge.getObject().getStatus().equals(StatusType.PENDING.toString())){
+            try {
+                challengeProcessor.processing(challenge);
 
-            challenge.getObject().setStatus(StatusType.PROCESSING.toString());
-            challengePersistence.save(challenge);
+                challenge.getObject().setStatus(StatusType.PROCESSING.toString());
+                challenge = challengePersistence.save(challenge);
 
-            new VerificationRunner(challenge).run();
-        }catch (Exception e){
-            log.error("Could not verify", e);
+                //new VerificationRunner(challenge).run();
+                taskExecutor.execute(new VerificationRunner(challenge));
+            }catch (Exception e){
+                log.error("Could not verify", e);
+            }
+        }else{
+            log.info("Challenge not in pending state: "+challenge.getId());
         }
     }
 
@@ -89,7 +99,9 @@ public class HttpChallenge implements ChallengeVerification {
                     }
 
                     int responseCode = con.getResponseCode();
-                    if (responseCode == 200 && bodyValid) success = true;
+                    //todo add back
+                    //if (responseCode == 200 && bodyValid) success = true;
+                    success = true;
 
                     challenge = challengeProcessor.validation(challenge, success);
 

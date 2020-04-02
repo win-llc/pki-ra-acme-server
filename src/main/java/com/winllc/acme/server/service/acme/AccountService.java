@@ -191,7 +191,7 @@ public class AccountService extends BaseService {
             return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                     .body(accountData.getObject());
         } else {
-            Optional<AccountData> optionalAccount = accountPersistence.findByJwkEquals(newKey);
+            Optional<AccountData> optionalAccount = accountPersistence.findFirstByJwkEquals(newKey);
             //If account already exists, return conflict error
             if(optionalAccount.isPresent()){
                 HttpHeaders headers = new HttpHeaders();
@@ -265,7 +265,7 @@ public class AccountService extends BaseService {
         }
 
         //Check that no account exists whose account key is the same as the key in the “jwk” header parameter of the inner JWS.
-        Optional<AccountData> existing = accountPersistence.findByJwkEquals(innerJws.getHeader().getJWK().toString());
+        Optional<AccountData> existing = accountPersistence.findFirstByJwkEquals(innerJws.getHeader().getJWK().toString());
         if (existing.isPresent()) return false;
 
         return verified;

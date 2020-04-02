@@ -102,6 +102,7 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
 
                 if (allInValidState) {
                     orderData.getObject().setStatus(StatusType.READY.toString());
+                    orderPersistence.save(orderData);
                 }
                 return Optional.of(orderData);
             } else {

@@ -47,10 +47,6 @@ public class AuthzService extends BaseService {
     @Autowired
     private ChallengePersistence challengePersistence;
     @Autowired
-    private HttpChallenge httpChallenge;
-    @Autowired
-    private DnsChallenge dnsChallenge;
-    @Autowired
     private DirectoryDataService directoryDataService;
     @Autowired
     private SecurityValidatorUtil securityValidatorUtil;
@@ -59,6 +55,7 @@ public class AuthzService extends BaseService {
 
     @RequestMapping(value = "{directory}/new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newAuthz(HttpServletRequest request, @PathVariable String directory) {
+        log.info("start new authz");
         try {
             PayloadAndAccount<Identifier> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Identifier.class);
             DirectoryData directoryData = payloadAndAccount.getDirectoryData();
@@ -110,6 +107,7 @@ public class AuthzService extends BaseService {
     //Section 7.5
     @RequestMapping(value = "{directory}/authz/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> authz(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
+        log.info("getAuthz: "+id);
         Optional<AuthorizationData> optionalAuthorizationData = authorizationPersistence.findById(id);
 
         if (optionalAuthorizationData.isPresent()) {
@@ -141,10 +139,19 @@ public class AuthzService extends BaseService {
 
                 log.info("Returning current authorization: "+refreshedAuthorization);
 
-                return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                        .header("Link", "TODO")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(refreshedAuthorization.getObject());
+                if(refreshedAuthorization.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
+                        refreshedAuthorization.getObject().getStatus().equals(StatusType.PENDING.toString())){
+                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                            //.header("Link", "TODO")
+                            .header("Retry-After", "5")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(refreshedAuthorization.getObject());
+                }else{
+                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                            //.header("Link", "TODO")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(refreshedAuthorization.getObject());
+                }
 
             } catch (Exception e) {
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
@@ -166,7 +173,8 @@ public class AuthzService extends BaseService {
 
     //Section 7.5.1
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
+    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException {
+        log.info("getChallenge: "+id);
         Optional<ChallengeData> optionalChallengeData = challengePersistence.findById(id);
         DirectoryData directoryData = directoryDataService.findByName(directory);
 
@@ -175,29 +183,36 @@ public class AuthzService extends BaseService {
             jwsObjectFromHttpRequest = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
             log.info(jwsObjectFromHttpRequest);
         } catch (AcmeServerException e) {
-            e.printStackTrace();
             log.error("Could not parse JWS Object from request", e);
         }
 
         if (optionalChallengeData.isPresent()) {
             ChallengeData challengeData = optionalChallengeData.get();
             Challenge challenge = challengeData.getObject();
-            Optional<AuthorizationData> authOptional = authorizationPersistence.findById(challengeData.getAuthorizationId());
 
-            ChallengeType challengeType = ChallengeType.getValue(challenge.getType());
-            switch (challengeType) {
-                case HTTP:
-                    httpChallenge.verify(challengeData);
-                    break;
-                case DNS:
-                    dnsChallenge.verify(challengeData);
-                    break;
-            }
+
             //Get the current challenge and return 200
             Optional<ChallengeData> challengeDataOptional = challengePersistence.findById(challengeData.getId());
-            return buildBaseResponseEntity(200, directoryData)
-                    .header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
-                    .body(challengeDataOptional.get().getObject());
+
+            if(challengeDataOptional.isPresent()){
+                ChallengeData updatedChallengeData = challengeDataOptional.get();
+                Optional<AuthorizationData> authOptional = authorizationPersistence.findById(challengeData.getAuthorizationId());
+
+                if(updatedChallengeData.getObject().getStatus().equals(StatusType.PROCESSING.toString())){
+                    return buildBaseResponseEntity(200, directoryData)
+                            .header("Retry-After", "20")
+                            .header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"").build();
+                            //.body(challengeDataOptional.get().getObject());
+                }else{
+                    return buildBaseResponseEntity(200, directoryData)
+                            .header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
+                            .body(challengeDataOptional.get().getObject());
+                }
+
+            }else{
+                log.error("Could not find challenge");
+                throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
+            }
         }else{
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             problemDetails.setDetail("Could not find challenge");

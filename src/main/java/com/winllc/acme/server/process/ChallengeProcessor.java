@@ -1,5 +1,8 @@
 package com.winllc.acme.server.process;
 
+import com.winllc.acme.server.challenge.DnsChallenge;
+import com.winllc.acme.server.challenge.HttpChallenge;
+import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.model.acme.Challenge;
@@ -46,6 +49,7 @@ valid              invalid
     @Autowired
     private AuthorizationProcessor authorizationProcessor;
 
+
     public ChallengeData buildNew(DirectoryData directoryData){
         Challenge challenge = new Challenge();
         challenge.setStatus(StatusType.PENDING.toString());
@@ -79,7 +83,7 @@ valid              invalid
                 //If challenge is valid, parent authorization should be valid
                 authorizationProcessor.challengeMarkedValid(challengeData.getAuthorizationId());
             }else{
-                challengeData.getObject().setStatus(StatusType.INVALID.toString());
+                //challengeData.getObject().setStatus(StatusType.INVALID.toString());
             }
             challengeData = challengePersistence.save(challengeData);
             return challengeData;

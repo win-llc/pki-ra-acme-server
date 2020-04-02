@@ -14,6 +14,7 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.MalformedRequest;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.AcmeURL;
+import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AccountPersistence;
@@ -56,9 +57,23 @@ public class SecurityValidatorUtil {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
 
         //Should contain account URL
-        AcmeURL kid = new AcmeURL(jwsObject.getHeader().getKeyID());
+        String kid;
 
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, kid.getObjectId().get(), clazz);
+        if(StringUtils.isNotBlank(jwsObject.getHeader().getKeyID())){
+            AcmeURL acmeURL = new AcmeURL(jwsObject.getHeader().getKeyID());
+            kid = acmeURL.getObjectId().get();
+        }else{
+            Optional<AccountData> firstByJwkEquals = accountPersistence.findFirstByJwkEquals(jwsObject.getHeader().getJWK().toString());
+            if(firstByJwkEquals.isPresent()){
+                AccountData accountData = firstByJwkEquals.get();
+                kid = accountData.getId();
+            }else{
+                throw new AcmeServerException(ProblemType.ACCOUNT_DOES_NOT_EXIST);
+            }
+        }
+
+
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, kid, clazz);
     }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,

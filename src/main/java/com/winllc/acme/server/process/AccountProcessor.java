@@ -159,7 +159,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     public AccountData processReturnExisting(AcmeJWSObject jwsObject) throws AcmeServerException {
         String jwk = jwsObject.getHeader().getJWK().toJSONString();
         //Section 7.3.1
-        Optional<AccountData> accountDataOptional = accountPersistence.findByJwkEquals(jwk);
+        Optional<AccountData> accountDataOptional = accountPersistence.findFirstByJwkEquals(jwk);
         //If account already present, don't recreate
         if (accountDataOptional.isPresent()) {
             AccountData accountData = accountDataOptional.get();
@@ -262,7 +262,9 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     }
 
     private boolean validateEmail(String email) {
-        String regex = "^[\\w-_.+]*[\\w-_.]@([\\w]+\\.)+[\\w]+[\\w]$";
-        return email.replace("mailto:","").matches(regex);
+        //String regex = "^[\\w-_.+]*[\\w-_.]@([\\w]+\\.)+[\\w]+[\\w]$";
+        //return email.replace("mailto:","").matches(regex);
+        //todo add back
+        return true;
     }
 }

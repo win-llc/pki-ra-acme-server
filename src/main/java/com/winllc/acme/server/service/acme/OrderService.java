@@ -2,6 +2,8 @@ package com.winllc.acme.server.service.acme;
 
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.Application;
+import com.winllc.acme.server.challenge.DnsChallenge;
+import com.winllc.acme.server.challenge.HttpChallenge;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
@@ -24,6 +26,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +39,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 //Section 7.4
 @RestController
@@ -46,6 +51,8 @@ public class OrderService extends BaseService {
     private OrderProcessor orderProcessor;
     @Autowired
     private OrderPersistence orderPersistence;
+    @Autowired
+    private ChallengePersistence challengePersistence;
     @Autowired
     private OrderListPersistence orderListPersistence;
     @Autowired
@@ -60,9 +67,17 @@ public class OrderService extends BaseService {
     private SecurityValidatorUtil securityValidatorUtil;
     @Autowired
     private CertificateAuthorityService certificateAuthorityService;
+    @Autowired
+    private HttpChallenge httpChallenge;
+    @Autowired
+    private DnsChallenge dnsChallenge;
+    @Autowired
+    @Qualifier("appTaskExecutor")
+    private TaskExecutor taskExecutor;
 
     @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request, @PathVariable String directory) {
+        log.info("start newOrder");
         DirectoryData directoryData = directoryDataService.findByName(directory);
 
         try {
@@ -86,7 +101,23 @@ public class OrderService extends BaseService {
 
                 orderData = orderPersistence.save(orderData);
 
-                log.debug("Order created: " + orderData);
+                log.info("Order created: " + orderData.getId());
+
+                //todo move this
+                authorizationProcessor.getCurrentAuthorizationsForOrder(orderData).forEach(a -> {
+                    challengePersistence.findAllByAuthorizationIdEquals(a.getId()).forEach(challenge -> {
+                        if(challenge.getObject().getStatus().equals(StatusType.PENDING.toString())) {
+                            switch (challenge.getObject().getType()) {
+                                case "http-01":
+                                    httpChallenge.verify(challenge);
+                                    break;
+                                case "dns-01":
+                                    dnsChallenge.verify(challenge);
+                                    break;
+                            }
+                        }
+                    });
+                });
 
                 //Get order list ID from account
                 Optional<String> objectId = new AcmeURL(accountData.getObject().getOrders()).getObjectId();
@@ -105,6 +136,7 @@ public class OrderService extends BaseService {
                  */
                     log.debug("Order List created: " + orderListData);
                     return buildBaseResponseEntity(201, directoryData)
+                            .header("Retry-After", "10")
                             .header("Location", orderData.buildUrl())
                             .body(order);
                 } else {
@@ -139,18 +171,28 @@ public class OrderService extends BaseService {
 
     @RequestMapping(value = "{directory}/order/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> getOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
-        AcmeURL acmeURL = new AcmeURL(httpServletRequest);
-        DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
+        log.info("getOrder: "+id);
+        DirectoryData directoryData = directoryDataService.findByName(directory);
 
         Optional<OrderData> orderDataOptional = orderPersistence.findById(id);
         if (orderDataOptional.isPresent()) {
             OrderData orderData = orderDataOptional.get();
             orderData = orderProcessor.buildCurrentOrder(orderData);
 
-            log.debug("Returning order: "+orderData);
+            log.info("Returning order: "+orderData.getId() + " :: Status: "+orderData.getObject().getStatus());
 
-            return buildBaseResponseEntity(200, directoryData)
-                    .body(orderData.getObject());
+            if(orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
+                    orderData.getObject().getStatus().equals(StatusType.PENDING.toString())){
+                return buildBaseResponseEntity(200, directoryData)
+                        .header("Retry-After", "10").build();
+                       // .body(orderData.getObject());
+            }else{
+                return buildBaseResponseEntity(200, directoryData)
+                        .header("Location", orderData.buildUrl())
+                        .body(orderData.getObject());
+            }
+
+
         }else{
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             problemDetails.setDetail("Could not find order with ID: "+id);
@@ -164,7 +206,7 @@ public class OrderService extends BaseService {
 
     @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
-        AcmeURL acmeURL = new AcmeURL(httpServletRequest);
+        log.info("finalizeOrder: "+id);
         DirectoryData directoryData = directoryDataService.findByName(directory);
 
         PayloadAndAccount<CertificateRequest> certificateRequestPayloadAndAccount = null;
@@ -183,6 +225,7 @@ public class OrderService extends BaseService {
 
         //if order ready to be completed by passing authorization checks
         if (orderReadyForFinalize(orderData.getObject())) {
+            log.info("readyForFinalize: "+orderData.getId());
             String csr = certificateRequestPayloadAndAccount.getPayload().getCsr();
             try {
                 Optional<ProblemDetails> problemDetailsOptional = validateCsr(csr, orderData.getObject());
@@ -190,9 +233,13 @@ public class OrderService extends BaseService {
                     //if checks pass, return
                     finalizeOrder(orderData, csr);
 
-                    log.debug("Finalized order: " + orderData);
+                    orderData.getObject().setStatus(StatusType.PROCESSING.toString());
+                    orderData = orderPersistence.save(orderData);
+
+                    log.info("Finalized order: " + orderData);
 
                     return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
+                            .header("Retry-After", "10")
                             .body(orderData.getObject());
                 } else {
                     ProblemDetails problemDetails = problemDetailsOptional.get();
@@ -208,6 +255,13 @@ public class OrderService extends BaseService {
                 return buildBaseResponseEntity(500, directoryData)
                         .body(problemDetails);
             }
+        } else if(orderData.getObject().isValid()){
+            return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
+                    .body(orderData.getObject());
+        } else if(orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString())){
+            return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
+                    .header("Retry-After", "10")
+                    .body(orderData.getObject());
         } else {
             log.error("Order not ready to finalize: "+orderData);
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.ORDER_NOT_READY);
@@ -289,9 +343,11 @@ public class OrderService extends BaseService {
         }
 
         order.setAuthorizations(authorizationUrls.toArray(new String[0]));
+
+
     }
 
-    private void finalizeOrder(OrderData order, String csr) throws InternalServerException {
+    private void finalizeOrder(final OrderData order, String csr) throws InternalServerException {
         /*
         “invalid”: The certificate will not be issued. Consider this order process abandoned.
         “pending”: The server does not believe that the client has fulfilled the requirements. Check the “authorizations” array for entries that are still pending.
@@ -300,31 +356,43 @@ public class OrderService extends BaseService {
         “valid”: The server has issued the certificate and provisioned its URL to the “certificate” field of the order. Download the certificate.
          */
 
-        DirectoryData directoryData = directoryDataService.findByName(order.getDirectory());
-        CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
+        Runnable issueCert = new Runnable() {
+            @Override
+            public void run() {
+                DirectoryData directoryData = directoryDataService.findByName(order.getDirectory());
+                CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
 
-        try {
-            Optional<AccountData> optionalAccount = accountPersistence.findById(order.getAccountId());
-            String eabKid = null;
-            if(optionalAccount.isPresent()){
-                AccountData accountData = optionalAccount.get();
-                if(StringUtils.isNotBlank(accountData.getEabKeyIdentifier())) eabKid = accountData.getEabKeyIdentifier();
+                OrderData newOrder = orderPersistence.findById(order.getId()).get();
+
+                try {
+                    Optional<AccountData> optionalAccount = accountPersistence.findById(order.getAccountId());
+                    String eabKid = null;
+                    if(optionalAccount.isPresent()){
+                        AccountData accountData = optionalAccount.get();
+                        if(StringUtils.isNotBlank(accountData.getEabKeyIdentifier())) eabKid = accountData.getEabKeyIdentifier();
+                    }
+
+                    X509Certificate certificate = ca.issueCertificate(newOrder, eabKid, CertUtil.csrBase64ToPKC10Object(csr));
+                    String[] certWithChains = CertUtil.certAndChainsToPemArray(certificate, ca.getTrustChain());
+                    CertData certData = new CertData(certWithChains, directoryData.getName(), newOrder.getAccountId());
+                    certData = certificatePersistence.save(certData);
+
+                    newOrder.getObject().setStatus(StatusType.VALID.toString());
+                    newOrder.getObject().setCertificate(certData.buildUrl());
+
+                    orderPersistence.save(newOrder);
+
+                } catch (Exception e) {
+                    log.error("Could not finalize order", e);
+                    //throw new InternalServerException("Could not issue certificate", e);
+                    newOrder.getObject().setStatus(StatusType.INVALID.toString());
+                    orderPersistence.save(newOrder);
+                }
             }
+        };
 
-            X509Certificate certificate = ca.issueCertificate(order, eabKid, CertUtil.csrBase64ToPKC10Object(csr));
-            String[] certWithChains = CertUtil.certAndChainsToPemArray(certificate, ca.getTrustChain());
-            CertData certData = new CertData(certWithChains, directoryData.getName(), order.getAccountId());
-            certData = certificatePersistence.save(certData);
+        taskExecutor.execute(issueCert);
 
-            order.getObject().setStatus(StatusType.VALID.toString());
-            order.getObject().setCertificate(certData.buildUrl());
-
-            orderPersistence.save(order);
-
-        } catch (Exception e) {
-            log.error("Could not finalize order", e);
-            throw new InternalServerException("Could not issue certificate", e);
-        }
     }
 
     private boolean orderReadyForFinalize(Order order) {

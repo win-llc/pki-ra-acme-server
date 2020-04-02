@@ -47,6 +47,10 @@ import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.apache.commons.io.IOUtils.LINE_SEPARATOR;
 
 
 @RestController
@@ -68,6 +72,7 @@ public class CertService extends BaseService {
     //Section 7.4.2
     @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST)
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
+        log.info("certDownload: "+id);
         try {
             AcmeURL acmeURL = new AcmeURL(request);
             DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
@@ -84,19 +89,36 @@ public class CertService extends BaseService {
                 HttpHeaders headers = new HttpHeaders();
                 headers.add("Content-Type", request.getHeader("Accept"));
 
-                switch (request.getHeader("Accept")) {
-                    case "application/pem-certificate-chain":
-                        returnCert = certData.buildReturnString();
-                        break;
-                    case "application/pkix-cert":
-                        returnCert = certData.getCertChain()[0];
-                        break;
-                    case "application/pkcs7-mime":
+                returnCert = Stream.of(certData.getObject())
+                        .map(b -> {
+                            try {
+                                //X509Certificate cert = CertUtil.base64ToCert(b);
+                                return b;
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            return null;
+                        })
+                        .collect(Collectors.joining(LINE_SEPARATOR));
 
-                        //TODO
-                        break;
-                    default:
-                        returnCert = certData.buildReturnString();
+                if(StringUtils.isNotBlank(request.getHeader("Accept"))) {
+
+                    switch (request.getHeader("Accept")) {
+                        case "application/pem-certificate-chain":
+
+
+                            //returnCert = certData.buildReturnString();
+                            break;
+                        case "application/pkix-cert":
+                            returnCert = certData.getCertChain()[0];
+                            break;
+                        case "application/pkcs7-mime":
+
+                            //TODO
+                            break;
+                        default:
+                            returnCert = certData.buildReturnString();
+                    }
                 }
 
                 log.debug("Returning certificate");
