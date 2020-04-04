@@ -148,7 +148,6 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
                     challengeData = challengePersistence.save(challengeData);
 
                     authorization.addChallenge(challengeData.getObject());
-
                 }
             }
 
@@ -158,7 +157,6 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
             }
 
             authorizationData = authorizationPersistence.save(authorizationData);
-
 
             return Optional.of(authorizationData);
         }else {

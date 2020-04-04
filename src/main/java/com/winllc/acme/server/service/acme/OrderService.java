@@ -230,16 +230,17 @@ public class OrderService extends BaseService {
             try {
                 Optional<ProblemDetails> problemDetailsOptional = validateCsr(csr, orderData.getObject());
                 if (!problemDetailsOptional.isPresent()) {
-                    //if checks pass, return
-                    finalizeOrder(orderData, csr);
 
                     orderData.getObject().setStatus(StatusType.PROCESSING.toString());
                     orderData = orderPersistence.save(orderData);
 
+                    //if checks pass, return
+                    finalizeOrder(orderData, csr);
+
                     log.info("Finalized order: " + orderData);
 
                     return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
-                            .header("Retry-After", "10")
+                            .header("Retry-After", "20")
                             .body(orderData.getObject());
                 } else {
                     ProblemDetails problemDetails = problemDetailsOptional.get();
@@ -391,7 +392,13 @@ public class OrderService extends BaseService {
             }
         };
 
-        taskExecutor.execute(issueCert);
+        try {
+            //Allow client to receive processing response first, then run
+            Thread.sleep(5000);
+            taskExecutor.execute(issueCert);
+        } catch (InterruptedException e) {
+            log.error("Could not sleep thread", e);
+        }
 
     }
 

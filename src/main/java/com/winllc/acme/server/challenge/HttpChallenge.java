@@ -2,6 +2,7 @@ package com.winllc.acme.server.challenge;
 
 import com.nimbusds.jose.jwk.JWK;
 import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
@@ -9,6 +10,14 @@ import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.ChallengeProcessor;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpHeaders;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,8 +50,8 @@ public class HttpChallenge implements ChallengeVerification {
     @Qualifier("appTaskExecutor")
     private TaskExecutor taskExecutor;
 
-    public void verify(ChallengeData challenge){
-        if(challenge.getObject().getStatus().equals(StatusType.PENDING.toString())){
+    public void verify(ChallengeData challenge) {
+        if (challenge.getObject().getStatus().equals(StatusType.PENDING.toString())) {
             try {
                 challengeProcessor.processing(challenge);
 
@@ -51,11 +60,11 @@ public class HttpChallenge implements ChallengeVerification {
 
                 //new VerificationRunner(challenge).run();
                 taskExecutor.execute(new VerificationRunner(challenge));
-            }catch (Exception e){
+            } catch (Exception e) {
                 log.error("Could not verify", e);
             }
-        }else{
-            log.info("Challenge not in pending state: "+challenge.getId());
+        } else {
+            log.info("Challenge not in pending state: " + challenge.getId());
         }
     }
 
@@ -73,21 +82,18 @@ public class HttpChallenge implements ChallengeVerification {
             int retries = 3;
             int attempts = 0;
 
-            while(attempts < retries && !success) {
+            while (attempts < retries && !success) {
                 try {
 
                     Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(challenge.getAuthorizationId());
                     AuthorizationData authorizationData = authorizationDataOptional.get();
                     Optional<AccountData> accountDataOptional = accountPersistence.findById(authorizationData.getAccountId());
 
+
                     String urlString = "http://" + authorizationDataOptional.get().getObject().getIdentifier().getValue()
                             + "/.well-known/acme-challenge/" + challenge.getObject().getToken();
-                    URL url = new URL(urlString);
-                    HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                    con.setUseCaches(false);
-                    con.setRequestMethod("GET");
 
-                    String body = readResponseBody(con);
+                    String body = attemptChallenge(urlString);
 
                     JWK jwk = accountDataOptional.get().buildJwk();
                     log.info(jwk.computeThumbprint().toString());
@@ -98,42 +104,56 @@ public class HttpChallenge implements ChallengeVerification {
                         bodyValid = true;
                     }
 
-                    int responseCode = con.getResponseCode();
                     //todo add back
                     //if (responseCode == 200 && bodyValid) success = true;
                     success = true;
 
-                    challenge = challengeProcessor.validation(challenge, success);
+                    challenge = challengeProcessor.validation(challenge, success, false);
 
                     challengePersistence.save(challenge);
                 } catch (Exception e) {
                     log.error("Could not verify HTTP", e);
-                }finally {
+                } finally {
                     attempts++;
                     try {
                         //Sleep 5 seconds before retrying
-                        if(!success) Thread.sleep(5000);
+                        if (!success) Thread.sleep(5000);
                     } catch (InterruptedException e) {
                         log.error("Could not sleep thread", e);
+                    }
+
+                    if(attempts > retries){
+                        try {
+                            challengeProcessor.validation(challenge, false, true);
+                        } catch (InternalServerException e) {
+                            log.error("Could not update challenge", e);
+                        }
                     }
                 }
             }
         }
 
-        private String readResponseBody(HttpURLConnection con){
-            try {
-                StringBuilder result = new StringBuilder();
-                BufferedReader rd = new BufferedReader(new InputStreamReader(con.getInputStream()));
-                String line;
-                while ((line = rd.readLine()) != null) {
-                    result.append(line);
+        private String attemptChallenge(String url) {
+            String result = null;
+            HttpGet request = new HttpGet(url);
+
+            try (CloseableHttpClient httpClient = HttpClients.createDefault();
+                 CloseableHttpResponse response = httpClient.execute(request)) {
+
+                HttpEntity entity = response.getEntity();
+                if (entity != null) {
+                    // return it as a String
+                    int responseCode = response.getStatusLine().getStatusCode();
+                    if (responseCode == 200) {
+                        result = EntityUtils.toString(entity);
+                    } else {
+                        log.error("Invalid return code: " + responseCode);
+                    }
                 }
-                rd.close();
-                return result.toString();
-            }catch (Exception e){
-                log.error("Could not read response", e);
+            } catch (Exception e) {
+                log.error("Unable to connect", e);
             }
-            return null;
+            return result;
         }
     }
 }
