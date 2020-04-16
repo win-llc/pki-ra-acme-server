@@ -1,5 +1,7 @@
 package com.winllc.acme.server.service.acme;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.challenge.DnsChallenge;
 import com.winllc.acme.server.challenge.HttpChallenge;
@@ -52,6 +54,10 @@ public class AuthzService extends BaseService {
     private SecurityValidatorUtil securityValidatorUtil;
     @Autowired
     private CertificateAuthorityService certificateAuthorityService;
+    @Autowired
+    private HttpChallenge httpChallenge;
+    @Autowired
+    private DnsChallenge dnsChallenge;
 
     @RequestMapping(value = "{directory}/new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newAuthz(HttpServletRequest request, @PathVariable String directory) {
@@ -139,18 +145,23 @@ public class AuthzService extends BaseService {
 
                 log.info("Returning current authorization: "+refreshedAuthorization);
 
-                if(refreshedAuthorization.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
-                        refreshedAuthorization.getObject().getStatus().equals(StatusType.PENDING.toString())){
-                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                Authorization temp = new Authorization();
+                temp.setStatus(StatusType.PENDING.toString());
+                temp.setIdentifier(refreshedAuthorization.getObject().getIdentifier());
+
+                ObjectMapper mapper = new ObjectMapper();
+                String jsonObj = mapper.writeValueAsString(refreshedAuthorization.getObject());
+
+                if(refreshedAuthorization.getObject().getStatus().equals(StatusType.PENDING.toString())){
+                    return buildBaseResponseEntityWithRetryAfter(200, payloadAndAccount.getDirectoryData(), 20)
                             //.header("Link", "TODO")
-                            .header("Retry-After", "5")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .body(refreshedAuthorization.getObject());
+                            .body(jsonObj);
                 }else{
                     return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                             //.header("Link", "TODO")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .body(refreshedAuthorization.getObject());
+                            .body(jsonObj);
                 }
 
             } catch (Exception e) {
@@ -173,7 +184,7 @@ public class AuthzService extends BaseService {
 
     //Section 7.5.1
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException {
+    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException, JsonProcessingException {
         log.info("getChallenge: "+id);
         Optional<ChallengeData> optionalChallengeData = challengePersistence.findById(id);
         DirectoryData directoryData = directoryDataService.findByName(directory);
@@ -181,7 +192,6 @@ public class AuthzService extends BaseService {
         AcmeJWSObject jwsObjectFromHttpRequest;
         try {
             jwsObjectFromHttpRequest = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
-            log.info(jwsObjectFromHttpRequest);
         } catch (AcmeServerException e) {
             log.error("Could not parse JWS Object from request", e);
         }
@@ -191,6 +201,7 @@ public class AuthzService extends BaseService {
             Challenge challenge = challengeData.getObject();
 
 
+
             //Get the current challenge and return 200
             Optional<ChallengeData> challengeDataOptional = challengePersistence.findById(challengeData.getId());
 
@@ -198,14 +209,39 @@ public class AuthzService extends BaseService {
                 ChallengeData updatedChallengeData = challengeDataOptional.get();
                 Optional<AuthorizationData> authOptional = authorizationPersistence.findById(challengeData.getAuthorizationId());
 
-                if(updatedChallengeData.getObject().getStatus().equals(StatusType.PROCESSING.toString())){
-                    return buildBaseResponseEntity(200, directoryData)
-                            .header("Retry-After", "20")
-                            .header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"").build();
-                            //.body(challengeDataOptional.get().getObject());
+                if(updatedChallengeData.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
+                        updatedChallengeData.getObject().getStatus().equals(StatusType.PENDING.toString())){
+
+                    if(updatedChallengeData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
+                        switch (challenge.getType()) {
+                            case "http-01":
+                                httpChallenge.verify(challengeData);
+                                break;
+                            case "dns-01":
+                                dnsChallenge.verify(challengeData);
+                                break;
+                        }
+                    }
+
+                    Challenge returnChallenge = updatedChallengeData.getObject();
+                    ProblemDetails pd = new ProblemDetails(ProblemType.ORDER_NOT_READY);
+                    pd.setStatus(200);
+                    pd.setSubproblems(null);
+                    pd.setDetail("Challenge not ready");
+                    returnChallenge.setError(pd);
+                    returnChallenge.setStatus(StatusType.PROCESSING.toString());;
+
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    String jsonObj = objectMapper.writeValueAsString(returnChallenge);
+
+                    log.info("Challenge processing: "+jsonObj);
+
+                    return buildBaseResponseEntityWithRetryAfter(200, directoryData, 10)
+                            //.header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
+                            .body(returnChallenge);
                 }else{
                     return buildBaseResponseEntity(200, directoryData)
-                            .header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
+                            //.header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
                             .body(challengeDataOptional.get().getObject());
                 }
 

@@ -108,13 +108,18 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
             List<ChallengeData> challengeDataList = challengePersistence.findAllByAuthorizationIdEquals(refreshed.getId());
 
             refreshed.getObject().setChallenges(challengeDataList.stream()
-            .map(c -> c.getObject()).collect(Collectors.toList()).toArray(new Challenge[0]));
+            .map(c -> c.getObject())
+                    .map(c -> {
+                        c.setStatus(null);
+                        return c;
+                    })
+                    .collect(Collectors.toList()).toArray(new Challenge[0]));
 
             if (authorizationData.getObject().isExpired()) {
                 log.debug("Marking Authorization expired: " + authorizationData);
                 authorizationData.getObject().setStatus(StatusType.EXPIRED.toString());
             }
-            authorizationPersistence.save(refreshed);
+            refreshed = authorizationPersistence.save(refreshed);
             return refreshed;
         }
 
@@ -152,7 +157,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
             }
 
             //if no challenges needed, mark as valid
-            if(authorization.getChallenges().length == 0){
+            if(authorization.getChallenges() == null || authorization.getChallenges().length == 0){
                 authorization.setStatus(StatusType.VALID.toString());
             }
 
@@ -169,7 +174,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     public AuthorizationData challengeMarkedValid(String authorizationId) throws InternalServerException {
         Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(authorizationId);
         if(authorizationDataOptional.isPresent()){
-            AuthorizationData authorizationData = authorizationDataOptional.get();
+            AuthorizationData authorizationData = buildCurrentAuthorization(authorizationDataOptional.get());
 
             if(authorizationData.getObject().isExpired()){
                 authorizationData.getObject().setStatus(StatusType.EXPIRED.toString());
@@ -184,9 +189,15 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
         throw new InternalServerException("Could not find authorization");
     }
 
+    public Authorization challengeMarkedInvalid(String authorizationId){
+        //todo
+        return null;
+    }
+
     //Only mark valid if currently in pending state
     public AuthorizationData markValid(AuthorizationData authorizationData) throws InternalServerException {
         if(authorizationData.getObject().getStatus().equalsIgnoreCase(StatusType.PENDING.toString())){
+            log.info("Authorization is valid: "+authorizationData.getId());
             authorizationData.getObject().setStatus(StatusType.VALID.toString());
             authorizationData = authorizationPersistence.save(authorizationData);
 

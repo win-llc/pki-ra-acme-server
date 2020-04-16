@@ -74,8 +74,7 @@ public class CertService extends BaseService {
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
         log.info("certDownload: "+id);
         try {
-            AcmeURL acmeURL = new AcmeURL(request);
-            DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
+            DirectoryData directoryData = directoryDataService.findByName(directory);
 
             Optional<CertData> optionalCertData = certificatePersistence.findById(id);
 
@@ -89,25 +88,13 @@ public class CertService extends BaseService {
                 HttpHeaders headers = new HttpHeaders();
                 headers.add("Content-Type", request.getHeader("Accept"));
 
-                returnCert = Stream.of(certData.getObject())
-                        .map(b -> {
-                            try {
-                                //X509Certificate cert = CertUtil.base64ToCert(b);
-                                return b;
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                            return null;
-                        })
-                        .collect(Collectors.joining(LINE_SEPARATOR));
+                returnCert = String.join(LINE_SEPARATOR, certData.getObject());
 
                 if(StringUtils.isNotBlank(request.getHeader("Accept"))) {
 
                     switch (request.getHeader("Accept")) {
                         case "application/pem-certificate-chain":
-
-
-                            //returnCert = certData.buildReturnString();
+                            //already set
                             break;
                         case "application/pkix-cert":
                             returnCert = certData.getCertChain()[0];
@@ -121,7 +108,7 @@ public class CertService extends BaseService {
                     }
                 }
 
-                log.debug("Returning certificate");
+                log.debug("Returning certificate: "+returnCert);
 
                 return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                         .headers(headers)

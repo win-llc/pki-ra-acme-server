@@ -1,5 +1,7 @@
 package com.winllc.acme.server.service.acme;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.challenge.DnsChallenge;
@@ -67,10 +69,7 @@ public class OrderService extends BaseService {
     private SecurityValidatorUtil securityValidatorUtil;
     @Autowired
     private CertificateAuthorityService certificateAuthorityService;
-    @Autowired
-    private HttpChallenge httpChallenge;
-    @Autowired
-    private DnsChallenge dnsChallenge;
+
     @Autowired
     @Qualifier("appTaskExecutor")
     private TaskExecutor taskExecutor;
@@ -102,22 +101,6 @@ public class OrderService extends BaseService {
                 orderData = orderPersistence.save(orderData);
 
                 log.info("Order created: " + orderData.getId());
-
-                //todo move this
-                authorizationProcessor.getCurrentAuthorizationsForOrder(orderData).forEach(a -> {
-                    challengePersistence.findAllByAuthorizationIdEquals(a.getId()).forEach(challenge -> {
-                        if(challenge.getObject().getStatus().equals(StatusType.PENDING.toString())) {
-                            switch (challenge.getObject().getType()) {
-                                case "http-01":
-                                    httpChallenge.verify(challenge);
-                                    break;
-                                case "dns-01":
-                                    dnsChallenge.verify(challenge);
-                                    break;
-                            }
-                        }
-                    });
-                });
 
                 //Get order list ID from account
                 Optional<String> objectId = new AcmeURL(accountData.getObject().getOrders()).getObjectId();
@@ -170,7 +153,7 @@ public class OrderService extends BaseService {
     }
 
     @RequestMapping(value = "{directory}/order/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> getOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
+    public ResponseEntity<?> getOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) throws JsonProcessingException {
         log.info("getOrder: "+id);
         DirectoryData directoryData = directoryDataService.findByName(directory);
 
@@ -184,9 +167,14 @@ public class OrderService extends BaseService {
             if(orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
                     orderData.getObject().getStatus().equals(StatusType.PENDING.toString())){
                 return buildBaseResponseEntity(200, directoryData)
-                        .header("Retry-After", "10").build();
+                        .header("Retry-After", "10")
+                        .build();
                        // .body(orderData.getObject());
             }else{
+                ObjectMapper mapper = new ObjectMapper();
+                String jsonObj = mapper.writeValueAsString(orderData.getObject());
+                log.info("Returning order: "+jsonObj);
+
                 return buildBaseResponseEntity(200, directoryData)
                         .header("Location", orderData.buildUrl())
                         .body(orderData.getObject());
@@ -239,8 +227,7 @@ public class OrderService extends BaseService {
 
                     log.info("Finalized order: " + orderData);
 
-                    return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
-                            .header("Retry-After", "20")
+                    return buildBaseResponseEntityWithRetryAfter(200, certificateRequestPayloadAndAccount.getDirectoryData(), 20)
                             .body(orderData.getObject());
                 } else {
                     ProblemDetails problemDetails = problemDetailsOptional.get();
@@ -260,8 +247,7 @@ public class OrderService extends BaseService {
             return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
                     .body(orderData.getObject());
         } else if(orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString())){
-            return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
-                    .header("Retry-After", "10")
+            return buildBaseResponseEntityWithRetryAfter(200, certificateRequestPayloadAndAccount.getDirectoryData(), 10)
                     .body(orderData.getObject());
         } else {
             log.error("Order not ready to finalize: "+orderData);
@@ -319,7 +305,7 @@ public class OrderService extends BaseService {
             }
         }
 
-        return problemDetails.getSubproblems().length > 0 ? Optional.of(problemDetails) : Optional.empty();
+        return problemDetails.getSubproblems() != null && problemDetails.getSubproblems().length > 0 ? Optional.of(problemDetails) : Optional.empty();
     }
 
 
