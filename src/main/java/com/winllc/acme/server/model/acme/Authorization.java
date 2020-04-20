@@ -25,7 +25,6 @@ public class Authorization extends ExpiresObject {
     }
 
     public Challenge[] getChallenges() {
-        if(challenges == null) challenges = new Challenge[0];
         return challenges;
     }
 

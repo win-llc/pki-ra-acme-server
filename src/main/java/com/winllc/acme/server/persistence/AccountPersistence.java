@@ -10,6 +10,6 @@ import java.util.Optional;
 
 public interface AccountPersistence extends DataPersistence<AccountData> {
 
-    Optional<AccountData> findByJwkEquals(String jwk);
+    Optional<AccountData> findFirstByJwkEquals(String jwk);
     List<AccountData> findAllByEabKeyIdentifierEquals(String eabKeyIdentifier);
 }

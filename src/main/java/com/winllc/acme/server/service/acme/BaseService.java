@@ -24,6 +24,11 @@ public abstract class BaseService {
                 .header("Link", directoryData.buildLinkUrl());
     }
 
+    protected ResponseEntity.BodyBuilder buildBaseResponseEntityWithRetryAfter(int status, DirectoryData directoryData, int waitInSeconds){
+        ResponseEntity.BodyBuilder base = buildBaseResponseEntity(status, directoryData);
+        return base.header("Retry-After", ""+waitInSeconds);
+    }
+
     protected ResponseEntity.BodyBuilder buildBaseResponseEntity(int status, DirectoryData directoryData, HttpHeaders headers){
         headers.add("Replay-Nonce", NonceUtil.generateNonce());
         headers.add("Link", directoryData.buildLinkUrl());

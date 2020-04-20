@@ -1,5 +1,8 @@
 package com.winllc.acme.server.process;
 
+import com.winllc.acme.server.challenge.DnsChallenge;
+import com.winllc.acme.server.challenge.HttpChallenge;
+import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.model.acme.Challenge;
@@ -46,6 +49,7 @@ valid              invalid
     @Autowired
     private AuthorizationProcessor authorizationProcessor;
 
+
     public ChallengeData buildNew(DirectoryData directoryData){
         Challenge challenge = new Challenge();
         challenge.setStatus(StatusType.PENDING.toString());
@@ -54,7 +58,9 @@ valid              invalid
 
         Base64.Encoder urlEncoder = java.util.Base64.getUrlEncoder().withoutPadding();
         String encoded = urlEncoder.encodeToString(token.getBytes());
-        challenge.setToken(encoded);
+        //challenge.setToken(encoded);
+        //todo switch back
+        challenge.setToken("LoqXcYV8q5ONbJQxbmR7SCTNo3tiAXDfowyjxAjEuX0");
 
         ChallengeData challengeData = new ChallengeData(challenge, directoryData.getName());
 
@@ -71,17 +77,20 @@ valid              invalid
         }
     }
 
-    public ChallengeData validation(ChallengeData challengeData, boolean success) throws InternalServerException {
+    public ChallengeData validation(ChallengeData challengeData, boolean success, boolean maxAttemptsReached) throws InternalServerException {
         StatusType status = StatusType.getValue(challengeData.getObject().getStatus());
         if(status == StatusType.PROCESSING){
             if(success){
+                log.info("Challenge is valid: "+challengeData.getId());
                 challengeData.getObject().setStatus(StatusType.VALID.toString());
+                challengeData = challengePersistence.save(challengeData);
                 //If challenge is valid, parent authorization should be valid
                 authorizationProcessor.challengeMarkedValid(challengeData.getAuthorizationId());
-            }else{
+            }else if(maxAttemptsReached){
                 challengeData.getObject().setStatus(StatusType.INVALID.toString());
+                challengeData = challengePersistence.save(challengeData);
             }
-            challengeData = challengePersistence.save(challengeData);
+
             return challengeData;
         }else{
             throw new InternalServerException("Challenge invalid status for processing");

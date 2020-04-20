@@ -99,9 +99,11 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
             if (orderDataOptional.isPresent()) {
                 OrderData orderData = orderDataOptional.get();
                 boolean allInValidState = allAuthorizationsValidCheck(orderData);
-
+                log.info("Order authz are valid: "+allInValidState);
                 if (allInValidState) {
+                    log.info("Order is ready: "+orderId);
                     orderData.getObject().setStatus(StatusType.READY.toString());
+                    orderPersistence.save(orderData);
                 }
                 return Optional.of(orderData);
             } else {
