@@ -33,10 +33,10 @@ deploy_staging:
     - apk upgrade && apk update
     - apk add openssh-client
     - apk add sshpass
-    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker login --insecure-registry=registry.gitlab.winllc-dev.com -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.winllc-dev.com
-    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker pull --insecure-registry=registry.gitlab.winllc-dev.com registry.gitlab.winllc-dev.com/root/acme-server
-    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER "docker container --insecure-registry=registry.gitlab.winllc-dev.com stop winllc-acme-server && docker container rm winllc-acme-server || true"
-    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker run --insecure-registry=registry.gitlab.winllc-dev.com --name winllc-acme-server -p 8181:8181 -d registry.gitlab.winllc-dev.com
+    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.winllc-dev.com
+    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker pull registry.gitlab.winllc-dev.com/root/acme-server
+    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER "docker container stop winllc-acme-server && docker container rm winllc-acme-server || true"
+    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker run --name winllc-acme-server -p 8181:8181 -d registry.gitlab.winllc-dev.com
   environment:
     name: staging
     url: http://winra.winllc-dev.com
