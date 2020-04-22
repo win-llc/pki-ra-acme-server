@@ -11,10 +11,15 @@ sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+
+    maven {
+        url "http://util.winllc-dev.com:8081/nexus/content/repositories/win-llc"
+    }
 }
 
 dependencies {
-    compile project(":acme-common")
+    compile group: 'com.winllc.acme.common', name: 'acme-common', version: '1.0-SNAPSHOT'
+
     implementation 'org.bitbucket.b_c:jose4j:0.6.5'
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
     compile group: 'com.nimbusds', name: 'nimbus-jose-jwt', version: '7.2.1'

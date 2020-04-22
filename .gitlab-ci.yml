@@ -1,0 +1,40 @@
+image: docker:latest
+services:
+  - docker:dind
+
+stages:
+  - build
+  - package
+  - deploy
+
+build:
+  image: gradle:5.0-jdk8-alpine
+  stage: build
+  script:
+    - gradle build
+  artifacts:
+    paths:
+      - build/libs/*.jar
+
+package:
+  stage: package
+  script:
+    - docker build -t registry.gitlab.winllc-dev.com/root/acme-server .
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.winllc-dev.com
+    - docker push registry.gitlab.winllc-dev.com/root/acme-server
+
+deploy_staging:
+  stage: deploy
+  script:
+    - apk upgrade && apk update
+    - apk add openssh-client
+    - apk add sshpass
+    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.winllc-dev.com
+    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker pull registry.gitlab.winllc-dev.com/root/acme-server
+    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER "docker container stop winllc-acme-server && docker container rm winllc-acme-server || true"
+    - sshpass -p "$STAGING_SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no $STAGING_SERVER_USER@$STAGING_SERVER docker run --name winllc-acme-server -p 8181:8181 -d registry.gitlab.winllc-dev.com
+  environment:
+    name: staging
+    url: http://winra.winllc-dev.com
+  only:
+    - develop
