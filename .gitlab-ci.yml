@@ -1,6 +1,7 @@
 image: docker:latest
 services:
-  - docker:dind
+  - name: docker:dind
+    command: ["--insecure-registry=registry.gitlab.winllc-dev.com"]
 
 variables:
   DOCKER_TLS_CERTDIR: ""
