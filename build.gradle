@@ -13,7 +13,7 @@ repositories {
     mavenCentral()
 
     maven {
-        url "http://util.winllc-dev.com:8081/nexus/content/repositories/win-llc"
+        url "http://util.winllc-dev.com:8081/repository/win-llc/"
     }
 }
 
