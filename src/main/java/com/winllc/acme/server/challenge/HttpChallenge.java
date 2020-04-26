@@ -138,8 +138,8 @@ public class HttpChallenge implements ChallengeVerification {
 
 
                     //success = attemptChallenge(urlString);
-                    attemptChallenge(urlString);
-                    success = true;
+                    success = attemptChallenge(urlString);
+                    //success = true;
 
                     challenge = challengeProcessor.validation(challenge, success, false);
 
