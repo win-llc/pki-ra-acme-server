@@ -59,8 +59,6 @@ valid              invalid
         Base64.Encoder urlEncoder = java.util.Base64.getUrlEncoder().withoutPadding();
         String encoded = urlEncoder.encodeToString(token.getBytes());
         challenge.setToken(encoded);
-        //todo switch back
-        //challenge.setToken("LoqXcYV8q5ONbJQxbmR7SCTNo3tiAXDfowyjxAjEuX0");
 
         ChallengeData challengeData = new ChallengeData(challenge, directoryData.getName());
 

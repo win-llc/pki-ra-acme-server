@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'idea'
     id 'org.springframework.boot' version '2.2.2.RELEASE'
     id 'io.spring.dependency-management' version '1.0.8.RELEASE'
 }
@@ -17,33 +18,48 @@ repositories {
     }
 }
 
+test {
+    useJUnitPlatform()
+}
+
+configurations {
+    all {
+        resolutionStrategy.dependencySubstitution {
+            def proj1 = findProject(":acme-common")
+            if (proj1 != null && proj1.buildFile.exists()) {
+                substitute module('com.winllc.acme.common:acme-common') with project(':acme-common')
+            }
+        }
+    }
+}
+
 dependencies {
-    compile group: 'com.winllc.acme.common', name: 'acme-common', version: '1.0-SNAPSHOT'
+    implementation group: 'com.winllc.acme.common', name: 'acme-common', version: '1.0-SNAPSHOT'
 
     implementation 'org.bitbucket.b_c:jose4j:0.6.5'
     // https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt
-    compile group: 'com.nimbusds', name: 'nimbus-jose-jwt', version: '7.2.1'
+    implementation group: 'com.nimbusds', name: 'nimbus-jose-jwt', version: '7.2.1'
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-web
-    compile group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: '2.1.6.RELEASE'
+    implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: '2.1.6.RELEASE'
     // https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api
-    compile group: 'javax.servlet', name: 'javax.servlet-api', version: '4.0.1'
+    implementation group: 'javax.servlet', name: 'javax.servlet-api', version: '4.0.1'
 
     // https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core
-    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.12.0'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.12.0'
 
     // https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15
     //compile group: 'org.bouncycastle', name: 'bcprov-jdk15', version: '1.46'
 
     // https://mvnrepository.com/artifact/dnsjava/dnsjava
-    compile group: 'dnsjava', name: 'dnsjava', version: '2.1.9'
+    implementation group: 'dnsjava', name: 'dnsjava', version: '2.1.9'
     
 
     // https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple
-    compile group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
+    implementation group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
 
 
-    testCompile group: 'junit', name: 'junit', version: '4.12'
-    // https://mvnrepository.com/artifact/org.mockito/mockito-all
-    testCompile group: 'org.mockito', name: 'mockito-all', version: '2.0.2-beta'
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
 
 }

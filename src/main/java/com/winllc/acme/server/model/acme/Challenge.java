@@ -1,6 +1,8 @@
 package com.winllc.acme.server.model.acme;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.winllc.acme.server.contants.StatusType;
 import org.apache.commons.lang3.StringUtils;
 
 //RFC8555 Section 8
@@ -55,6 +57,26 @@ public class Challenge extends BaseAcmeObject {
 
     public void setError(ProblemDetails error) {
         this.error = error;
+    }
+
+    @JsonIgnore
+    public void markPending(){
+        setStatus(StatusType.PENDING.toString());
+    }
+
+    @JsonIgnore
+    public void markProcessing(){
+        setStatus(StatusType.PROCESSING.toString());
+    }
+
+    @JsonIgnore
+    public void markValid(){
+        setStatus(StatusType.VALID.toString());
+    }
+
+    @JsonIgnore
+    public void markInvalid(){
+        setStatus(StatusType.INVALID.toString());
     }
 
     @Override

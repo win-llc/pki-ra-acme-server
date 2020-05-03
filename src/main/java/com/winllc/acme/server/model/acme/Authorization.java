@@ -1,6 +1,8 @@
 package com.winllc.acme.server.model.acme;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.winllc.acme.server.contants.StatusType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,6 +54,36 @@ public class Authorization extends ExpiresObject {
     @Override
     public boolean isValid() {
         return identifier != null && challenges != null;
+    }
+
+    @JsonIgnore
+    public void markPending(){
+        setStatus(StatusType.PENDING.toString());
+    }
+
+    @JsonIgnore
+    public void markValid(){
+        setStatus(StatusType.VALID.toString());
+    }
+
+    @JsonIgnore
+    public void markInvalid(){
+        setStatus(StatusType.INVALID.toString());
+    }
+
+    @JsonIgnore
+    public void markRevoked(){
+        setStatus(StatusType.REVOKED.toString());
+    }
+
+    @JsonIgnore
+    public void markDeactivated(){
+        setStatus(StatusType.DEACTIVATED.toString());
+    }
+
+    @JsonIgnore
+    public void markExpired(){
+        setStatus(StatusType.EXPIRED.toString());
     }
 
     @Override

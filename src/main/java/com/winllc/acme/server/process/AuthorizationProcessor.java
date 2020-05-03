@@ -62,10 +62,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     private OrderProcessor orderProcessor;
     @Autowired
     private CertificateAuthorityService certificateAuthorityService;
-    @Autowired
-    private HttpChallenge httpChallenge;
-    @Autowired
-    private DnsChallenge dnsChallenge;
+
 
     public AuthorizationData buildNew(DirectoryData directoryData, OrderData orderData) {
         AuthorizationData authorizationData = buildNew(directoryData);
@@ -117,7 +114,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
 
             if (authorizationData.getObject().isExpired()) {
                 log.debug("Marking Authorization expired: " + authorizationData);
-                authorizationData.getObject().setStatus(StatusType.EXPIRED.toString());
+                authorizationData.getObject().markExpired();
             }
             refreshed = authorizationPersistence.save(refreshed);
             return refreshed;
@@ -158,7 +155,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
 
             //if no challenges needed, mark as valid
             if(authorization.getChallenges() == null || authorization.getChallenges().length == 0){
-                authorization.setStatus(StatusType.VALID.toString());
+                authorization.markValid();
             }
 
             authorizationData = authorizationPersistence.save(authorizationData);
@@ -212,7 +209,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
         List<AuthorizationData> authorizationDataList = authorizationPersistence.findAllByOrderIdEquals(orderData.getId());
         for(AuthorizationData authorizationData : authorizationDataList){
             if(authorizationData.getObject().isExpired()){
-                authorizationData.getObject().setStatus(StatusType.EXPIRED.toString());
+                authorizationData.getObject().markExpired();
                 authorizationPersistence.save(authorizationData);
             }
         }

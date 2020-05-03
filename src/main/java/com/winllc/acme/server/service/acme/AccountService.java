@@ -57,16 +57,15 @@ public class AccountService extends BaseService {
     private DirectoryDataService directoryDataService;
     @Autowired
     private SecurityValidatorUtil securityValidatorUtil;
-    @Autowired
-    private ExternalAccountProviderService externalAccountProviderService;
 
     //Section 7.3
     @RequestMapping(value = "{directory}/new-account", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> request(HttpServletRequest request, @PathVariable String directory) throws Exception {
-        log.debug("new-account request");
+        log.info("new-account request");
         DirectoryData directoryData = directoryDataService.findByName(directory);
 
         String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+        log.info(body);
 
         AcmeJWSObject jwsObject = AcmeJWSObject.parse(body);
 
@@ -100,6 +99,7 @@ public class AccountService extends BaseService {
     //Section 7.3.2
     @RequestMapping(value = "{directory}/acct/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> update(@PathVariable String id, HttpServletRequest request, @PathVariable String directory) throws Exception {
+        log.info("update account");
         PayloadAndAccount<AccountRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
 
         AccountRequest accountRequest = payloadAndAccount.getPayload();

@@ -1,6 +1,6 @@
 package com.winllc.acme.server.service.filter;
 
-import com.winllc.acme.server.persistence.DirectoryPersistence;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.servlet.*;
@@ -13,7 +13,7 @@ public class AcmeServletFilter implements Filter {
     public static String directoryKey = "directoryData";
 
     @Autowired
-    private DirectoryPersistence directoryPersistence;
+    private DirectoryDataService directoryDataService;
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {

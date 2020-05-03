@@ -25,6 +25,7 @@ import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,8 +55,6 @@ public class OrderService extends BaseService {
     @Autowired
     private OrderPersistence orderPersistence;
     @Autowired
-    private ChallengePersistence challengePersistence;
-    @Autowired
     private OrderListPersistence orderListPersistence;
     @Autowired
     private AccountPersistence accountPersistence;
@@ -77,7 +76,8 @@ public class OrderService extends BaseService {
     @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request, @PathVariable String directory) {
         log.info("start newOrder");
-        DirectoryData directoryData = directoryDataService.findByName(directory);
+        Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
+        DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
         try {
             PayloadAndAccount<OrderRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, OrderRequest.class);
@@ -153,9 +153,10 @@ public class OrderService extends BaseService {
     }
 
     @RequestMapping(value = "{directory}/order/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
-    public ResponseEntity<?> getOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) throws JsonProcessingException {
+    public ResponseEntity<?> getOrder(@PathVariable String id, @PathVariable String directory) throws JsonProcessingException {
         log.info("getOrder: "+id);
-        DirectoryData directoryData = directoryDataService.findByName(directory);
+        Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
+        DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
         Optional<OrderData> orderDataOptional = orderPersistence.findById(id);
         if (orderDataOptional.isPresent()) {
@@ -171,9 +172,11 @@ public class OrderService extends BaseService {
                         .build();
                        // .body(orderData.getObject());
             }else{
-                ObjectMapper mapper = new ObjectMapper();
-                String jsonObj = mapper.writeValueAsString(orderData.getObject());
-                log.info("Returning order: "+jsonObj);
+                if(log.isEnabled(Level.DEBUG)) {
+                    ObjectMapper mapper = new ObjectMapper();
+                    String jsonObj = mapper.writeValueAsString(orderData.getObject());
+                    log.debug("Returning order: " + jsonObj);
+                }
 
                 return buildBaseResponseEntity(200, directoryData)
                         .header("Location", orderData.buildUrl())
@@ -195,14 +198,15 @@ public class OrderService extends BaseService {
     @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
         log.info("finalizeOrder: "+id);
-        DirectoryData directoryData = directoryDataService.findByName(directory);
+        Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
+        DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
-        PayloadAndAccount<CertificateRequest> certificateRequestPayloadAndAccount = null;
+        PayloadAndAccount<CertificateRequest> certificateRequestPayloadAndAccount;
         try {
             certificateRequestPayloadAndAccount =
                     securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(httpServletRequest, CertificateRequest.class);
         } catch (AcmeServerException e) {
-            log.error(e);
+            log.error("Could not verify CertificateRequest", e);
             ProblemDetails problemDetails = new ProblemDetails(e.getProblemType());
             return buildBaseResponseEntity(500, directoryData)
                     .body(problemDetails);
@@ -267,7 +271,8 @@ public class OrderService extends BaseService {
         if (orderListDataOptional.isPresent()) {
             OrderListData orderListData = orderListDataOptional.get();
 
-            DirectoryData directoryData = directoryDataService.findByName(directory);
+            Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
+            DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
             OrderList orderList = orderListData.getObject();
             if (cursor != null) {
@@ -346,7 +351,9 @@ public class OrderService extends BaseService {
         Runnable issueCert = new Runnable() {
             @Override
             public void run() {
-                DirectoryData directoryData = directoryDataService.findByName(order.getDirectory());
+                Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(order.getDirectory());
+                DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
+
                 CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
 
                 OrderData newOrder = orderPersistence.findById(order.getId()).get();

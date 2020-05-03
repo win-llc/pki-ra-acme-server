@@ -1,18 +1,14 @@
 package com.winllc.acme.server.process;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.gen.JWKGenerator;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jose.util.JSONObjectUtils;
-import com.winllc.acme.common.ExternalAccountProviderSettings;
 import com.winllc.acme.server.MockExternalAccountProvider;
-import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.configuration.AppConfig;
 import com.winllc.acme.server.external.ExternalAccountProvider;
-import com.winllc.acme.server.external.WINLLCExternalAccountProvider;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.acme.Directory;
@@ -24,23 +20,18 @@ import com.winllc.acme.server.model.data.OrderListData;
 import com.winllc.acme.server.model.requestresponse.AccountRequest;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
-import com.winllc.acme.server.persistence.OrderPersistence;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import net.minidev.json.JSONObject;
-import org.junit.Rule;
 import org.junit.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.internal.matchers.Any;
-import org.mockito.internal.matchers.Or;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import org.mockito.*;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringRunner;
 
-import java.text.ParseException;
+import java.util.Optional;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
@@ -56,24 +47,20 @@ deactiv.|                revoke |
         V                       V
    deactivated               revoked
  */
+@RunWith(SpringRunner.class)
+@ContextConfiguration(classes = AppConfig.class)
 public class AccountProcessorTest {
 
-    @Mock
+    @MockBean
     private AccountPersistence accountPersistence;
-    @Mock
-    private OrderPersistence orderPersistence;
-    @Mock
+    @MockBean
     private OrderListPersistence orderListPersistence;
-    @Mock
+    @MockBean
     private DirectoryDataService directoryDataService;
-    @Mock
+    @MockBean
     private ExternalAccountProviderService externalAccountProviderService;
     @Autowired
-    @InjectMocks
     private AccountProcessor accountProcessor;
-
-    @Rule
-    public MockitoRule mockitoRule = MockitoJUnit.rule();
 
     @Test
     public void request() throws Exception {
@@ -83,7 +70,7 @@ public class AccountProcessorTest {
         directory.setMeta(meta);
         DirectoryData directoryData = new DirectoryData(directory);
         directoryData.setName("directory");
-        when(directoryDataService.findByName(any())).thenReturn(directoryData);
+        when(directoryDataService.getByName(any())).thenReturn(Optional.of(directoryData));
 
         OrderList orderList = new OrderList();
         OrderListData orderListData = new OrderListData(orderList, "directory");
@@ -105,11 +92,11 @@ public class AccountProcessorTest {
     }
 
     public void requestTosRequired(){
-
+        //todo
     }
 
     public void requestExternalAccountRequired(){
-
+        //todo
     }
 
     private AcmeJWSObject buildTestJwsObject(Object obj) throws Exception{

@@ -10,7 +10,7 @@ import java.util.Optional;
 
 //Section 7.1.2.1
 public class OrderListData extends DataObject<OrderList> {
-    private static int pageSize = 10;
+    private static final int pageSize = 10;
 
     public OrderListData(OrderList object, String directory) {
         super(object, directory);

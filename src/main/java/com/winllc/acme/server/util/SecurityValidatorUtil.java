@@ -7,14 +7,12 @@ import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
-import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.MalformedRequest;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AccountPersistence;
@@ -37,14 +35,10 @@ public class SecurityValidatorUtil {
 
     private static final Logger log = LogManager.getLogger(SecurityValidatorUtil.class);
 
-    private static AccountPersistence accountPersistence;
     @Autowired
     private DirectoryDataService directoryDataService;
-
     @Autowired
-    public void setAccountPersistence(AccountPersistence accountPersistence) {
-        this.accountPersistence = accountPersistence;
-    }
+    private AccountPersistence accountPersistence;
 
     public static String generateRandomString(int length) {
         boolean useLetters = true;
@@ -59,101 +53,105 @@ public class SecurityValidatorUtil {
         //Should contain account URL
         String kid;
 
-        if(StringUtils.isNotBlank(jwsObject.getHeader().getKeyID())){
+        if (StringUtils.isNotBlank(jwsObject.getHeader().getKeyID())) {
             AcmeURL acmeURL = new AcmeURL(jwsObject.getHeader().getKeyID());
             kid = acmeURL.getObjectId().get();
-        }else{
+        } else {
             Optional<AccountData> firstByJwkEquals = accountPersistence.findFirstByJwkEquals(jwsObject.getHeader().getJWK().toString());
-            if(firstByJwkEquals.isPresent()){
+            if (firstByJwkEquals.isPresent()) {
                 AccountData accountData = firstByJwkEquals.get();
                 kid = accountData.getId();
-            }else{
+            } else {
                 throw new AcmeServerException(ProblemType.ACCOUNT_DOES_NOT_EXIST);
             }
         }
 
 
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, kid, clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest.getRequestURL().toString(), kid, clazz);
     }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,
-                                                                                       String accountId, Class<T> clazz) throws AcmeServerException {
+                                                                                String accountId, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, accountId, clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest.getRequestURL().toString(), accountId, clazz);
     }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
                                                                                 Class<T> clazz) throws AcmeServerException {
         AcmeURL kid = new AcmeURL(jwsObject.getHeader().getKeyID());
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, kid.getObjectId().get(), clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest.getRequestURL().toString(), kid.getObjectId().get(), clazz);
     }
 
-    public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
-                                                                                       String accountId, Class<T> clazz) throws AcmeServerException {
-
+    public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, String requestUrl,
+                                                                                String accountId, Class<T> clazz) throws AcmeServerException {
         //Section 6.2
-        if(!jwsObject.hasValidHeaderFields()){
+        if (!jwsObject.hasValidHeaderFields()) {
             log.info("Invalid header field found");
             throw new AcmeServerException(ProblemType.MALFORMED);
         }
 
-        DirectoryData directoryData = directoryDataService.findByName(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
-        //The URL must match the URL in the JWS Header
-        //Section 6.4
-        String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
+        Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier());
+        if (directoryDataOptional.isPresent()) {
+            DirectoryData directoryData = directoryDataOptional.get();
+            //The URL must match the URL in the JWS Header
+            //Section 6.4
+            String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
 
-        if(!headerUrl.contentEquals(httpServletRequest.getRequestURL())){
-            log.debug("Header URL and Request URL did not match");
-            throw new AcmeServerException(ProblemType.UNAUTHORIZED);
-        }
-
-        Optional<AccountData> optionalAccount = accountPersistence.findById(accountId);
-        if(optionalAccount.isPresent()) {
-            AccountData accountData = optionalAccount.get();
-
-            //Section 7.3.6
-            if(accountData.getObject().getStatus().contentEquals(StatusType.DEACTIVATED.toString())){
-                throw new AcmeServerException(ProblemType.UNAUTHORIZED);
+            if (!headerUrl.contentEquals(requestUrl)) {
+                log.debug("Header URL and Request URL did not match");
+                throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Header and Request URLs did not match");
             }
 
-            JWK accountJWK;
-            try {
-                accountJWK = JWK.parse(accountData.getJwk());
-            } catch (ParseException e) {
-                throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Unable to parse account JWK");
-            }
+            Optional<AccountData> optionalAccount = accountPersistence.findById(accountId);
+            if (optionalAccount.isPresent()) {
+                AccountData accountData = optionalAccount.get();
 
-            boolean verified = verifyJWS(jwsObject, accountJWK);
+                //Section 7.3.6
+                if (accountData.getObject().getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
+                    throw new AcmeServerException(ProblemType.UNAUTHORIZED);
+                }
 
-            //Verify signature
-            if (!verified) {
-                throw new AcmeServerException(ProblemType.MALFORMED);
-            }
+                JWK accountJWK;
+                try {
+                    accountJWK = JWK.parse(accountData.getJwk());
+                } catch (ParseException e) {
+                    throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Unable to parse account JWK");
+                }
 
-            String nonce = jwsObject.getNonce();
-            //Verify nonce has not been used
-            if (!NonceUtil.checkNonceUsed(nonce)) {
-                NonceUtil.markNonceUsed(nonce);
+                boolean verified = verifyJWS(jwsObject, accountJWK);
+
+                //Verify signature
+                if (!verified) {
+                    throw new AcmeServerException(ProblemType.MALFORMED);
+                }
+
+                String nonce = jwsObject.getNonce();
+                //Verify nonce has not been used
+                if (!NonceUtil.checkNonceUsed(nonce)) {
+                    NonceUtil.markNonceUsed(nonce);
+                } else {
+                    //NONCE has been used before, possible replay attack
+                    //Section 6.5.2
+                    throw new MalformedRequest();
+                }
+
+                T obj = getPayloadFromJWSObject(jwsObject, clazz);
+
+                return new PayloadAndAccount<>(obj, accountData, directoryData);
             } else {
-                //NONCE has been used before, possible replay attack
-                //Section 6.5.2
-                throw new MalformedRequest();
+                throw new AcmeServerException(ProblemType.ACCOUNT_DOES_NOT_EXIST);
             }
-
-            T obj = getPayloadFromJWSObject(jwsObject, clazz);
-
-            return new PayloadAndAccount<>(obj, accountData, directoryData);
-        }else{
-            throw new AcmeServerException(ProblemType.ACCOUNT_DOES_NOT_EXIST);
+        } else {
+            throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not find DirectoryData");
         }
     }
 
     public static <T> T getPayloadFromJWSObject(JWSObject jwsObject, Class<T> clazz) throws AcmeServerException {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
-            if(StringUtils.isNotBlank(jwsObject.getPayload().toString())){
+            if (StringUtils.isNotBlank(jwsObject.getPayload().toString())) {
                 return objectMapper.readValue(jwsObject.getPayload().toJSONObject().toJSONString(), clazz);
-            }else{
+            } else {
                 return (T) "";
             }
         } catch (IOException e) {
@@ -165,6 +163,8 @@ public class SecurityValidatorUtil {
         String body;
         try {
             body = httpServletRequest.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+            log.info("Request Body for: " + httpServletRequest.getRequestURI());
+            log.info(body);
         } catch (IOException e) {
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Unable to read HTTP request data");
         }
@@ -189,7 +189,7 @@ public class SecurityValidatorUtil {
             JWSVerifier verifier = buildVerifierFromJWS(jwsObject, jwkToVerify);
             return jwsObject.verify(verifier);
         } catch (JOSEException e) {
-            e.printStackTrace();
+            log.error("Could not build JWS verifier", e);
         }
         return false;
     }
@@ -199,20 +199,18 @@ public class SecurityValidatorUtil {
     private static JWSVerifier buildVerifierFromJWS(JWSObject jwsObject, JWK jwkToVerify) throws JOSEException, AcmeServerException {
         JWSAlgorithm jwsAlgorithm = jwsObject.getHeader().getAlgorithm();
 
-        if(JWSAlgorithm.Family.EC.contains(jwsAlgorithm)){
+        if (JWSAlgorithm.Family.EC.contains(jwsAlgorithm)) {
             return new ECDSAVerifier((ECKey) jwsObject.getHeader().getJWK().toPublicJWK());
-        }else if(JWSAlgorithm.Family.ED.contains(jwsAlgorithm)){
-            throw new RuntimeException("Not supported: "+jwsAlgorithm.getName());
-        }else if(JWSAlgorithm.Family.HMAC_SHA.contains(jwsAlgorithm)){
-            throw new RuntimeException("Not supported: "+jwsAlgorithm.getName());
-        }else if(JWSAlgorithm.Family.RSA.contains(jwsAlgorithm)){
+        } else if (JWSAlgorithm.Family.ED.contains(jwsAlgorithm)) {
+            throw new RuntimeException("Not supported: " + jwsAlgorithm.getName());
+        } else if (JWSAlgorithm.Family.HMAC_SHA.contains(jwsAlgorithm)) {
+            throw new RuntimeException("Not supported: " + jwsAlgorithm.getName());
+        } else if (JWSAlgorithm.Family.RSA.contains(jwsAlgorithm)) {
             return new RSASSAVerifier((RSAKey) jwkToVerify.toPublicJWK());
-        }else if(JWSAlgorithm.Family.SIGNATURE.contains(jwsAlgorithm)){
-            throw new RuntimeException("Not supported: "+jwsAlgorithm.getName());
+        } else if (JWSAlgorithm.Family.SIGNATURE.contains(jwsAlgorithm)) {
+            throw new RuntimeException("Not supported: " + jwsAlgorithm.getName());
         }
         throw new AcmeServerException(ProblemType.BAD_SIGNATURE_ALGORITHM);
     }
-
-
 
 }

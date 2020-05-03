@@ -93,4 +93,12 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
 
         directoryDataMap.put(directoryData.getName(), directoryData);
     }
+
+    public Optional<DirectoryData> getByName(String name){
+        if(directoryDataMap.containsKey(name)){
+            return Optional.of(directoryDataMap.get(name));
+        }else{
+            return Optional.empty();
+        }
+    }
 }

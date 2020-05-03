@@ -1,5 +1,6 @@
 package com.winllc.acme.server.model.requestresponse;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.winllc.acme.server.model.acme.Identifier;
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -20,6 +21,7 @@ notAfter (optional, string):
 The requested value of the notAfter field in the certificate, in the date format defined in [RFC3339].
  */
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class OrderRequest implements RequestValidator{
     //required
     private Identifier[] identifiers;

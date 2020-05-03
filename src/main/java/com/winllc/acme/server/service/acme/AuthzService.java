@@ -123,7 +123,7 @@ public class AuthzService extends BaseService {
                 AcmeJWSObject jwsObject = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
                 PayloadAndAccount payloadAndAccount;
                 if (jwsObject.getPayload().toString().contentEquals("")) {
-                    payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, request, authorizationData.getAccountId(), String.class);
+                    payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, request.getRequestURL().toString(), authorizationData.getAccountId(), String.class);
                 }else{
                     payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, authorizationData.getAccountId(), Authorization.class);
                     Authorization authorization = (Authorization) payloadAndAccount.getPayload();
@@ -144,10 +144,6 @@ public class AuthzService extends BaseService {
                 AuthorizationData refreshedAuthorization = authorizationProcessor.buildCurrentAuthorization(authorizationData);
 
                 log.info("Returning current authorization: "+refreshedAuthorization);
-
-                Authorization temp = new Authorization();
-                temp.setStatus(StatusType.PENDING.toString());
-                temp.setIdentifier(refreshedAuthorization.getObject().getIdentifier());
 
                 ObjectMapper mapper = new ObjectMapper();
                 String jsonObj = mapper.writeValueAsString(refreshedAuthorization.getObject());
@@ -184,71 +180,62 @@ public class AuthzService extends BaseService {
 
     //Section 7.5.1
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> challenge(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException, JsonProcessingException {
+    public ResponseEntity<?> challenge(@PathVariable String id, @PathVariable String directory) throws AcmeServerException, JsonProcessingException {
         log.info("getChallenge: "+id);
         Optional<ChallengeData> optionalChallengeData = challengePersistence.findById(id);
         DirectoryData directoryData = directoryDataService.findByName(directory);
 
-        AcmeJWSObject jwsObjectFromHttpRequest;
-        try {
-            jwsObjectFromHttpRequest = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
-        } catch (AcmeServerException e) {
-            log.error("Could not parse JWS Object from request", e);
-        }
-
         if (optionalChallengeData.isPresent()) {
-            ChallengeData challengeData = optionalChallengeData.get();
-            Challenge challenge = challengeData.getObject();
-
-
+            ChallengeData updatedChallengeData = optionalChallengeData.get();
+            Challenge challenge = updatedChallengeData.getObject();
 
             //Get the current challenge and return 200
-            Optional<ChallengeData> challengeDataOptional = challengePersistence.findById(challengeData.getId());
+            //Optional<ChallengeData> challengeDataOptional = challengePersistence.findById(challengeData.getId());
 
-            if(challengeDataOptional.isPresent()){
-                ChallengeData updatedChallengeData = challengeDataOptional.get();
-                Optional<AuthorizationData> authOptional = authorizationPersistence.findById(challengeData.getAuthorizationId());
+            //if(challengeDataOptional.isPresent()){
+                //ChallengeData updatedChallengeData = challengeDataOptional.get();
+                //Optional<AuthorizationData> authOptional = authorizationPersistence.findById(updatedChallengeData.getAuthorizationId());
 
-                if(updatedChallengeData.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
-                        updatedChallengeData.getObject().getStatus().equals(StatusType.PENDING.toString())){
+                if(challenge.getStatus().equals(StatusType.PROCESSING.toString()) ||
+                        challenge.getStatus().equals(StatusType.PENDING.toString())){
 
-                    if(updatedChallengeData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
+                    if(challenge.getStatus().equals(StatusType.PENDING.toString())) {
                         switch (challenge.getType()) {
                             case "http-01":
-                                httpChallenge.verify(challengeData);
+                                httpChallenge.verify(updatedChallengeData);
                                 break;
                             case "dns-01":
-                                dnsChallenge.verify(challengeData);
+                                dnsChallenge.verify(updatedChallengeData);
                                 break;
                         }
                     }
 
-                    Challenge returnChallenge = updatedChallengeData.getObject();
                     ProblemDetails pd = new ProblemDetails(ProblemType.ORDER_NOT_READY);
                     pd.setStatus(200);
                     pd.setSubproblems(null);
                     pd.setDetail("Challenge not ready");
-                    returnChallenge.setError(pd);
-                    returnChallenge.setStatus(StatusType.PROCESSING.toString());;
+                    challenge.setError(pd);
+                    challenge.setStatus(StatusType.PROCESSING.toString());;
 
                     ObjectMapper objectMapper = new ObjectMapper();
-                    String jsonObj = objectMapper.writeValueAsString(returnChallenge);
+                    String jsonObj = objectMapper.writeValueAsString(challenge);
 
                     log.info("Challenge processing: "+jsonObj);
 
                     return buildBaseResponseEntityWithRetryAfter(200, directoryData, 10)
                             //.header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
-                            .body(returnChallenge);
+                            .body(challenge);
                 }else{
                     return buildBaseResponseEntity(200, directoryData)
                             //.header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
-                            .body(challengeDataOptional.get().getObject());
+                            .body(updatedChallengeData.getObject());
                 }
 
             }else{
                 log.error("Could not find challenge");
                 throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
             }
+        /*
         }else{
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
             problemDetails.setDetail("Could not find challenge");
@@ -257,6 +244,8 @@ public class AuthzService extends BaseService {
             return buildBaseResponseEntity(500, directoryData)
                     .body(problemDetails);
         }
+
+         */
     }
 
     private boolean serverWillingToIssueForIdentifier(Identifier identifier, DirectoryData directoryData, AccountData accountData, boolean allowWildcards) throws AcmeServerException {
