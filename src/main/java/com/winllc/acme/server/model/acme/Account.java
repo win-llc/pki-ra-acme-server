@@ -1,8 +1,10 @@
 package com.winllc.acme.server.model.acme;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jose.JWSObject;
+import com.winllc.acme.server.contants.StatusType;
 
 import java.util.Arrays;
 
@@ -58,6 +60,21 @@ public class Account extends BaseAcmeObject<Account> {
     @Override
     public boolean isValid() {
         return orders != null;
+    }
+
+    @JsonIgnore
+    public void markValid(){
+        setStatus(StatusType.VALID.toString());
+    }
+
+    @JsonIgnore
+    public void markDeactivated(){
+        setStatus(StatusType.DEACTIVATED.toString());
+    }
+
+    @JsonIgnore
+    public void markRevoked(){
+        setStatus(StatusType.REVOKED.toString());
     }
 
     @Override

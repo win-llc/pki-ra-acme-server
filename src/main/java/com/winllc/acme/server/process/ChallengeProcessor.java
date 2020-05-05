@@ -52,7 +52,7 @@ valid              invalid
 
     public ChallengeData buildNew(DirectoryData directoryData){
         Challenge challenge = new Challenge();
-        challenge.setStatus(StatusType.PENDING.toString());
+        challenge.markPending();
 
         String token = RandomStringUtils.random(50);
 
@@ -80,12 +80,12 @@ valid              invalid
         if(status == StatusType.PROCESSING){
             if(success){
                 log.info("Challenge is valid: "+challengeData.getId());
-                challengeData.getObject().setStatus(StatusType.VALID.toString());
+                challengeData.getObject().markValid();
                 challengeData = challengePersistence.save(challengeData);
                 //If challenge is valid, parent authorization should be valid
                 authorizationProcessor.challengeMarkedValid(challengeData.getAuthorizationId());
             }else if(maxAttemptsReached){
-                challengeData.getObject().setStatus(StatusType.INVALID.toString());
+                challengeData.getObject().markInvalid();
                 challengeData = challengePersistence.save(challengeData);
             }
 

@@ -79,7 +79,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     @Override
     public AuthorizationData buildNew(DirectoryData directoryData) {
         Authorization authorization = new Authorization();
-        authorization.setStatus(StatusType.PENDING.toString());
+        authorization.markPending();
 
         AuthorizationData authorizationData = new AuthorizationData(authorization, directoryData.getName());
 
@@ -105,12 +105,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
             List<ChallengeData> challengeDataList = challengePersistence.findAllByAuthorizationIdEquals(refreshed.getId());
 
             refreshed.getObject().setChallenges(challengeDataList.stream()
-            .map(c -> c.getObject())
-                    .map(c -> {
-                        c.setStatus(null);
-                        return c;
-                    })
-                    .collect(Collectors.toList()).toArray(new Challenge[0]));
+                    .map(DataObject::getObject).toArray(Challenge[]::new));
 
             if (authorizationData.getObject().isExpired()) {
                 log.debug("Marking Authorization expired: " + authorizationData);
@@ -174,7 +169,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
             AuthorizationData authorizationData = buildCurrentAuthorization(authorizationDataOptional.get());
 
             if(authorizationData.getObject().isExpired()){
-                authorizationData.getObject().setStatus(StatusType.EXPIRED.toString());
+                authorizationData.getObject().markExpired();
                 authorizationData = authorizationPersistence.save(authorizationData);
             }else{
                 authorizationData = markValid(authorizationData);
@@ -193,9 +188,9 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
 
     //Only mark valid if currently in pending state
     public AuthorizationData markValid(AuthorizationData authorizationData) throws InternalServerException {
-        if(authorizationData.getObject().getStatus().equalsIgnoreCase(StatusType.PENDING.toString())){
+        if(authorizationData.getObject().checkStatusEquals(StatusType.PENDING)){
             log.info("Authorization is valid: "+authorizationData.getId());
-            authorizationData.getObject().setStatus(StatusType.VALID.toString());
+            authorizationData.getObject().markValid();
             authorizationData = authorizationPersistence.save(authorizationData);
 
             //If authorization marked valid, let order know

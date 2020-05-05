@@ -29,7 +29,12 @@ public abstract class BaseAcmeObject<T extends BaseAcmeObject> {
 
     @JsonIgnore
     public StatusType getStatusType(){
-        return StatusType.valueOf(status);
+        return StatusType.getValue(status);
+    }
+
+    @JsonIgnore
+    public boolean checkStatusEquals(StatusType statusType){
+        return statusType.equals(getStatusType());
     }
 
     @JsonIgnore

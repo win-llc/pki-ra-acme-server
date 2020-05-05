@@ -15,11 +15,13 @@ import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.requestresponse.AccountRequest;
+import com.winllc.acme.server.service.acme.OrderService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -33,6 +35,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = AppConfig.class)
+@WebMvcTest(SecurityValidatorUtil.class)
 public class SecurityValidatorUtilTest {
 
     private static String newAccountRequest = "{\n" +

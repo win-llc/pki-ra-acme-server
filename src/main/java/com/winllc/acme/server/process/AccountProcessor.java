@@ -181,7 +181,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
         if(directoryData == null) throw new IllegalArgumentException("DirectoryData can't be null");
 
         Account account = new Account();
-        account.setStatus(StatusType.VALID.toString());
+        account.markValid();
 
         //Set order list location, Section 7.1.2.1
         OrderList orderList = new OrderList();
@@ -200,8 +200,8 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     public AccountData deactivateAccount(AccountData accountData) throws InternalServerException {
         //if all goes well
         Account account = accountData.getObject();
-        if(account.getStatus().contentEquals(StatusType.VALID.toString())) {
-            accountData.getObject().setStatus(StatusType.DEACTIVATED.toString());
+        if(account.checkStatusEquals(StatusType.VALID)) {
+            accountData.getObject().markDeactivated();
             accountData = accountPersistence.save(accountData);
 
             markInProgressAccountObjectsInvalid(accountData);
@@ -217,8 +217,8 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     public AccountData accountRevoke(AccountData accountData) throws InternalServerException {
         //if all goes well
         Account account = accountData.getObject();
-        if(account.getStatus().contentEquals(StatusType.VALID.toString())) {
-            account.setStatus(StatusType.REVOKED.toString());
+        if(account.checkStatusEquals(StatusType.VALID)) {
+            account.markRevoked();
             accountData = accountPersistence.save(accountData);
 
             markInProgressAccountObjectsInvalid(accountData);
@@ -235,7 +235,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     private void markInProgressAccountObjectsInvalid(AccountData accountData){
         List<OrderData> orderDataList = orderPersistence.findAllByAccountIdEquals(accountData.getId());
         orderDataList.forEach(o -> {
-            if(!o.getObject().getStatus().contentEquals(StatusType.VALID.toString())) {
+            if(!o.getObject().checkStatusEquals(StatusType.VALID)) {
                 o.getObject().setStatus(StatusType.INVALID.toString());
                 orderPersistence.save(o);
             }

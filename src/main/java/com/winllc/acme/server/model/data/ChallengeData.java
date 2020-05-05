@@ -12,6 +12,10 @@ public class ChallengeData extends DataObject<Challenge> {
         super(object, directory);
     }
 
+    //public ChallengeData(Challenge object, DirectoryData directoryData){
+    //    super(object, directoryData.getName());
+    //}
+
     @Override
     public String buildUrl() {
         return buildBaseUrl() + "chall/" + getId();

@@ -7,16 +7,19 @@ import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.model.acme.*;
 import com.winllc.acme.server.model.data.AccountData;
+import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.model.data.OrderData;
 
 public class MockUtils {
 
     public static final String mockIdentifier = "test.winllc.com";
+    public static final Identifier identifier = new Identifier(IdentifierType.DNS, mockIdentifier);
 
     private static RSAKey rsaJWK;
     private static AccountData accountData;
@@ -100,6 +103,18 @@ public class MockUtils {
         OrderData orderData = new OrderData(order, "acme-test", accountData.getId());
 
         return orderData;
+    }
+
+    public static MockCertificateAuthority buildMockCertificateAuthority(){
+        return new MockCertificateAuthority();
+    }
+
+    public static ChallengeData buildMockChallengeData(StatusType statusType){
+        Challenge challenge = new Challenge();
+        challenge.setStatus(statusType.toString());
+        challenge.setType(ChallengeType.HTTP.toString());
+        ChallengeData challengeData = new ChallengeData(challenge, "acme-test");
+        return challengeData;
     }
 
 }

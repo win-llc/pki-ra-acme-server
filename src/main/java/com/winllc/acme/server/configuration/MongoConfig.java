@@ -1,26 +1,31 @@
 package com.winllc.acme.server.configuration;
 
-import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.config.AbstractMongoConfiguration;
-import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+import org.springframework.core.env.Environment;
+import org.springframework.data.mongodb.MongoDbFactory;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.SimpleMongoDbFactory;
 
 @Configuration
-@EnableMongoRepositories(basePackages = "com.winllc.acme.server.persistence")
-public class MongoConfig extends AbstractMongoConfiguration {
+public class MongoConfig {
 
-    @Override
-    protected String getDatabaseName() {
-        return "acme";
+    @Autowired
+    private Environment env;
+
+    @Bean
+    public MongoDbFactory mongoDbFactory() {
+        return new SimpleMongoDbFactory(new MongoClientURI(env.getProperty("spring.data.mongodb.uri")));
     }
 
-    @Override
-    public MongoClient mongoClient() {
-        return new MongoClient("database.winllc-dev.com", 27017);
+    @Bean
+    public MongoTemplate mongoTemplate() {
+        MongoTemplate mongoTemplate = new MongoTemplate(mongoDbFactory());
+
+        return mongoTemplate;
+
     }
 
-    @Override
-    protected String getMappingBasePackage() {
-        return "com.winllc";
-    }
 }

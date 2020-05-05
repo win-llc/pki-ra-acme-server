@@ -9,8 +9,8 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @SpringBootApplication
-@EnableMongoRepositories
 @ComponentScan("com.winllc.acme.server")
+@EnableMongoRepositories(basePackages = "com.winllc.acme.server.persistence")
 public class AppConfig {
 
     public static void main(String[] args){

@@ -1,10 +1,20 @@
 package com.winllc.acme.server.model.acme;
 
+import com.winllc.acme.server.contants.IdentifierType;
+
 public class Identifier {
     //required
     private String type;
     //required
     private String value;
+
+    public Identifier(IdentifierType type, String value) {
+        this.type = type.toString();
+        this.value = value;
+    }
+
+    public Identifier() {
+    }
 
     public String getType() {
         return type;
