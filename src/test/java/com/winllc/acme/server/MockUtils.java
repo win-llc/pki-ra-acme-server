@@ -114,6 +114,7 @@ public class MockUtils {
         account.setOrders("http://localhost/acme-test/orders/1");
         accountData = new AccountData(account, "acme-test");
         accountData.setJwk(rsaJWK.toPublicJWK().toJSONString());
+        accountData.setEabKeyIdentifier("eab1");
     }
 
     public static AcmeJWSObject buildCustomAcmeJwsObject(Object jsonObject, String url)

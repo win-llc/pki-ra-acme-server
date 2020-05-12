@@ -2,6 +2,7 @@ package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.common.util.CertUtil;
+import com.winllc.acme.server.MockExternalAccountProvider;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.contants.RevocationReason;
 import com.winllc.acme.server.exceptions.AcmeServerException;
@@ -12,10 +13,12 @@ import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.model.requestresponse.RevokeCertRequest;
 import com.winllc.acme.server.persistence.CertificatePersistence;
 import com.winllc.acme.server.service.AbstractServiceTest;
+import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -42,6 +45,8 @@ public class CertServiceTest extends AbstractServiceTest {
     private CertificatePersistence certificatePersistence;
     @MockBean
     private SecurityValidatorUtil securityValidatorUtil;
+    @MockBean
+    private ExternalAccountProviderService externalAccountProviderService;
 
     @Before
     public void before() throws CertificateException, IOException, AcmeServerException {
@@ -76,6 +81,8 @@ public class CertServiceTest extends AbstractServiceTest {
         PayloadAndAccount<RevokeCertRequest> payloadAndAccount = new PayloadAndAccount<>(revokeCertRequest, accountData, directoryData);
         when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(AcmeJWSObject.class), any(),
                 isA(Class.class))).thenReturn(payloadAndAccount);
+
+        when(externalAccountProviderService.findByName(any())).thenReturn(new MockExternalAccountProvider());
 
         JWSObject jwsObject = MockUtils.buildCustomJwsObject(revokeCertRequest, "http://localhost/acme-test/revoke-cert");
         String json = MockUtils.jwsObjectAsString(jwsObject);

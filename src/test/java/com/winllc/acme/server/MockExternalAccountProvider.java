@@ -5,6 +5,7 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.model.AcmeJWSObject;
 
+import java.util.Collections;
 import java.util.List;
 
 public class MockExternalAccountProvider implements ExternalAccountProvider {
@@ -20,7 +21,7 @@ public class MockExternalAccountProvider implements ExternalAccountProvider {
 
     @Override
     public List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier) {
-        return null;
+        return Collections.singletonList("winllc-dev.com");
     }
 
     @Override
