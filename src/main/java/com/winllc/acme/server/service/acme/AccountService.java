@@ -62,12 +62,10 @@ public class AccountService extends BaseService {
     @RequestMapping(value = "{directory}/new-account", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> request(HttpServletRequest request, @PathVariable String directory) throws Exception {
         log.info("new-account request");
+
+        AcmeJWSObject jwsObject = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
+
         DirectoryData directoryData = directoryDataService.findByName(directory);
-
-        String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-        log.info(body);
-
-        AcmeJWSObject jwsObject = AcmeJWSObject.parse(body);
 
         //If JWS invalid, don't proceed
         if (!SecurityValidatorUtil.verifyJWS(jwsObject)) {
@@ -81,17 +79,17 @@ public class AccountService extends BaseService {
         AccountRequest accountRequest = SecurityValidatorUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
 
         //Section 7.3.1 Paragraph 2
-        if (!accountRequest.getOnlyReturnExisting()) {
-            //If terms of service exist, ensure client has agreed
-            AccountData accountData = accountProcessor.processCreateNewAccount(jwsObject);
-
-            return buildBaseResponseEntity(201, directoryData)
-                    .header("Location", accountData.buildUrl())
-                    .body(accountData.getObject());
-        }else{
+        if (accountRequest.getOnlyReturnExisting()) {
             AccountData accountData = accountProcessor.processReturnExisting(jwsObject);
 
             return buildBaseResponseEntity(200, directoryData)
+                    .body(accountData.getObject());
+        }else{
+            //If terms of service exist, ensure client has agreed
+            AccountData accountData = accountProcessor.processCreateNewAccount(accountRequest, directoryData, jwsObject);
+
+            return buildBaseResponseEntity(201, directoryData)
+                    .header("Location", accountData.buildUrl())
                     .body(accountData.getObject());
         }
     }

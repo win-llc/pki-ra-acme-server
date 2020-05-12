@@ -4,17 +4,30 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.nimbusds.jose.*;
+import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator;
+import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.winllc.acme.server.contants.ChallengeType;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.acme.*;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.ChallengeData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.data.OrderData;
+import com.winllc.acme.server.model.data.*;
+import org.apache.commons.codec.digest.HmacAlgorithms;
+import org.bouncycastle.jcajce.provider.digest.Skein;
+import org.jose4j.keys.HmacKey;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import java.text.ParseException;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MockUtils {
 
@@ -22,6 +35,8 @@ public class MockUtils {
     public static final Identifier identifier = new Identifier(IdentifierType.DNS, mockIdentifier);
 
     private static RSAKey rsaJWK;
+    private static JWK hmacJwk;
+    private static SecretKey hmacKey;
     private static AccountData accountData;
 
     static {
@@ -29,7 +44,13 @@ public class MockUtils {
             rsaJWK = new RSAKeyGenerator(2048)
                     .keyID("123")
                     .generate();
-        } catch (JOSEException e) {
+
+            hmacKey = KeyGenerator.getInstance("HmacSha256").generateKey();
+            hmacJwk = new OctetSequenceKey.Builder(hmacKey)
+                    .keyID(UUID.randomUUID().toString()) // give the key some ID (optional)
+                    .algorithm(JWSAlgorithm.HS256) // indicate the intended key alg (optional)
+                    .build();
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -40,24 +61,58 @@ public class MockUtils {
         accountData.setJwk(rsaJWK.toPublicJWK().toJSONString());
     }
 
+    public static AcmeJWSObject buildCustomAcmeJwsObject(Object jsonObject, String url)
+            throws JsonProcessingException, JOSEException, ParseException {
+        JWSObject jwsObject = buildCustomJwsObject(jsonObject, url);
+        String jsonString = MockUtils.jwsObjectAsString(jwsObject);
+        return AcmeJWSObject.parse(jsonString);
+    }
+
     public static JWSObject buildCustomJwsObject(Object jsonObject, String url) throws JOSEException, JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         return buildCustomJwsObject(objectMapper.writeValueAsString(jsonObject), url);
     }
 
     public static JWSObject buildCustomJwsObject(String jsonPayload, String url) throws JOSEException {
+        return buildCustomJwsObject(jsonPayload, url, null);
+    }
 
-        JWSHeader jwsHeader = new JWSHeader.Builder(JWSAlgorithm.RS256)
-                //.keyID(rsaJWK.getKeyID())
-                .jwk(rsaJWK.toPublicJWK())
-                .customParam("nonce", "1")
-                .customParam("url", url)
-                .build();
+    public static JWSObject buildCustomJwsObject(String jsonPayload, String url, String kid) throws JOSEException {
+        return buildCustomJwsObject(jsonPayload, url, kid, JWSAlgorithm.RS256, true);
+    }
+
+    public static JWSObject buildCustomJwsObject(String jsonPayload, String url, String kid, JWSAlgorithm jwsAlgorithm, boolean hasNonce) throws JOSEException {
+
+        JWSHeader.Builder builder;
+        JWSSigner signer = new RSASSASigner(rsaJWK);
+
+        if(JWSAlgorithm.Family.HMAC_SHA.contains(jwsAlgorithm)){
+            builder = new JWSHeader.Builder(jwsAlgorithm)
+                    .jwk(hmacJwk.toPublicJWK());
+            signer = new MACSigner(hmacKey);
+        }else{
+            builder = new JWSHeader.Builder(jwsAlgorithm)
+                    .jwk(rsaJWK.toPublicJWK());
+            signer = new RSASSASigner(rsaJWK);
+        }
+
+        if(url != null){
+            builder.customParam("url", url);
+        }
+
+        if(hasNonce) {
+            builder.customParam("nonce", "1");
+        }
+
+        if(kid != null){
+            builder.keyID(kid);
+        }
+
+        JWSHeader jwsHeader = builder.build();
 
         Payload payload = new Payload(jsonPayload);
         JWSObject jwsObject = new JWSObject(jwsHeader, payload);
 
-        JWSSigner signer = new RSASSASigner(rsaJWK);
         jwsObject.sign(signer);
 
         return jwsObject;
@@ -115,6 +170,14 @@ public class MockUtils {
         challenge.setType(ChallengeType.HTTP.toString());
         ChallengeData challengeData = new ChallengeData(challenge, "acme-test");
         return challengeData;
+    }
+
+    public static AuthorizationData buildMockAuthorizationData(StatusType statusType){
+        Authorization authorization = new Authorization();
+        authorization.setStatus(statusType.toString());
+
+        AuthorizationData authorizationData = new AuthorizationData(authorization, "acme-test");
+        return authorizationData;
     }
 
 }

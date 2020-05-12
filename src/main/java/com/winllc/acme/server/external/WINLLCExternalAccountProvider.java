@@ -41,47 +41,7 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
         return name;
     }
 
-    /*
-        The ACME client then computes a binding JWS to indicate the external account holder’s approval of the ACME account key.
-        The payload of this JWS is the ACME account key being registered, in JWK form. The protected header of the JWS MUST meet the following criteria:
 
-    The “alg” field MUST indicate a MAC-based algorithm
-    The “kid” field MUST contain the key identifier provided by the CA
-    The “nonce” field MUST NOT be present
-    The “url” field MUST be set to the same value as the outer JWS
-         */
-    @Override
-    public boolean verifyExternalAccountJWS(AcmeJWSObject outerObject) throws AcmeServerException {
-        AccountRequest innerObjectString = SecurityValidatorUtil.getPayloadFromJWSObject(outerObject, AccountRequest.class);
-        JWSObject innerObject = null;
-        try {
-            innerObject = innerObjectString.buildExternalAccountJWSObject();
-        } catch (ParseException e) {
-            throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
-        }
-
-        JWSHeader header = innerObject.getHeader();
-
-        //The “alg” field MUST indicate a MAC-based algorithm
-        if(!JWSAlgorithm.Family.HMAC_SHA.contains(header.getAlgorithm())){
-            return false;
-        }
-
-        //The “nonce” field MUST NOT be present
-        if(header.getCustomParam("nonce") != null){
-            return false;
-        }
-
-        //The “url” field MUST be set to the same value as the outer JWS
-        String innerUrl = innerObject.getHeader().getCustomParam("url").toString();
-        String outerUrl = outerObject.getHeaderAcmeUrl().toString();
-        if(!innerUrl.equalsIgnoreCase(outerUrl)){
-            return false;
-        }
-
-        //The “kid” field MUST contain the key identifier provided by the CA
-        return verifyAccountBinding(innerObject, outerObject);
-    }
 
     @Override
     public List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier) {
@@ -131,7 +91,7 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
     Verify that the MAC on the JWS verifies using that MAC key
     Verify that the payload of the JWS represents the same key as was used to verify the outer JWS (i.e., the “jwk” field of the outer JWS)
      */
-    private boolean verifyAccountBinding(JWSObject jwsObject, JWSObject outerJWSObject) throws AcmeServerException {
+    public boolean verifyAccountBinding(JWSObject jwsObject, JWSObject outerJWSObject) throws AcmeServerException {
         //Send JWS to verificationURL
         String url = getAccountVerificationUrl();
         Base64URL macKey = jwsObject.getSignature();

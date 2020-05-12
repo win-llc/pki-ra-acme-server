@@ -1,13 +1,18 @@
 package com.winllc.acme.server.process;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.winllc.acme.server.MockExternalAccountProvider;
+import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.contants.ProblemType;
+import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.acme.Account;
@@ -18,12 +23,14 @@ import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.model.data.OrderListData;
 import com.winllc.acme.server.model.requestresponse.AccountRequest;
+import com.winllc.acme.server.model.requestresponse.ExternalAccountBinding;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import net.minidev.json.JSONObject;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +40,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.text.ParseException;
+import java.util.Base64;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
@@ -65,41 +74,90 @@ public class AccountProcessorTest {
     @Autowired
     private AccountProcessor accountProcessor;
 
-    @Test
-    public void request() throws Exception {
-        Meta meta = new Meta();
-        meta.setExternalAccountRequired(false);
-        Directory directory = new Directory();
-        directory.setMeta(meta);
-        DirectoryData directoryData = new DirectoryData(directory);
-        directoryData.setName("directory");
-        when(directoryDataService.getByName(any())).thenReturn(Optional.of(directoryData));
-
+    @Before
+    public void before(){
         OrderList orderList = new OrderList();
         OrderListData orderListData = new OrderListData(orderList, "directory");
         when(orderListPersistence.save(any())).thenReturn(orderListData);
 
+        AccountData accountData = MockUtils.buildMockAccountData();
+        when(accountPersistence.save(any())).thenReturn(accountData);
+
         ExternalAccountProvider eap = new MockExternalAccountProvider();
         when(externalAccountProviderService.findByName(any())).thenReturn(eap);
+    }
 
-        AccountData accountData = new AccountData(new Account(), directoryData.getName());
-        when(accountPersistence.save(any())).thenReturn(accountData);
+    @Test
+    public void request() throws Exception {
+        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+        when(directoryDataService.getByName(any())).thenReturn(Optional.of(directoryData));
 
         AccountRequest accountRequest = new AccountRequest();
 
         AcmeJWSObject acmeJWSObject = buildTestJwsObject(accountRequest);
 
-        accountData = accountProcessor.processCreateNewAccount(acmeJWSObject);
+        AccountData accountData = accountProcessor.processCreateNewAccount(accountRequest, directoryData, acmeJWSObject);
 
         assertEquals(directoryData.getName(), accountData.getDirectory());
     }
 
-    public void requestTosRequired(){
-        //todo
+    @Test
+    public void requestTosRequired() throws JsonProcessingException, JOSEException, ParseException {
+        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+        directoryData.getObject().getMeta().setTermsOfService("test");
+
+        AccountRequest accountRequest = new AccountRequest();
+        accountRequest.setTermsOfServiceAgreed(false);
+
+        AcmeJWSObject acmeJWSObject = MockUtils.buildCustomAcmeJwsObject(accountRequest, "");
+
+        try {
+            accountProcessor.processCreateNewAccount(accountRequest, directoryData, acmeJWSObject);
+        } catch (AcmeServerException e) {
+            e.printStackTrace();
+            assertEquals(e.getProblemDetails().getType(), ProblemType.USER_ACTION_REQUIRED.toString());
+        }
+
+        try {
+            accountRequest.setTermsOfServiceAgreed(true);
+            AccountData accountData = accountProcessor.processCreateNewAccount(accountRequest, directoryData, acmeJWSObject);
+            assertNotNull(accountData);
+        } catch (AcmeServerException e) {
+            e.printStackTrace();
+            fail();
+        }
     }
 
-    public void requestExternalAccountRequired(){
-        //todo
+    @Test
+    public void requestExternalAccountRequired() throws ParseException, JOSEException, JsonProcessingException {
+        AccountData mockAccountData = MockUtils.buildMockAccountData();
+
+        DirectoryData directoryData = MockUtils.buildMockDirectoryData(true);
+        directoryData.getObject().getMeta().setTermsOfService("test");
+
+        AccountRequest accountRequest = new AccountRequest();
+        accountRequest.setTermsOfServiceAgreed(true);
+
+        JWSObject eabJws = MockUtils.buildCustomJwsObject(mockAccountData.getJwk(), "https://example.com/acme/new-account",
+                "test", JWSAlgorithm.HS256, false);
+
+        ExternalAccountBinding externalAccountBinding = new ExternalAccountBinding();
+
+        externalAccountBinding.setPayload(eabJws.getPayload().toBase64URL().toString());
+        externalAccountBinding.setProtectedProp(eabJws.getHeader().toBase64URL().toString());
+        externalAccountBinding.setSignature(eabJws.getSignature().toString());
+
+        accountRequest.setExternalAccountBinding(externalAccountBinding);
+
+        AcmeJWSObject acmeJWSObject = MockUtils.buildCustomAcmeJwsObject(accountRequest, "https://example.com/acme/new-account");
+
+        try {
+            AccountData accountData = accountProcessor.processCreateNewAccount(accountRequest, directoryData, acmeJWSObject);
+            assertNotNull(accountData);
+        } catch (AcmeServerException e) {
+            e.printStackTrace();
+            fail();
+        }
     }
 
     private AcmeJWSObject buildTestJwsObject(Object obj) throws Exception{

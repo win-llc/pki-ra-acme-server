@@ -1,5 +1,6 @@
 package com.winllc.acme.server.external;
 
+import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.model.AcmeJWSObject;
 
@@ -9,7 +10,7 @@ import java.util.List;
 public interface ExternalAccountProvider {
 
     String getName();
-    boolean verifyExternalAccountJWS(AcmeJWSObject jwsObject) throws AcmeServerException;
+    boolean verifyAccountBinding(JWSObject jwsObject, JWSObject outerJWSObject) throws AcmeServerException;
 
     List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier);
     //For verification of JWS sent from client

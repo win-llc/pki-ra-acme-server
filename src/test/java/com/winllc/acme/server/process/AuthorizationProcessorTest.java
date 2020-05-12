@@ -115,7 +115,6 @@ public class AuthorizationProcessorTest {
         when(challengeProcessor.buildNew(any())).thenReturn(challengeData);
         when(challengePersistence.save(any())).thenReturn(challengeData);
         when(certificateAuthorityService.getByName(any())).thenReturn(MockUtils.buildMockCertificateAuthority());
-        //when(authorizationPersistence.save(any())).thenReturn();
 
         PayloadAndAccount<Identifier> payloadAndAccount = new PayloadAndAccount<>(MockUtils.identifier,
                 MockUtils.buildMockAccountData(), directoryData);

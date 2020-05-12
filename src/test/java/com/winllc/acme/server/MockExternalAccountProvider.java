@@ -1,5 +1,6 @@
 package com.winllc.acme.server;
 
+import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.model.AcmeJWSObject;
@@ -13,7 +14,7 @@ public class MockExternalAccountProvider implements ExternalAccountProvider {
     }
 
     @Override
-    public boolean verifyExternalAccountJWS(AcmeJWSObject jwsObject) throws AcmeServerException {
+    public boolean verifyAccountBinding(JWSObject jwsObject, JWSObject outerJWSObject) throws AcmeServerException {
         return true;
     }
 

@@ -1,5 +1,7 @@
 package com.winllc.acme.server.process;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
@@ -59,13 +61,8 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     private ExternalAccountProviderService externalAccountProviderService;
 
 
-    public AccountData processCreateNewAccount(AcmeJWSObject jwsObject) throws AcmeServerException {
-        AccountRequest accountRequest = SecurityValidatorUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
-        String directoryName = jwsObject.getHeaderAcmeUrl().getDirectoryIdentifier();
-        Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directoryName);
-
-        if(directoryDataOptional.isPresent()) {
-            DirectoryData directoryData = directoryDataOptional.get();
+    public AccountData processCreateNewAccount(AccountRequest accountRequest, DirectoryData directoryData,
+                                               AcmeJWSObject jwsObject) throws AcmeServerException {
             AccountData accountData = buildNew(directoryData);
 
             Directory directory = directoryData.getObject();
@@ -89,7 +86,6 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
             //Validate the data in the account request for valid syntax and format
             ProblemDetails validationError = validateAccountRequest(accountRequest);
             if (validationError == null) {
-
                 Account account = accountData.getObject();
 
                 //If external account required, perform further validation
@@ -103,21 +99,23 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
                         throw new AcmeServerException(problemDetails);
                     }
 
+                    JWSObject innerJwsObject = retrieveExternalAccountJWS(jwsObject);
+
                     ExternalAccountProvider accountProvider = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
-                    boolean verified = accountProvider.verifyExternalAccountJWS(jwsObject);
+                    boolean verified = accountProvider.verifyAccountBinding(innerJwsObject, jwsObject);
 
                     if (verified) {
                         log.debug("External Account verified");
                         accountData.setJwk(jwsObject.getHeader().getJWK().toString());
 
-                        JWSObject externalAccountJWS = null;
+                        JWSObject externalAccountJWS;
                         try {
                             externalAccountJWS = accountRequest.buildExternalAccountJWSObject();
                         } catch (ParseException e) {
                             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL, 500);
                             problemDetails.setDetail(e.getMessage());
 
-                            log.error(e);
+                            log.error("Could not parse externalAccount JWS", e);
                             throw new AcmeServerException(problemDetails);
                         }
 
@@ -155,9 +153,6 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
 
                 throw new AcmeServerException(validationError);
             }
-        }else{
-            throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "DirectoryData not found");
-        }
     }
 
     public AccountData processReturnExisting(AcmeJWSObject jwsObject) throws AcmeServerException {
@@ -174,6 +169,51 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.ACCOUNT_DOES_NOT_EXIST, 400);
             throw new AcmeServerException(problemDetails);
         }
+    }
+
+        /*
+        The ACME client then computes a binding JWS to indicate the external account holder’s approval of the ACME account key.
+        The payload of this JWS is the ACME account key being registered, in JWK form. The protected header of the JWS MUST meet the following criteria:
+
+    The “alg” field MUST indicate a MAC-based algorithm
+    The “kid” field MUST contain the key identifier provided by the CA
+    The “nonce” field MUST NOT be present
+    The “url” field MUST be set to the same value as the outer JWS
+         */
+
+    private JWSObject retrieveExternalAccountJWS(AcmeJWSObject outerObject) throws AcmeServerException {
+        AccountRequest innerObjectString = SecurityValidatorUtil.getPayloadFromJWSObject(outerObject, AccountRequest.class);
+        JWSObject innerObject;
+        try {
+            innerObject = innerObjectString.buildExternalAccountJWSObject();
+        } catch (ParseException e) {
+            throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
+        }
+
+        JWSHeader header = innerObject.getHeader();
+
+        //The “alg” field MUST indicate a MAC-based algorithm
+        if(!JWSAlgorithm.Family.HMAC_SHA.contains(header.getAlgorithm())){
+            log.error("External Account Validation: Invalid algorithm");
+            throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
+        }
+
+        //The “nonce” field MUST NOT be present
+        if(header.getCustomParam("nonce") != null){
+            log.error("External Account Validation: Cannot contain nonce");
+            throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
+        }
+
+        //The “url” field MUST be set to the same value as the outer JWS
+        String innerUrl = innerObject.getHeader().getCustomParam("url").toString();
+        String outerUrl = outerObject.getHeaderAcmeUrl().toString();
+        if(!innerUrl.equalsIgnoreCase(outerUrl)){
+            log.error("External Account Validation: URL of innner and outer JWS did not match");
+            throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
+        }
+
+        //The “kid” field MUST contain the key identifier provided by the CA
+        return innerObject;
     }
 
 
