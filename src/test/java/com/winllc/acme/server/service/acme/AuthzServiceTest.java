@@ -8,7 +8,6 @@ import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.model.AcmeJWSObject;
 import com.winllc.acme.server.model.acme.Authorization;
 import com.winllc.acme.server.model.acme.Challenge;
-import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.AuthorizationData;
@@ -17,6 +16,7 @@ import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.AuthorizationProcessor;
+import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.Before;
@@ -28,7 +28,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
 
-import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;

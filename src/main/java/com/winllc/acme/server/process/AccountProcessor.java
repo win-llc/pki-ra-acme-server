@@ -56,8 +56,6 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     @Autowired
     private OrderListPersistence orderListPersistence;
     @Autowired
-    private DirectoryDataService directoryDataService;
-    @Autowired
     private ExternalAccountProviderService externalAccountProviderService;
 
 

@@ -1,4 +1,4 @@
-package com.winllc.acme.server.service.acme;
+package com.winllc.acme.server.service;
 
 import com.winllc.acme.server.MockCertificateAuthority;
 import com.winllc.acme.server.MockUtils;
@@ -20,6 +20,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -27,7 +28,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = AppConfig.class)
-abstract class AbstractServiceTest {
+public abstract class AbstractServiceTest {
 
     protected String testAccountJwk = "{\"kty\":\"RSA\",\"e\":\"AQAB\",\"n\":\"w_RXzWeUTNCCqRFR_km9LHpxmYMgGLCj78G3PpH-1GGAKRPUihULrGQv5ti74AfOofSldGN9ALX-SKrrQXMCh227eIxF8FKRQGdEUjj8uiuAVI6wvrWMhLqKs_xuHx8qsyI893juC8LSdeuo_oFnxqLGB2YfJ6h7Ivb6XAll-7OXF7HWD9x6otAh9K4Pt1VZAxDnBxVOaa6sedAxFmP0a9cGD0QJbx-93xZBRi093m7VslIPZKbmI2x-kXISNxetGKWeR1XkZLIcz0thdkSkO40Pb5IS5A7xS8e14JoCmI6Mu3FnxokNnyAwCdqV8y7b-hV6EQ29P7VByTDj9o60fw\"}";
 
@@ -59,6 +60,7 @@ abstract class AbstractServiceTest {
         when(accountPersistence.save(any())).thenReturn(accountData);
         when(accountPersistence.findFirstByJwkEquals(any())).thenReturn(Optional.of(accountData));
         when(accountPersistence.findById(accountData.getId())).thenReturn(Optional.of(accountData));
+        when(accountPersistence.findAllByEabKeyIdentifierEquals(any())).thenReturn(Collections.singletonList(accountData));
 
         when(certificateAuthorityService.findByName(any())).thenReturn(certificateAuthority);
         when(certificateAuthorityService.getByName(any())).thenReturn(certificateAuthority);

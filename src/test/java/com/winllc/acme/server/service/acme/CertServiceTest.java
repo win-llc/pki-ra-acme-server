@@ -1,31 +1,89 @@
 package com.winllc.acme.server.service.acme;
 
+import com.nimbusds.jose.JWSObject;
+import com.winllc.acme.common.util.CertUtil;
+import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.server.contants.RevocationReason;
+import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.model.AcmeJWSObject;
+import com.winllc.acme.server.model.data.AccountData;
+import com.winllc.acme.server.model.data.CertData;
+import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.server.model.requestresponse.RevokeCertRequest;
+import com.winllc.acme.server.persistence.CertificatePersistence;
+import com.winllc.acme.server.service.AbstractServiceTest;
+import com.winllc.acme.server.util.PayloadAndAccount;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
+import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.Assert.*;
+import java.io.IOException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.Optional;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(CertService.class)
 public class CertServiceTest extends AbstractServiceTest {
 
-    private static String certRequest = "{\n" +
-            "   \"protected\":\"eyJhbGciOiJSUzI1NiIsImp3ayI6eyJlIjoiQVFBQiIsImt0eSI6IlJTQSIsIm4iOiJ3X1JYeldlVVROQ0NxUkZSX2ttOUxIcHhtWU1nR0xDajc4RzNQcEgtMUdHQUtSUFVpaFVMckdRdjV0aTc0QWZPb2ZTbGRHTjlBTFgtU0tyclFYTUNoMjI3ZUl4RjhGS1JRR2RFVWpqOHVpdUFWSTZ3dnJXTWhMcUtzX3h1SHg4cXN5STg5M2p1QzhMU2RldW9fb0ZueHFMR0IyWWZKNmg3SXZiNlhBbGwtN09YRjdIV0Q5eDZvdEFoOUs0UHQxVlpBeERuQnhWT2FhNnNlZEF4Rm1QMGE5Y0dEMFFKYngtOTN4WkJSaTA5M203VnNsSVBaS2JtSTJ4LWtYSVNOeGV0R0tXZVIxWGtaTEljejB0aGRrU2tPNDBQYjVJUzVBN3hTOGUxNEpvQ21JNk11M0ZueG9rTm55QXdDZHFWOHk3Yi1oVjZFUTI5UDdWQnlURGo5bzYwZncifSwibm9uY2UiOiJNVFU0T0RBek1qazVOakF5T1E9PSIsInVybCI6Imh0dHA6Ly8xOTIuMTY4LjEuMTM6ODE4MS9hY21lL2NlcnQvMEpWcW5MUmg1RiJ9\",\n" +
-            "   \"payload\":\"\",\n" +
-            "   \"signature\":\"PbU4IGvz49mUvVAoCwI_X2RQcVj28vtptSAcOweQnet-cg-fZyYN3ob8IwxNHWVGtCpkMp4hKD1Mq23PSh_U1-IjB0M-U0kDZRawSdy2VFIFRTNzt2eUMlefeKpkChk-W3W5kANJKuL2_iAd5Slt4Cq-2EOHsnbRfTNJe_glkDzYiOBGw9y_IhCb4rqZT_7s4unpNA8jzOyu1NjcROnQfZfmXmXJW7qwy4EJBxZ4ibQKuU4bdGtBRvADpymeZw0Y1VhfuR4qXT5bB32Tsmok76fJ3fruNB0eM6MLPWm1xbmwCgaSch2KgiHfkT76LFdzGJ5fTjcUUlNVBXtddfpWbw\"\n" +
-            "}";
-
     @Autowired
     private MockMvc mockMvc;
+    @MockBean
+    private CertificatePersistence certificatePersistence;
+    @MockBean
+    private SecurityValidatorUtil securityValidatorUtil;
 
-    @Test
-    public void certDownload() {
-        //todo
+    @Before
+    public void before() throws CertificateException, IOException, AcmeServerException {
+        AccountData accountData = MockUtils.buildMockAccountData();
+        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+
+        CertData certData = MockUtils.buildMockCertData();
+        when(certificatePersistence.findById(any())).thenReturn(Optional.of(certData));
+
+        PayloadAndAccount<String> payloadAndAccount = new PayloadAndAccount<>("", accountData, directoryData);
+        when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(), any(Class.class))).thenReturn(payloadAndAccount);
     }
 
     @Test
-    public void certRevoke() {
-        //todo
+    public void certDownload() throws Exception {
+        mockMvc.perform(
+                post("/acme-test/cert/1")
+                        .contentType("application/jose+json")
+                        .content(""))
+                .andExpect(status().is(200));
+    }
+
+    @Test
+    public void certRevoke() throws Exception {
+        AccountData accountData = MockUtils.buildMockAccountData();
+        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+
+        RevokeCertRequest revokeCertRequest = new RevokeCertRequest();
+        revokeCertRequest.setCertificate(MockUtils.testX509Cert);
+        revokeCertRequest.setReason(RevocationReason.KEY_COMPROMISE.getCode());
+
+        PayloadAndAccount<RevokeCertRequest> payloadAndAccount = new PayloadAndAccount<>(revokeCertRequest, accountData, directoryData);
+        when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(AcmeJWSObject.class), any(),
+                isA(Class.class))).thenReturn(payloadAndAccount);
+
+        JWSObject jwsObject = MockUtils.buildCustomJwsObject(revokeCertRequest, "http://localhost/acme-test/revoke-cert");
+        String json = MockUtils.jwsObjectAsString(jwsObject);
+
+        mockMvc.perform(
+                post("/acme-test/revoke-cert")
+                        .contentType("application/jose+json")
+                        .content(json))
+                .andExpect(status().is(200));
     }
 }

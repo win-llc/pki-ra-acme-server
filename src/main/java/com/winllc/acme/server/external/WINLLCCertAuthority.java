@@ -17,6 +17,7 @@ import com.winllc.acme.common.util.HttpCommandUtil;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
@@ -69,7 +70,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             try {
                 return true;
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Could not process revoke cert", e);
             }
             return false;
         };
@@ -81,7 +82,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
             return HttpCommandUtil.processCustomJsonPost(fullUrl, revokeRequest, 200, processReturn);
         }catch (Exception e){
-            log.error("Could not issuer cert", e);
+            log.error("Could not revoke cert", e);
             return false;
         }
     }
@@ -94,7 +95,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             try {
                 return CertUtil.base64ToCert(content);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Could not covert base64 cert", e);
             }
             return null;
         };
@@ -184,33 +185,17 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         ExternalAccountProvider eap = externalAccountProviderService.findByName(settings.getMapsToExternalAccountProviderName());
         String verificationUrl = eap.getAccountValidationRulesUrl()+"/"+accountData.getEabKeyIdentifier();
 
-        HttpClient httpclient = HttpClients.createDefault();
-        HttpPost httppost = new HttpPost(verificationUrl);
-
         try {
-            HttpResponse response = httpclient.execute(httppost);
-            HttpEntity entity = response.getEntity();
+            HttpPost httppost = new HttpPost(verificationUrl);
 
-            if (entity != null) {
-                if(response.getStatusLine().getStatusCode() == 200){
-                    String validationRules = IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8.name());
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    AccountValidationResponse validationResponse = objectMapper.readValue(validationRules, AccountValidationResponse.class);
-
-                    return validationResponse;
-                }else{
-                    log.error("Did not receive expected return code: "+response.getStatusLine().getStatusCode());
-                    throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve validation rules");
-                }
-            }
+            return HttpCommandUtil.process(httppost, 200, AccountValidationResponse.class);
+        }catch (HttpException e){
+            log.error("Did not receive expected return code");
+            throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve validation rules");
         }catch (Exception e){
             log.error("Could not get validation rules", e);
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, e.getMessage());
-        }finally {
-            httppost.completed();
         }
-
-        throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Did not get valid response from validation server");
     }
 
     @Override
@@ -230,8 +215,6 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
         }
         return false;
     }
-
-
 
     public static List<String> getRequiredProperties() {
         List<String> props = new ArrayList<>();

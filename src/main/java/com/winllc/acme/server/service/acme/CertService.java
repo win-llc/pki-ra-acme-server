@@ -83,12 +83,10 @@ public class CertService extends BaseService {
 
                 PayloadAndAccount<String> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, String.class);
 
-                String returnCert = null;
-
                 HttpHeaders headers = new HttpHeaders();
                 headers.add("Content-Type", request.getHeader("Accept"));
 
-                returnCert = String.join(LINE_SEPARATOR, certData.getObject());
+                String returnCert = String.join(LINE_SEPARATOR, certData.getObject());
 
                 if(StringUtils.isNotBlank(request.getHeader("Accept"))) {
 

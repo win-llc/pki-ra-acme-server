@@ -1,15 +1,10 @@
 package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.*;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.contants.IdentifierType;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.acme.Account;
 import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.acme.Order;
 import com.winllc.acme.server.model.acme.OrderList;
@@ -22,20 +17,17 @@ import com.winllc.acme.server.model.requestresponse.OrderRequest;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
 import com.winllc.acme.server.process.OrderProcessor;
+import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.platform.commons.util.CollectionUtils;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import javax.servlet.http.HttpServletRequest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -162,8 +154,6 @@ public class OrderServiceTest extends AbstractServiceTest {
 
         when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class), isA(Class.class)))
                 .thenReturn(payloadAndAccount);
-
-        //when(CertUtil.extractX509CSRDnsNames(any())).thenReturn(Collections.singletonList(MockUtils.mockIdentifier));
 
         orderData.getObject().setStatus(StatusType.READY.toString());
         when(orderProcessor.buildCurrentOrder(any())).thenReturn(orderData);
