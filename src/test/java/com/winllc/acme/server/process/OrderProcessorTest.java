@@ -3,6 +3,7 @@ package com.winllc.acme.server.process;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
 import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.model.acme.Authorization;
 import com.winllc.acme.server.model.acme.Directory;
 import com.winllc.acme.server.model.data.AccountData;
@@ -20,6 +21,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.Collections;
+import java.util.Optional;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,7 +35,7 @@ public class OrderProcessorTest {
 
     @Autowired
     private OrderProcessor orderProcessor;
-    @MockBean
+    @Autowired
     private OrderPersistence orderPersistence;
     @MockBean
     private AuthorizationProcessor authorizationProcessor;
@@ -61,7 +63,7 @@ public class OrderProcessorTest {
         AccountData accountData = MockUtils.buildMockAccountData();
         OrderData orderData = orderProcessor.buildNew(directoryData, accountData);
 
-        when(orderPersistence.save(any())).thenReturn(orderData);
+        //when(orderPersistence.save(any())).thenReturn(orderData);
         when(authorizationProcessor.getCurrentAuthorizationsForOrder(any())).thenReturn(Collections.singletonList(pendingAuthorizationData));
 
         orderData = orderProcessor.buildCurrentOrder(orderData);
@@ -75,13 +77,41 @@ public class OrderProcessorTest {
         orderData = orderProcessor.buildCurrentOrder(orderData);
 
         assertEquals(orderData.getObject().getStatusType(), StatusType.READY);
+
+        //cleanup
+        orderPersistence.delete(orderData);
     }
 
     @Test
     public void markInvalid() {
+        //todo
     }
 
     @Test
-    public void authorizationMarkedValid() {
+    public void authorizationMarkedValid() throws InternalServerException {
+        OrderData orderData = MockUtils.buildMockOrderData(StatusType.PENDING);
+        orderData = orderPersistence.save(orderData);
+
+        AuthorizationData pendingAuthorizationData = MockUtils.buildMockAuthorizationData(StatusType.PENDING);
+
+        when(authorizationProcessor.getCurrentAuthorizationsForOrder(any())).thenReturn(Collections.singletonList(pendingAuthorizationData));
+
+        Optional<OrderData> optionalOrderData = orderProcessor.authorizationMarkedValid(orderData.getId());
+
+        if(optionalOrderData.isPresent()){
+            assertEquals(optionalOrderData.get().getObject().getStatusType(), StatusType.PENDING);
+        }else{
+            fail();
+        }
+
+        pendingAuthorizationData.getObject().setStatus(StatusType.VALID.toString());
+
+        optionalOrderData = orderProcessor.authorizationMarkedValid(orderData.getId());
+
+        if(optionalOrderData.isPresent()){
+            assertEquals(optionalOrderData.get().getObject().getStatusType(), StatusType.READY);
+        }else{
+            fail();
+        }
     }
 }

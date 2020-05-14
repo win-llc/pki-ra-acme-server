@@ -4,6 +4,7 @@ import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
 import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.model.acme.Authorization;
 import com.winllc.acme.server.model.acme.Challenge;
 import com.winllc.acme.server.model.acme.Directory;
@@ -11,6 +12,7 @@ import com.winllc.acme.server.model.acme.Identifier;
 import com.winllc.acme.server.model.data.AuthorizationData;
 import com.winllc.acme.server.model.data.ChallengeData;
 import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.server.model.data.OrderData;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
@@ -27,6 +29,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,6 +73,8 @@ public class AuthorizationProcessorTest {
     private CertificateAuthorityService certificateAuthorityService;
     @MockBean
     private ChallengeProcessor challengeProcessor;
+    @MockBean
+    private OrderProcessor orderProcessor;
     @Autowired
     private AuthorizationProcessor authorizationProcessor;
 
@@ -123,5 +128,36 @@ public class AuthorizationProcessorTest {
                 MockUtils.buildMockOrderData(StatusType.PENDING));
 
         assertTrue(optionalAuthorizationData.isPresent());
+    }
+
+    @Test
+    public void challengeMarkedValid() throws InternalServerException {
+        AuthorizationData authorizationData = MockUtils.buildMockAuthorizationData(StatusType.PENDING);
+        OrderData orderData = MockUtils.buildMockOrderData(StatusType.PENDING);
+
+        authorizationData.setOrderId(orderData.getId());
+        authorizationData = authorizationPersistence.save(authorizationData);
+
+        authorizationData = authorizationProcessor.challengeMarkedValid(authorizationData.getId());
+
+        assertEquals(authorizationData.getObject().getStatusType(), StatusType.VALID);
+
+        //cleanup
+        authorizationPersistence.delete(authorizationData);
+    }
+
+    @Test
+    public void getCurrentAuthorizationsForOrder(){
+        AuthorizationData authorizationData = MockUtils.buildMockAuthorizationData(StatusType.PENDING);
+        OrderData orderData = MockUtils.buildMockOrderData(StatusType.PENDING);
+
+        authorizationData.setOrderId(orderData.getId());
+        authorizationData = authorizationPersistence.save(authorizationData);
+
+        List<AuthorizationData> currentAuthorizationsForOrder = authorizationProcessor.getCurrentAuthorizationsForOrder(orderData);
+        assertEquals(currentAuthorizationsForOrder.size(), 1);
+
+        //cleanup
+        authorizationPersistence.delete(authorizationData);
     }
 }
