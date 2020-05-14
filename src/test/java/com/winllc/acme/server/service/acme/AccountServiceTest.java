@@ -1,12 +1,36 @@
 package com.winllc.acme.server.service.acme;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.jwk.JWK;
+import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.model.AcmeJWSObject;
+import com.winllc.acme.server.model.data.AccountData;
+import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.server.model.requestresponse.AccountRequest;
+import com.winllc.acme.server.model.requestresponse.KeyChangeRequest;
+import com.winllc.acme.server.model.requestresponse.RevokeCertRequest;
+import com.winllc.acme.server.process.AccountProcessor;
 import com.winllc.acme.server.service.AbstractServiceTest;
+import com.winllc.acme.server.util.PayloadAndAccount;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import javax.servlet.http.HttpServletRequest;
+
+import java.text.ParseException;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -21,24 +45,83 @@ public class AccountServiceTest extends AbstractServiceTest {
 
     @Autowired
     private MockMvc mockMvc;
+    @MockBean
+    private SecurityValidatorUtil securityValidatorUtil;
+    @MockBean
+    private AccountProcessor accountProcessor;
 
     @Test
     public void request() throws Exception {
+        AccountData accountData = MockUtils.buildMockAccountData();
+
+        when(accountProcessor.processCreateNewAccount(any(), any(), any())).thenReturn(accountData);
+
+        AccountRequest accountRequest = new AccountRequest();
+        accountRequest.setContact(new String[]{"mailto:user@winllc-dev.com"});
+        accountRequest.setTermsOfServiceAgreed(true);
+
+        JWSObject jwsObject = MockUtils.buildCustomAcmeJwsObject(accountRequest,
+                "http://localhost/acme-test/new-account");
+        String json = MockUtils.jwsObjectAsString(jwsObject);
 
         mockMvc.perform(
                 post("/acme-test/new-account")
                         .contentType("application/jose+json")
-                        .content(newAccountRequest))
+                        .content(json))
                 .andExpect(status().is(201));
     }
 
     @Test
-    public void update() {
-        //todo
+    public void update() throws Exception {
+        AccountData accountData = MockUtils.buildMockAccountData();
+        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+
+        AccountRequest accountRequest = new AccountRequest();
+        accountRequest.setContact(new String[]{"mailto:newuser@winllc-dev.com"});
+
+        PayloadAndAccount<AccountRequest> payloadAndAccount = new PayloadAndAccount<>(accountRequest, accountData, directoryData);
+        when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class), any(String.class),
+                isA(Class.class))).thenReturn(payloadAndAccount);
+
+        when(accountProcessor.deactivateAccount(accountData)).thenReturn(accountData);
+        when(accountProcessor.accountRevoke(accountData)).thenReturn(accountData);
+
+        JWSObject jwsObject = MockUtils.buildCustomJwsObject(accountRequest, "http://localhost/acme-test/acct/"+accountData.getId());
+        String json = MockUtils.jwsObjectAsString(jwsObject);
+
+        mockMvc.perform(
+                post("/acme-test/acct/1")
+                        .contentType("application/jose+json")
+                        .content(json))
+                .andExpect(status().is(200));
     }
 
     @Test
-    public void keyRollover() {
-        //todo
+    public void keyRollover() throws Exception {
+        AccountData accountData = MockUtils.buildMockAccountData();
+        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+
+        KeyChangeRequest keyChangeRequest = new KeyChangeRequest();
+        keyChangeRequest.setAccount(accountData.buildUrl());
+        keyChangeRequest.setOldKey(accountData.getJwk());
+
+        AcmeJWSObject jwsObject = MockUtils.buildCustomAcmeJwsObjectWithAlternateJwk(keyChangeRequest,
+                "/acme-test/key-change", accountData.buildUrl());
+
+        String json = MockUtils.jwsObjectAsString(jwsObject);
+
+        PayloadAndAccount<AcmeJWSObject> payloadAndAccount = new PayloadAndAccount<>(jwsObject, accountData, directoryData);
+
+        when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class),
+                any(Class.class))).thenReturn(payloadAndAccount);
+
+        mockMvc.perform(
+                post("/acme-test/key-change")
+                        .contentType("application/jose+json")
+                        .content(json))
+                .andExpect(status().is(200));
+
+        //Set back after change for other tests
+        accountData.setJwk(MockUtils.rsaJWK.toPublicJWK().toString());
     }
 }

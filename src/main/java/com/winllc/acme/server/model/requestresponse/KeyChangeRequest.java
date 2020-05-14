@@ -7,7 +7,7 @@ public class KeyChangeRequest implements RequestValidator {
     //required
     private String account;
     //required
-    private JWK oldKey;
+    private String oldKey;
 
     public String getAccount() {
         return account;
@@ -17,11 +17,11 @@ public class KeyChangeRequest implements RequestValidator {
         this.account = account;
     }
 
-    public JWK getOldKey() {
+    public String getOldKey() {
         return oldKey;
     }
 
-    public void setOldKey(JWK oldKey) {
+    public void setOldKey(String oldKey) {
         this.oldKey = oldKey;
     }
 

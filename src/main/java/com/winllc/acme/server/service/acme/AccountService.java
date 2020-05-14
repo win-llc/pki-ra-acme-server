@@ -1,8 +1,10 @@
 package com.winllc.acme.server.service.acme;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.util.Base64URL;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.contants.ProblemType;
 import com.winllc.acme.server.contants.StatusType;
@@ -79,7 +81,7 @@ public class AccountService extends BaseService {
         AccountRequest accountRequest = SecurityValidatorUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
 
         //Section 7.3.1 Paragraph 2
-        if (accountRequest.getOnlyReturnExisting()) {
+        if (accountRequest.getOnlyReturnExisting() != null && accountRequest.getOnlyReturnExisting()) {
             AccountData accountData = accountProcessor.processReturnExisting(jwsObject);
 
             return buildBaseResponseEntity(200, directoryData)
@@ -97,89 +99,79 @@ public class AccountService extends BaseService {
     //Section 7.3.2
     @RequestMapping(value = "{directory}/acct/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> update(@PathVariable String id, HttpServletRequest request, @PathVariable String directory) throws Exception {
-        log.info("update account");
+        log.info("update account id: "+id);
         PayloadAndAccount<AccountRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
 
         AccountRequest accountRequest = payloadAndAccount.getPayload();
         DirectoryData directoryData = payloadAndAccount.getDirectoryData();
-        Optional<AccountData> optionalAccountData = accountPersistence.findById(id);
 
-        if (optionalAccountData.isPresent()) {
-            AccountData accountData = optionalAccountData.get();
+        AccountData accountData = payloadAndAccount.getAccountData();
 
-            if(!accountData.getObject().getStatus().equalsIgnoreCase(StatusType.DEACTIVATED.toString())) {
-                //Section 7.3.6
-                if (StringUtils.isNotBlank(accountRequest.getStatus())) {
+        if(!accountData.getObject().getStatus().equalsIgnoreCase(StatusType.DEACTIVATED.toString())) {
+            //Section 7.3.6
+            if (StringUtils.isNotBlank(accountRequest.getStatus())) {
 
-                    boolean updated = false;
-                    if(accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
-                        accountData = accountProcessor.deactivateAccount(accountData);
-                        updated = true;
-                    }else if(accountRequest.getStatus().contentEquals(StatusType.REVOKED.toString())){
-                        accountData = accountProcessor.accountRevoke(accountData);
-                        updated = true;
-                    }
-
-                    if(updated) {
-                        return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                                .body(accountData.getObject());
-                    }
+                boolean updated = false;
+                if(accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
+                    accountData = accountProcessor.deactivateAccount(accountData);
+                    updated = true;
+                }else if(accountRequest.getStatus().contentEquals(StatusType.REVOKED.toString())){
+                    accountData = accountProcessor.accountRevoke(accountData);
+                    updated = true;
                 }
 
-                //Section 7.3.3
-                if (!checkChangeInTermsOfService(accountData, directoryData)) {
-                    ProblemDetails problemDetails = validateContactField(accountRequest);
-                    if (problemDetails == null) {
-                        accountData.getObject().setContact(accountRequest.getContact());
+                if(updated) {
+                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                            .body(accountData.getObject());
+                }
+            }
 
-                        accountData = accountPersistence.save(accountData);
+            //Section 7.3.3
+            if (!checkChangeInTermsOfService(accountData, directoryData)) {
+                ProblemDetails problemDetails = validateContactField(accountRequest);
+                if (problemDetails == null) {
+                    accountData.getObject().setContact(accountRequest.getContact());
 
-                        return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                                .body(accountData);
-                    }else{
-                        return buildBaseResponseEntity(500, directoryData)
-                                .body(problemDetails);
-                    }
-                } else {
-                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
-                    problemDetails.setDetail("Terms of service have changed");
-                    problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
+                    accountData = accountPersistence.save(accountData);
 
-                    return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
-                            .header("Link", "<"+directoryData.getObject().getMeta().getTermsOfService()+">;rel=\"terms-of-service")
-                            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                            .body(accountData);
+                }else{
+                    return buildBaseResponseEntity(500, directoryData)
                             .body(problemDetails);
                 }
-            }else{
-                ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
-                problemDetails.setDetail("Account deactivated, can't update");
-
-                log.error(problemDetails);
+            } else {
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED);
+                problemDetails.setDetail("Terms of service have changed");
+                problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
 
                 return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
+                        .header("Link", "<"+directoryData.getObject().getMeta().getTermsOfService()+">;rel=\"terms-of-service")
+                        .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                         .body(problemDetails);
-
             }
-        }else {
-            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
-            problemDetails.setDetail("Could not find account");
+        }else{
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
+            problemDetails.setDetail("Account deactivated, can't update");
 
             log.error(problemDetails);
 
-            return buildBaseResponseEntity(500, payloadAndAccount.getDirectoryData())
+            return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
                     .body(problemDetails);
+
         }
     }
 
     //Section 7.3.5
     @RequestMapping(value = "{directory}/key-change", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> keyRollover(HttpServletRequest httpRequest, @PathVariable String directory) throws Exception {
+        log.info("Processing key change");
 
         PayloadAndAccount<AcmeJWSObject> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(httpRequest, AcmeJWSObject.class);
         AccountData accountData = payloadAndAccount.getAccountData();
         String newKey = payloadAndAccount.getPayload().getHeader().getJWK().toString();
 
-        if (validateJWSForKeyChange(payloadAndAccount, payloadAndAccount.getPayload())) {
+        if (validateJWSForKeyChange(payloadAndAccount)) {
             accountData.setJwk(newKey);
 
             accountData = accountPersistence.save(accountData);
@@ -214,9 +206,9 @@ public class AccountService extends BaseService {
 
     //Section 7.3.5
     //Must verify the inner JWS Object before updating account key
-    private boolean validateJWSForKeyChange(PayloadAndAccount<AcmeJWSObject> payloadAndAccount, AcmeJWSObject innerJws) {
+    private boolean validateJWSForKeyChange(PayloadAndAccount<AcmeJWSObject> payloadAndAccount) {
         AccountData accountData = payloadAndAccount.getAccountData();
-        AcmeJWSObject outerJws = payloadAndAccount.getPayload();
+        AcmeJWSObject innerJws = payloadAndAccount.getPayload();
 
         boolean verified;
         //Check that the JWS protected header of the inner JWS has a “jwk” field.
@@ -242,19 +234,19 @@ public class AccountService extends BaseService {
         }
 
         //Check that the “url” parameters of the inner and outer JWSs are the same.
-        if (!outerJws.getHeaderAcmeUrl().toString().contentEquals(innerJws.getHeaderAcmeUrl().toString())) {
+        if (!innerJws.getHeaderAcmeUrl().toString().contentEquals(innerJws.getHeader().getCustomParam("url").toString())) {
            return false;
         }
 
         //Check that the “account” field of the keyChange object contains the URL for the account matching the old key (i.e., the “kid” field in the outer JWS).
-        if (!outerJws.getHeader().getKeyID()
-                .contentEquals(keyChangeRequest.getAccount())) {
+        if (StringUtils.isBlank(innerJws.getHeader().getKeyID()) ||
+                !innerJws.getHeader().getKeyID().contentEquals(keyChangeRequest.getAccount())) {
             return false;
         }
 
         //Check that the “oldKey” field of the keyChange object is the same as the account key for the account in question.
         try {
-            if (!keyChangeRequest.getOldKey().equals(JWK.parse(accountData.getJwk()))) {
+            if (!JWK.parse(keyChangeRequest.getOldKey()).equals(JWK.parse(accountData.getJwk()))) {
                 return false;
             }
         } catch (ParseException e) {
@@ -295,7 +287,7 @@ public class AccountService extends BaseService {
     }
 
     private boolean validateEmail(String email) {
-        String regex = "^[\\w-_.+]*[\\w-_.]@([\\w]+\\.)+[\\w]+[\\w]$";
+        String regex = "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$";
         return email.replace("mailto:","").matches(regex);
     }
 

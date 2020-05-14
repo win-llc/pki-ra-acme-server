@@ -1,5 +1,7 @@
 package com.winllc.acme.server.model.requestresponse;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSObject;
@@ -10,20 +12,24 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.Base64;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class AccountRequest {
     //optional
     private String status;
     //optional
     private String[] contact;
     //optional
-    private Boolean termsOfServiceAgreed = false;
+    private Boolean termsOfServiceAgreed;
     //optional
-    private Boolean onlyReturnExisting = false;
+    private Boolean onlyReturnExisting;
     //optional
     @JsonProperty("externalAccountBinding")
     private ExternalAccountBinding externalAccountBinding;
 
     private String resource;
+
+    public AccountRequest() {
+    }
 
     public String getStatus() {
         return status;
@@ -73,6 +79,7 @@ public class AccountRequest {
         this.resource = resource;
     }
 
+    @JsonIgnore
     public JWSObject buildExternalAccountJWSObject() throws ParseException {
         return JWSObject.parse(externalAccountBinding.toString());
     }

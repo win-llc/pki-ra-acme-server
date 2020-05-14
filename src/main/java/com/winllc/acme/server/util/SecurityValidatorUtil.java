@@ -17,6 +17,7 @@ import com.winllc.acme.server.model.data.AccountData;
 import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import net.minidev.json.JSONObject;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -150,11 +151,13 @@ public class SecurityValidatorUtil {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             if (StringUtils.isNotBlank(jwsObject.getPayload().toString())) {
-                return objectMapper.readValue(jwsObject.getPayload().toJSONObject().toJSONString(), clazz);
+                JSONObject jsonObject = jwsObject.getPayload().toJSONObject();
+                return objectMapper.readValue(jsonObject.toJSONString(), clazz);
             } else {
                 return (T) "";
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
+            log.error("Could not get payload from JWS", e);
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Unexpected JOSE payload type");
         }
     }

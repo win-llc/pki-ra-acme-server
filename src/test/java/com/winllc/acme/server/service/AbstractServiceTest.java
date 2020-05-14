@@ -46,8 +46,7 @@ public abstract class AbstractServiceTest {
 
         Account account = new Account();
         account.setStatus(StatusType.VALID.toString());
-        AccountData accountData = new AccountData(account, "acme-test");
-        accountData.setJwk(testAccountJwk);
+        AccountData accountData = MockUtils.buildMockAccountData();
 
         CertificateAuthority certificateAuthority = new MockCertificateAuthority();
 
@@ -58,7 +57,8 @@ public abstract class AbstractServiceTest {
         when(directoryDataService.findByName(any())).thenReturn(directoryData);
 
         when(accountPersistence.save(any())).thenReturn(accountData);
-        when(accountPersistence.findFirstByJwkEquals(any())).thenReturn(Optional.of(accountData));
+        when(accountPersistence.findFirstByJwkEquals(MockUtils.rsaJWK.toPublicJWK().toString())).thenReturn(Optional.of(accountData));
+        when(accountPersistence.findFirstByJwkEquals(MockUtils.alternateRsaJwk.toPublicJWK().toString())).thenReturn(Optional.empty());
         when(accountPersistence.findById(accountData.getId())).thenReturn(Optional.of(accountData));
         when(accountPersistence.findAllByEabKeyIdentifierEquals(any())).thenReturn(Collections.singletonList(accountData));
 

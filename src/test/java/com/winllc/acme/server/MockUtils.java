@@ -89,14 +89,18 @@ public class MockUtils {
     public static final String mockIdentifier = "test.winllc.com";
     public static final Identifier identifier = new Identifier(IdentifierType.DNS, mockIdentifier);
 
-    private static RSAKey rsaJWK;
-    private static JWK hmacJwk;
+    public static JWK rsaJWK;
+    public static JWK alternateRsaJwk;
+    public static JWK hmacJwk;
     private static SecretKey hmacKey;
-    private static AccountData accountData;
 
     static {
         try {
             rsaJWK = new RSAKeyGenerator(2048)
+                    .keyID("123")
+                    .generate();
+
+            alternateRsaJwk = new RSAKeyGenerator(2048)
                     .keyID("123")
                     .generate();
 
@@ -108,18 +112,28 @@ public class MockUtils {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        Account account = new Account();
-        account.setStatus(StatusType.VALID.toString());
-        account.setOrders("http://localhost/acme-test/orders/1");
-        accountData = new AccountData(account, "acme-test");
-        accountData.setJwk(rsaJWK.toPublicJWK().toJSONString());
-        accountData.setEabKeyIdentifier("eab1");
     }
 
     public static AcmeJWSObject buildCustomAcmeJwsObject(Object jsonObject, String url)
             throws JsonProcessingException, JOSEException, ParseException {
         JWSObject jwsObject = buildCustomJwsObject(jsonObject, url);
+        String jsonString = MockUtils.jwsObjectAsString(jwsObject);
+        return AcmeJWSObject.parse(jsonString);
+    }
+
+    public static AcmeJWSObject buildCustomAcmeJwsObject(Object jsonObject, String url, String kid)
+            throws JsonProcessingException, JOSEException, ParseException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JWSObject jwsObject = buildCustomJwsObject(objectMapper.writeValueAsString(jsonObject), url, kid);
+        String jsonString = MockUtils.jwsObjectAsString(jwsObject);
+        return AcmeJWSObject.parse(jsonString);
+    }
+
+    public static AcmeJWSObject buildCustomAcmeJwsObjectWithAlternateJwk(Object jsonObject, String url, String kid)
+            throws JsonProcessingException, JOSEException, ParseException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JWSObject jwsObject = buildCustomJwsObject(objectMapper.writeValueAsString(jsonObject), url, kid,
+                JWSAlgorithm.RS256, false, alternateRsaJwk);
         String jsonString = MockUtils.jwsObjectAsString(jwsObject);
         return AcmeJWSObject.parse(jsonString);
     }
@@ -137,19 +151,31 @@ public class MockUtils {
         return buildCustomJwsObject(jsonPayload, url, kid, JWSAlgorithm.RS256, true);
     }
 
-    public static JWSObject buildCustomJwsObject(String jsonPayload, String url, String kid, JWSAlgorithm jwsAlgorithm, boolean hasNonce) throws JOSEException {
+    public static JWSObject buildCustomJwsObject(String jsonPayload, String url, String kid,
+                                                 JWSAlgorithm jwsAlgorithm, boolean hasNonce) throws JOSEException {
+        return buildCustomJwsObject(jsonPayload, url, kid, jwsAlgorithm, hasNonce, null);
+    }
+
+    public static JWSObject buildCustomJwsObject(String jsonPayload, String url, String kid,
+                                                 JWSAlgorithm jwsAlgorithm, boolean hasNonce, JWK jwk) throws JOSEException {
 
         JWSHeader.Builder builder;
-        JWSSigner signer = new RSASSASigner(rsaJWK);
+        JWSSigner signer;
 
         if(JWSAlgorithm.Family.HMAC_SHA.contains(jwsAlgorithm)){
             builder = new JWSHeader.Builder(jwsAlgorithm)
                     .jwk(hmacJwk.toPublicJWK());
             signer = new MACSigner(hmacKey);
         }else{
-            builder = new JWSHeader.Builder(jwsAlgorithm)
-                    .jwk(rsaJWK.toPublicJWK());
-            signer = new RSASSASigner(rsaJWK);
+            if(jwk != null) {
+                builder = new JWSHeader.Builder(jwsAlgorithm)
+                        .jwk(jwk.toPublicJWK());
+                signer = new RSASSASigner((RSAKey) jwk);
+            }else{
+                builder = new JWSHeader.Builder(jwsAlgorithm)
+                        .jwk(rsaJWK.toPublicJWK());
+                signer = new RSASSASigner((RSAKey) rsaJWK);
+            }
         }
 
         if(url != null){
@@ -199,11 +225,18 @@ public class MockUtils {
     }
 
     public static AccountData buildMockAccountData(){
-
+        Account account = new Account();
+        account.setStatus(StatusType.VALID.toString());
+        account.setOrders("http://localhost/acme-test/orders/1");
+        AccountData accountData = new AccountData(account, "acme-test");
+        accountData.setJwk(rsaJWK.toPublicJWK().toJSONString());
+        accountData.setEabKeyIdentifier("eab1");
         return accountData;
     }
 
     public static OrderData buildMockOrderData(StatusType statusType){
+        AccountData accountData = buildMockAccountData();
+
         Identifier identifier = new Identifier();
         identifier.setType(IdentifierType.DNS.toString());
         identifier.setValue(mockIdentifier);
