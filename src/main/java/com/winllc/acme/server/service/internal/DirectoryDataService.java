@@ -1,21 +1,15 @@
 package com.winllc.acme.server.service.internal;
 
-import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.DirectoryDataSettings;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.acme.Meta;
-import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
-import java.sql.Date;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -89,7 +83,7 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
     @Override
     public void load(DirectoryDataSettings settings) throws Exception {
         log.info("Loading Directory Data: "+settings.getName());
-        DirectoryData directoryData = DirectoryData.buildFromSettings(settings);
+        DirectoryData directoryData = DirectoryData.buildFromSettings(Application.baseURL, settings);
 
         directoryDataMap.put(directoryData.getName(), directoryData);
     }

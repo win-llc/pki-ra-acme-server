@@ -2,10 +2,10 @@ package com.winllc.acme.server.process;
 
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
-import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.model.data.ChallengeData;
-import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.common.model.data.ChallengeData;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import org.junit.Test;
 import org.junit.runner.RunWith;

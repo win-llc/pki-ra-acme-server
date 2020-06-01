@@ -1,8 +1,7 @@
 package com.winllc.acme.server.util;
 
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
 
 public class PayloadAndAccount<T> {
     private T payload;

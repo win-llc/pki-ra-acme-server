@@ -1,6 +1,6 @@
 package com.winllc.acme.server.exceptions;
 
-import com.winllc.acme.server.contants.ProblemType;
+import com.winllc.acme.common.contants.ProblemType;
 
 public class InternalServerException extends AcmeServerException {
     private InternalServerException(ProblemType problemType, String details) {

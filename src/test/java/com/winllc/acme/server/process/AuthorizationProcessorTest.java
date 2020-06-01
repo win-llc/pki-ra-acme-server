@@ -2,22 +2,19 @@ package com.winllc.acme.server.process;
 
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
-import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.model.acme.Authorization;
-import com.winllc.acme.server.model.acme.Challenge;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.data.AuthorizationData;
-import com.winllc.acme.server.model.data.ChallengeData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.data.OrderData;
+import com.winllc.acme.common.model.acme.Challenge;
+import com.winllc.acme.common.model.acme.Identifier;
+import com.winllc.acme.common.model.data.AuthorizationData;
+import com.winllc.acme.common.model.data.ChallengeData;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.common.model.data.OrderData;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.util.PayloadAndAccount;
-import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,7 +26,6 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 

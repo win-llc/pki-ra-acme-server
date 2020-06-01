@@ -2,7 +2,7 @@ package com.winllc.acme.server.external;
 
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.AcmeJWSObject;
+import com.winllc.acme.common.model.AcmeJWSObject;
 
 import java.util.List;
 

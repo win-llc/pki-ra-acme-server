@@ -1,12 +1,10 @@
 package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
-import com.winllc.acme.server.contants.ChallengeType;
-import com.winllc.acme.server.contants.IdentifierType;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.OrderData;
-import org.apache.commons.lang3.StringUtils;
+import com.winllc.acme.common.contants.IdentifierType;
+import com.winllc.acme.common.model.acme.Identifier;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.OrderData;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.*;

@@ -1,28 +1,20 @@
 package com.winllc.acme.server.service.acme;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.util.Base64URL;
+import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.contants.ProblemType;
-import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.external.ExternalAccountProvider;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.acme.Account;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.acme.ProblemDetails;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.requestresponse.AccountRequest;
-import com.winllc.acme.server.model.requestresponse.KeyChangeRequest;
+import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.common.model.AcmeURL;
+import com.winllc.acme.common.model.acme.ProblemDetails;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.common.model.requestresponse.AccountRequest;
+import com.winllc.acme.common.model.requestresponse.KeyChangeRequest;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.process.AccountProcessor;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
-import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.commons.lang3.StringUtils;
@@ -38,12 +30,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
-import java.sql.Timestamp;
 import java.text.ParseException;
-import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 //Section 7.3
 @RestController
@@ -91,7 +79,7 @@ public class AccountService extends BaseService {
             AccountData accountData = accountProcessor.processCreateNewAccount(accountRequest, directoryData, jwsObject);
 
             return buildBaseResponseEntity(201, directoryData)
-                    .header("Location", accountData.buildUrl())
+                    .header("Location", accountData.buildUrl(Application.baseURL))
                     .body(accountData.getObject());
         }
     }
@@ -185,7 +173,7 @@ public class AccountService extends BaseService {
             //If account already exists, return conflict error
             if(optionalAccount.isPresent()){
                 HttpHeaders headers = new HttpHeaders();
-                headers.add("Location", payloadAndAccount.getAccountData().buildUrl());
+                headers.add("Location", payloadAndAccount.getAccountData().buildUrl(Application.baseURL));
 
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
 

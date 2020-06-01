@@ -1,18 +1,15 @@
 package com.winllc.acme.server.process;
 
+import com.winllc.acme.common.contants.ChallengeType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.challenge.DnsChallenge;
-import com.winllc.acme.server.challenge.HttpChallenge;
-import com.winllc.acme.server.contants.ChallengeType;
-import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.server.model.acme.Authorization;
-import com.winllc.acme.server.model.acme.Challenge;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.data.*;
+import com.winllc.acme.common.model.acme.Authorization;
+import com.winllc.acme.common.model.acme.Challenge;
+import com.winllc.acme.common.model.acme.Identifier;
+import com.winllc.acme.common.model.data.*;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
@@ -24,8 +21,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /*
                    pending --------------------+
@@ -139,7 +134,7 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
                     //Needed for referencing later
                     challengeData.setAuthorizationId(authorizationData.getId());
                     Challenge challenge = challengeData.getObject();
-                    challenge.setUrl(challengeData.buildUrl());
+                    challenge.setUrl(challengeData.buildUrl(Application.baseURL));
                     challenge.setType(challengeType.toString());
 
                     challengeData = challengePersistence.save(challengeData);

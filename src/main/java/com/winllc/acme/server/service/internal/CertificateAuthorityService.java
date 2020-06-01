@@ -5,13 +5,10 @@ import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.server.external.InternalCertAuthority;
 import com.winllc.acme.server.external.WINLLCCertAuthority;
-import com.winllc.acme.server.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.internal.CertificateAuthoritySettingsPersistence;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;

@@ -7,14 +7,14 @@ import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
-import com.winllc.acme.server.contants.ProblemType;
-import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.MalformedRequest;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.common.model.AcmeURL;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import net.minidev.json.JSONObject;
@@ -40,13 +40,6 @@ public class SecurityValidatorUtil {
     private DirectoryDataService directoryDataService;
     @Autowired
     private AccountPersistence accountPersistence;
-
-    public static String generateRandomString(int length) {
-        boolean useLetters = true;
-        boolean useNumbers = true;
-
-        return RandomStringUtils.random(length, useLetters, useNumbers);
-    }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);

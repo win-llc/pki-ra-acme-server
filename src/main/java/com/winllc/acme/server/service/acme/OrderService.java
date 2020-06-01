@@ -3,20 +3,18 @@ package com.winllc.acme.server.service.acme;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.winllc.acme.common.util.CertUtil;
+import com.winllc.acme.common.contants.IdentifierType;
+import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.challenge.DnsChallenge;
-import com.winllc.acme.server.challenge.HttpChallenge;
-import com.winllc.acme.server.contants.IdentifierType;
-import com.winllc.acme.server.contants.ProblemType;
-import com.winllc.acme.server.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.acme.*;
-import com.winllc.acme.server.model.data.*;
-import com.winllc.acme.server.model.requestresponse.CertificateRequest;
-import com.winllc.acme.server.model.requestresponse.OrderRequest;
+import com.winllc.acme.common.model.AcmeURL;
+import com.winllc.acme.common.model.acme.*;
+import com.winllc.acme.common.model.data.*;
+import com.winllc.acme.common.model.requestresponse.CertificateRequest;
+import com.winllc.acme.common.model.requestresponse.OrderRequest;
 import com.winllc.acme.server.persistence.*;
 import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.process.OrderProcessor;
@@ -42,7 +40,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 //Section 7.4
 @RestController
@@ -109,7 +106,7 @@ public class OrderService extends BaseService {
                 Optional<OrderListData> orderListDataOptional = orderListPersistence.findById(orderListId);
                 if (orderListDataOptional.isPresent()) {
                     OrderListData orderListData = orderListDataOptional.get();
-                    orderListData.addOrder(orderData);
+                    orderListData.addOrder(Application.baseURL, orderData);
                     orderListPersistence.save(orderListData);
 
                 /*
@@ -120,7 +117,7 @@ public class OrderService extends BaseService {
                     log.debug("Order List created: " + orderListData);
                     return buildBaseResponseEntity(201, directoryData)
                             .header("Retry-After", "10")
-                            .header("Location", orderData.buildUrl())
+                            .header("Location", orderData.buildUrl(Application.baseURL))
                             .body(order);
                 } else {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
@@ -179,7 +176,7 @@ public class OrderService extends BaseService {
                 }
 
                 return buildBaseResponseEntity(200, directoryData)
-                        .header("Location", orderData.buildUrl())
+                        .header("Location", orderData.buildUrl(Application.baseURL))
                         .body(orderData.getObject());
             }
 
@@ -277,7 +274,7 @@ public class OrderService extends BaseService {
             OrderList orderList = orderListData.getObject();
             if (cursor != null) {
                 orderList = orderListData.buildPaginatedOrderList(cursor);
-                Optional<String> nextPageLink = orderListData.buildPaginatedLink(cursor);
+                Optional<String> nextPageLink = orderListData.buildPaginatedLink(Application.baseURL, cursor);
                 //If a next page is available, add the link
                 nextPageLink.ifPresent(s -> headers.add("Link", s));
             }
@@ -324,7 +321,7 @@ public class OrderService extends BaseService {
             if (authorizationOptional.isPresent()) {
                 AuthorizationData authorization = authorizationOptional.get();
                 authorization.setOrderId(orderData.getId());
-                authorizationUrls.add(authorization.buildUrl());
+                authorizationUrls.add(authorization.buildUrl(Application.baseURL));
             }
         }
 
@@ -372,7 +369,7 @@ public class OrderService extends BaseService {
                     certData = certificatePersistence.save(certData);
 
                     newOrder.getObject().setStatus(StatusType.VALID.toString());
-                    newOrder.getObject().setCertificate(certData.buildUrl());
+                    newOrder.getObject().setCertificate(certData.buildUrl(Application.baseURL));
 
                     orderPersistence.save(newOrder);
 

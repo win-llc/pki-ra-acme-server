@@ -1,16 +1,15 @@
 package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.JWSObject;
-import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.MockExternalAccountProvider;
 import com.winllc.acme.server.MockUtils;
-import com.winllc.acme.server.contants.RevocationReason;
+import com.winllc.acme.common.contants.RevocationReason;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.CertData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.requestresponse.RevokeCertRequest;
+import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.CertData;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.common.model.requestresponse.RevokeCertRequest;
 import com.winllc.acme.server.persistence.CertificatePersistence;
 import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
@@ -18,16 +17,13 @@ import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.IOException;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;

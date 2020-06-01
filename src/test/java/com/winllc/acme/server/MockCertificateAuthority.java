@@ -2,18 +2,16 @@ package com.winllc.acme.server;
 
 import com.winllc.acme.common.*;
 import com.winllc.acme.common.util.CertUtil;
-import com.winllc.acme.server.contants.ChallengeType;
-import com.winllc.acme.server.contants.ProblemType;
+import com.winllc.acme.common.contants.ChallengeType;
+import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.OrderData;
+import com.winllc.acme.common.model.acme.Identifier;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.OrderData;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
-import java.io.IOException;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.List;

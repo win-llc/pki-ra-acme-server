@@ -1,10 +1,10 @@
 package com.winllc.acme.server.process;
 
-import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.server.Application;
 import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.model.acme.Order;
-import com.winllc.acme.server.model.data.*;
-import com.winllc.acme.server.persistence.AuthorizationPersistence;
+import com.winllc.acme.common.model.acme.Order;
+import com.winllc.acme.common.model.data.*;
 import com.winllc.acme.server.persistence.OrderPersistence;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -55,7 +55,7 @@ public class OrderProcessor implements AcmeDataProcessor<OrderData> {
         order.willExpireInMinutes(30);
 
         OrderData orderData = new OrderData(order, directoryData.getName(), accountData.getId());
-        order.setFinalize(orderData.buildUrl()+"/finalize");
+        order.setFinalize(orderData.buildUrl(Application.baseURL)+"/finalize");
 
         return orderData;
     }

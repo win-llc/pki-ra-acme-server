@@ -1,15 +1,10 @@
 package com.winllc.acme.server.service.internal;
 
-import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.CertData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.persistence.AccountPersistence;
+import com.winllc.acme.common.model.data.CertData;
 import com.winllc.acme.server.persistence.CertificatePersistence;
 import com.winllc.acme.server.service.AbstractServiceTest;
-import com.winllc.acme.server.service.acme.AccountService;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,12 +13,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.IOException;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.Collections;
 
-import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;

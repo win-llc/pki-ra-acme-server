@@ -1,11 +1,8 @@
 package com.winllc.acme.server.challenge;
 
-import com.winllc.acme.server.contants.StatusType;
-import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.data.ChallengeData;
-import com.winllc.acme.server.persistence.AccountPersistence;
-import com.winllc.acme.server.persistence.AuthorizationPersistence;
+import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.model.acme.Identifier;
+import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.ChallengeProcessor;
 import org.apache.logging.log4j.LogManager;

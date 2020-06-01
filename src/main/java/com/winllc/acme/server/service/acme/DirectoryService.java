@@ -1,9 +1,8 @@
 package com.winllc.acme.server.service.acme;
 
-import com.winllc.acme.server.Application;
-import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.common.model.AcmeURL;
+import com.winllc.acme.common.model.acme.Directory;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

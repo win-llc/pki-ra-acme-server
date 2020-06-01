@@ -3,25 +3,25 @@ package com.winllc.acme.server.process;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
-import com.winllc.acme.server.contants.ProblemType;
-import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.server.Application;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.external.ExternalAccountProvider;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.acme.Account;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.acme.OrderList;
-import com.winllc.acme.server.model.acme.ProblemDetails;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.data.OrderData;
-import com.winllc.acme.server.model.data.OrderListData;
-import com.winllc.acme.server.model.requestresponse.AccountRequest;
+import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.common.model.acme.Account;
+import com.winllc.acme.common.model.acme.Directory;
+import com.winllc.acme.common.model.acme.OrderList;
+import com.winllc.acme.common.model.acme.ProblemDetails;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.common.model.data.OrderData;
+import com.winllc.acme.common.model.data.OrderListData;
+import com.winllc.acme.common.model.requestresponse.AccountRequest;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
-import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.apache.logging.log4j.LogManager;
@@ -227,7 +227,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
         OrderListData orderListData = new OrderListData(orderList, directoryData.getName());
         orderListData = orderListPersistence.save(orderListData);
 
-        account.setOrders(orderListData.buildUrl());
+        account.setOrders(orderListData.buildUrl(Application.baseURL));
 
         AccountData accountData = new AccountData(account, directoryData.getName());
 
@@ -270,6 +270,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     }
 
     //The server SHOULD cancel any pending operations authorized by the account’s key, such as certificate orders
+    //todo move this to order processor
     private void markInProgressAccountObjectsInvalid(AccountData accountData){
         List<OrderData> orderDataList = orderPersistence.findAllByAccountIdEquals(accountData.getId());
         orderDataList.forEach(o -> {

@@ -1,19 +1,13 @@
 package com.winllc.acme.server.service.acme;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
-import com.nimbusds.jose.jwk.JWK;
+import com.winllc.acme.server.Application;
 import com.winllc.acme.server.MockUtils;
-import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.requestresponse.AccountRequest;
-import com.winllc.acme.server.model.requestresponse.KeyChangeRequest;
-import com.winllc.acme.server.model.requestresponse.RevokeCertRequest;
+import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.common.model.requestresponse.AccountRequest;
+import com.winllc.acme.common.model.requestresponse.KeyChangeRequest;
 import com.winllc.acme.server.process.AccountProcessor;
 import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.util.PayloadAndAccount;
@@ -25,8 +19,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import javax.servlet.http.HttpServletRequest;
-
-import java.text.ParseException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
@@ -102,11 +94,11 @@ public class AccountServiceTest extends AbstractServiceTest {
         DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
 
         KeyChangeRequest keyChangeRequest = new KeyChangeRequest();
-        keyChangeRequest.setAccount(accountData.buildUrl());
+        keyChangeRequest.setAccount(accountData.buildUrl(Application.baseURL));
         keyChangeRequest.setOldKey(accountData.getJwk());
 
         AcmeJWSObject jwsObject = MockUtils.buildCustomAcmeJwsObjectWithAlternateJwk(keyChangeRequest,
-                "/acme-test/key-change", accountData.buildUrl());
+                "/acme-test/key-change", accountData.buildUrl(Application.baseURL));
 
         String json = MockUtils.jwsObjectAsString(jwsObject);
 

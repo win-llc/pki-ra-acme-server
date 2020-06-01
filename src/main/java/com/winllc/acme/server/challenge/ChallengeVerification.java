@@ -1,6 +1,6 @@
 package com.winllc.acme.server.challenge;
 
-import com.winllc.acme.server.model.data.ChallengeData;
+import com.winllc.acme.common.model.data.ChallengeData;
 
 public interface ChallengeVerification {
 

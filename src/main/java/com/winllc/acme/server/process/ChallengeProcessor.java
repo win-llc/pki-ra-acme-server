@@ -1,15 +1,10 @@
 package com.winllc.acme.server.process;
 
-import com.winllc.acme.server.challenge.DnsChallenge;
-import com.winllc.acme.server.challenge.HttpChallenge;
-import com.winllc.acme.server.contants.ChallengeType;
-import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.model.acme.Challenge;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.data.AuthorizationData;
-import com.winllc.acme.server.model.data.ChallengeData;
-import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.common.model.acme.Challenge;
+import com.winllc.acme.common.model.data.ChallengeData;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -18,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Base64;
-import java.util.List;
 
 @Component
 public class ChallengeProcessor implements AcmeDataProcessor<ChallengeData> {

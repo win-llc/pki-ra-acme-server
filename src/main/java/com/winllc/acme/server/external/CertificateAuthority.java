@@ -1,13 +1,11 @@
 package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
-import com.winllc.acme.server.contants.ChallengeType;
+import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.acme.Account;
-import com.winllc.acme.server.model.acme.Challenge;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.OrderData;
+import com.winllc.acme.common.model.acme.Identifier;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.OrderData;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.security.cert.Certificate;

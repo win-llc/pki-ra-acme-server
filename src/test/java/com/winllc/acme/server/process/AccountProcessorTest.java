@@ -6,29 +6,25 @@ import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.winllc.acme.server.MockExternalAccountProvider;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
-import com.winllc.acme.server.contants.ProblemType;
+import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.external.ExternalAccountProvider;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.acme.Account;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.acme.Meta;
-import com.winllc.acme.server.model.acme.OrderList;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.data.OrderListData;
-import com.winllc.acme.server.model.requestresponse.AccountRequest;
-import com.winllc.acme.server.model.requestresponse.ExternalAccountBinding;
+import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.common.model.acme.OrderList;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.common.model.data.OrderListData;
+import com.winllc.acme.common.model.requestresponse.AccountRequest;
+import com.winllc.acme.common.model.requestresponse.ExternalAccountBinding;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
-import com.winllc.acme.server.util.SecurityValidatorUtil;
 import net.minidev.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,7 +37,6 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.text.ParseException;
-import java.util.Base64;
 import java.util.Optional;
 
 import static org.junit.Assert.*;
@@ -158,6 +153,17 @@ public class AccountProcessorTest {
             e.printStackTrace();
             fail();
         }
+    }
+
+    //@Test
+    public void deactivateAccount() throws InternalServerException {
+        AccountData accountData = MockUtils.buildMockAccountData();
+        accountData.getObject().markValid();
+
+        //todo mock save returning wrong object, move
+        //accountData = accountProcessor.deactivateAccount(accountData);
+
+        //assertEquals(accountData.getObject().getStatusType(), StatusType.INVALID);
     }
 
     private AcmeJWSObject buildTestJwsObject(Object obj) throws Exception{

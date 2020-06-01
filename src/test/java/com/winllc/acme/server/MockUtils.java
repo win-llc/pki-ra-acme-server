@@ -2,38 +2,29 @@ package com.winllc.acme.server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator;
-import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.util.CertUtil;
-import com.winllc.acme.server.contants.ChallengeType;
-import com.winllc.acme.server.contants.IdentifierType;
-import com.winllc.acme.server.contants.StatusType;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.acme.*;
-import com.winllc.acme.server.model.data.*;
-import org.apache.commons.codec.digest.HmacAlgorithms;
-import org.bouncycastle.jcajce.provider.digest.Skein;
-import org.jose4j.keys.HmacKey;
+import com.winllc.acme.common.contants.ChallengeType;
+import com.winllc.acme.common.contants.IdentifierType;
+import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.model.acme.*;
+import com.winllc.acme.common.model.data.*;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class MockUtils {
 

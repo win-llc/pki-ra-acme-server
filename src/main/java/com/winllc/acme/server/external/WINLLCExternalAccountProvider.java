@@ -1,23 +1,18 @@
 package com.winllc.acme.server.external;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.util.Base64URL;
 import com.winllc.acme.common.ExternalAccountProviderSettings;
-import com.winllc.acme.server.contants.ProblemType;
+import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.requestresponse.AccountRequest;
+import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.util.HttpCommandUtil;
-import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.message.BasicNameValuePair;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 

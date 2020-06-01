@@ -4,18 +4,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.util.Base64URL;
-import com.winllc.acme.server.model.acme.Directory;
-import com.winllc.acme.server.model.acme.Meta;
-import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.common.model.acme.Directory;
+import com.winllc.acme.common.model.acme.Meta;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.common.util.SecurityUtil;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.configuration.AppConfig;
-import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.AcmeJWSObject;
-import com.winllc.acme.server.model.acme.Account;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.requestresponse.AccountRequest;
-import com.winllc.acme.server.service.acme.OrderService;
+import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.common.model.acme.Account;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.requestresponse.AccountRequest;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import org.junit.Before;
 import org.junit.Test;
@@ -82,7 +82,7 @@ public class SecurityValidatorUtilTest {
 
     @Test
     public void generateRandomString() {
-        String random = SecurityValidatorUtil.generateRandomString(10);
+        String random = SecurityUtil.generateRandomString(10);
         assertEquals(random.length(), 10);
     }
 

@@ -3,13 +3,11 @@ package com.winllc.acme.server.service;
 import com.winllc.acme.server.MockCertificateAuthority;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
-import com.winllc.acme.server.contants.StatusType;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.server.model.acme.Account;
-import com.winllc.acme.server.model.acme.Order;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.DirectoryData;
-import com.winllc.acme.server.model.data.OrderData;
+import com.winllc.acme.common.model.acme.Account;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
@@ -50,12 +48,10 @@ public abstract class AbstractServiceTest {
 
         CertificateAuthority certificateAuthority = new MockCertificateAuthority();
 
-        Order order = new Order();
-        OrderData orderData = new OrderData(order, "acme-test", accountData.getId());
-
         when(directoryDataService.getByName(any())).thenReturn(Optional.of(directoryData));
         when(directoryDataService.findByName(any())).thenReturn(directoryData);
 
+        //todo move to local tests
         when(accountPersistence.save(any())).thenReturn(accountData);
         when(accountPersistence.findFirstByJwkEquals(MockUtils.rsaJWK.toPublicJWK().toString())).thenReturn(Optional.of(accountData));
         when(accountPersistence.findFirstByJwkEquals(MockUtils.alternateRsaJwk.toPublicJWK().toString())).thenReturn(Optional.empty());

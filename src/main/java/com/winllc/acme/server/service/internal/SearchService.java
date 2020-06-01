@@ -1,11 +1,9 @@
 package com.winllc.acme.server.service.internal;
 
 import com.winllc.acme.common.CertSearchParam;
-import com.winllc.acme.common.CertSearchParams;
 import com.winllc.acme.common.NoSqlCertSearchConverter;
-import com.winllc.acme.server.model.acme.Account;
-import com.winllc.acme.server.model.data.AccountData;
-import com.winllc.acme.server.model.data.CertData;
+import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.CertData;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.CertificatePersistence;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -3,11 +3,11 @@ package com.winllc.acme.server.external;
 import com.winllc.acme.common.AcmeCertAuthorityType;
 import com.winllc.acme.common.CAValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
-import com.winllc.acme.server.contants.ChallengeType;
-import com.winllc.acme.server.contants.ProblemType;
+import com.winllc.acme.common.contants.ChallengeType;
+import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.model.acme.Identifier;
-import com.winllc.acme.server.model.data.AccountData;
+import com.winllc.acme.common.model.acme.Identifier;
+import com.winllc.acme.common.model.data.AccountData;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;

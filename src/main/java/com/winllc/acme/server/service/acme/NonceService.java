@@ -1,10 +1,10 @@
 package com.winllc.acme.server.service.acme;
 
-import com.winllc.acme.server.model.AcmeURL;
-import com.winllc.acme.server.model.data.DirectoryData;
+import com.winllc.acme.common.model.AcmeURL;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.server.Application;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.NonceUtil;
-import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +42,7 @@ public class NonceService {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Replay-Nonce", nonce);
         headers.add("Cache-Control", "no-store");
-        headers.add("Link", directoryData.buildLinkUrl());
+        headers.add("Link", directoryData.buildLinkUrl(Application.baseURL));
         return headers;
     }
 
