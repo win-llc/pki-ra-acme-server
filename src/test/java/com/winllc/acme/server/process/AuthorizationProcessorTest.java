@@ -1,29 +1,34 @@
 package com.winllc.acme.server.process;
 
-import com.winllc.acme.server.MockUtils;
-import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.common.model.acme.Challenge;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AuthorizationData;
 import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.model.data.OrderData;
+import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
+import com.winllc.acme.server.persistence.OrderPersistence;
+import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,10 +60,10 @@ import static org.mockito.Mockito.when;
               revoked      deactivated      expired
  */
 
-@RunWith(SpringRunner.class)
-@ContextConfiguration(classes = AppConfig.class)
-@WebMvcTest(AuthorizationProcessor.class)
-@TestPropertySource(locations="classpath:application.properties")
+@SpringBootTest(classes = AppConfig.class)
+@ActiveProfiles("test")
+@AutoConfigureMockMvc
+@TestPropertySource(locations="classpath:application-test.properties")
 public class AuthorizationProcessorTest {
 
     @Autowired
@@ -70,19 +75,32 @@ public class AuthorizationProcessorTest {
     @MockBean
     private ChallengeProcessor challengeProcessor;
     @MockBean
-    private OrderProcessor orderProcessor;
+    private OrderPersistence orderPersistence;
     @Autowired
     private AuthorizationProcessor authorizationProcessor;
+    @Autowired
+    private DirectoryDataSettingsPersistence directoryDataSettingsPersistence;
+    @Autowired
+    private DirectoryDataService directoryDataService;
 
-    private DirectoryData directoryData;
+    @BeforeEach
+    public void before() throws Exception {
+        DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
+        directoryDataSettings.setName("acme-test");
+        directoryDataSettings.setMetaExternalAccountRequired(true);
+        directoryDataSettings.setExternalAccountProviderName("test");
+        directoryDataSettings = directoryDataSettingsPersistence.save(directoryDataSettings);
+        directoryDataService.load(directoryDataSettings);
+    }
 
-    @Before
-    public void before(){
-        directoryData = MockUtils.buildMockDirectoryData(false);
+    @AfterEach
+    public void after(){
+        directoryDataSettingsPersistence.deleteAll();
     }
 
     @Test
     public void buildNew(){
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
         AuthorizationData authorizationData = authorizationProcessor.buildNew(directoryData);
 
         assertNotNull(authorizationData.getId());
@@ -90,6 +108,7 @@ public class AuthorizationProcessorTest {
 
     @Test
     public void buildCurrentAuthorization(){
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
         AuthorizationData authorizationData = authorizationProcessor.buildNew(directoryData);
 
         authorizationData = authorizationPersistence.save(authorizationData);
@@ -112,6 +131,7 @@ public class AuthorizationProcessorTest {
 
     @Test
     public void buildAuthorizationForIdentifier() throws AcmeServerException {
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
         ChallengeData challengeData = MockUtils.buildMockChallengeData(StatusType.PENDING);
         when(challengeProcessor.buildNew(any())).thenReturn(challengeData);
         when(challengePersistence.save(any())).thenReturn(challengeData);
@@ -128,8 +148,10 @@ public class AuthorizationProcessorTest {
 
     @Test
     public void challengeMarkedValid() throws InternalServerException {
-        AuthorizationData authorizationData = MockUtils.buildMockAuthorizationData(StatusType.PENDING);
         OrderData orderData = MockUtils.buildMockOrderData(StatusType.PENDING);
+        when(orderPersistence.findById(orderData.getId())).thenReturn(Optional.of(orderData));
+
+        AuthorizationData authorizationData = MockUtils.buildMockAuthorizationData(StatusType.PENDING);
 
         authorizationData.setOrderId(orderData.getId());
         authorizationData = authorizationPersistence.save(authorizationData);

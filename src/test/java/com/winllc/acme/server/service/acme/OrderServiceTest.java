@@ -1,10 +1,10 @@
 package com.winllc.acme.server.service.acme;
 
-import com.nimbusds.jose.*;
-import com.winllc.acme.server.MockUtils;
+import com.nimbusds.jose.JWSObject;
+import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.common.contants.IdentifierType;
 import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.common.model.acme.Account;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.acme.Order;
 import com.winllc.acme.common.model.acme.OrderList;
@@ -14,30 +14,46 @@ import com.winllc.acme.common.model.data.OrderData;
 import com.winllc.acme.common.model.data.OrderListData;
 import com.winllc.acme.common.model.requestresponse.CertificateRequest;
 import com.winllc.acme.common.model.requestresponse.OrderRequest;
+import com.winllc.acme.server.MockCertificateAuthority;
+import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
+import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import com.winllc.acme.server.process.AccountProcessor;
 import com.winllc.acme.server.process.OrderProcessor;
 import com.winllc.acme.server.service.AbstractServiceTest;
+import com.winllc.acme.server.service.internal.CertificateAuthorityService;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(OrderService.class)
-public class OrderServiceTest extends AbstractServiceTest {
+@SpringBootTest(classes = AppConfig.class)
+@ActiveProfiles("test")
+@AutoConfigureMockMvc
+public class OrderServiceTest {
 
     private String decodedNewOrderProtected = "{\"alg\":\"RS256\",\"jwk\":{\"e\":\"AQAB\",\"kty\":\"RSA\",\"n\":\"w_RXzWeUTNCCqRFR_km9LHpxmYMgGLCj78G3PpH-1GGAKRPUihULrGQv5ti74AfOofSldGN9ALX-SKrrQXMCh227eIxF8FKRQGdEUjj8uiuAVI6wvrWMhLqKs_xuHx8qsyI893juC8LSdeuo_oFnxqLGB2YfJ6h7Ivb6XAll-7OXF7HWD9x6otAh9K4Pt1VZAxDnBxVOaa6sedAxFmP0a9cGD0QJbx-93xZBRi093m7VslIPZKbmI2x-kXISNxetGKWeR1XkZLIcz0thdkSkO40Pb5IS5A7xS8e14JoCmI6Mu3FnxokNnyAwCdqV8y7b-hV6EQ29P7VByTDj9o60fw\"},\"nonce\":\"MTU4ODAzMjk2NDQzMw==\",\"url\":\"http://localhost/acme-test/new-order\"}";
     private String decodedNewOrderPayload = "{\"identifiers\":[{\"type\":\"dns\",\"value\":\"ingress.kube.winllc-dev.com\"}]}";
@@ -75,26 +91,45 @@ public class OrderServiceTest extends AbstractServiceTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
-    private SecurityValidatorUtil securityValidatorUtil;
-    @MockBean
+    @Autowired
+    private DirectoryDataService directoryDataService;
+    @Autowired
+    private DirectoryDataSettingsPersistence directoryDataSettingsPersistence;
+    @Autowired
+    private AccountPersistence accountPersistence;
+    @Autowired
+    private OrderPersistence orderPersistence;
+    @Autowired
     private OrderListPersistence orderListPersistence;
     @MockBean
-    private OrderProcessor orderProcessor;
-    @MockBean
-    private OrderPersistence orderPersistence;
+    private CertificateAuthorityService certificateAuthorityService;
 
-    private DirectoryData directoryData;
-    private AccountData accountData;
-    private OrderRequest orderRequest;
-    private OrderData orderData;
+    @BeforeEach
+    public void beforeEach() throws Exception {
+        DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
+        directoryDataSettings.setName("acme-test");
+        directoryDataSettings.setMetaExternalAccountRequired(true);
+        directoryDataSettings.setAllowPreAuthorization(true);
+        directoryDataSettings.setExternalAccountProviderName("test");
+        directoryDataSettings = directoryDataSettingsPersistence.save(directoryDataSettings);
+        directoryDataService.load(directoryDataSettings);
 
-    @Before
+        AccountData accountData = MockUtils.buildMockAccountData();
+        accountPersistence.save(accountData);
+    }
+
+    @AfterEach
+    public void after(){
+        directoryDataSettingsPersistence.deleteAll();
+        accountPersistence.deleteAll();
+    }
+
+    //@Before
     public void before() throws AcmeServerException {
-        directoryData = MockUtils.buildMockDirectoryData(false);
-        accountData = MockUtils.buildMockAccountData();
+        //directoryData = MockUtils.buildMockDirectoryData(false);
+        //accountData = MockUtils.buildMockAccountData();
 
-        orderRequest = new OrderRequest();
+        OrderRequest orderRequest = new OrderRequest();
         Identifier identifier = new Identifier();
         identifier.setType(IdentifierType.DNS.toString());
         identifier.setValue("test.winllc.com");
@@ -102,24 +137,35 @@ public class OrderServiceTest extends AbstractServiceTest {
 
         OrderList orderList = new OrderList();
         orderList.setOrders(new String[]{"http://localhost/acme-test/order/1"});
-        OrderListData orderListData = new OrderListData(orderList, directoryData.getDirectory());
+        //OrderListData orderListData = new OrderListData(orderList, directoryData.getDirectory());
 
         Order order = new Order();
         order.setIdentifiers(new Identifier[]{identifier});
-        orderData = new OrderData(order, directoryData.getDirectory(), accountData.getId());
+        //orderData = new OrderData(order, directoryData.getDirectory(), accountData.getId());
 
-        when(orderListPersistence.findById(any())).thenReturn(Optional.of(orderListData));
-        when(orderPersistence.save(any())).thenReturn(orderData);
+        //when(orderListPersistence.findById(any())).thenReturn(Optional.of(orderListData));
+        //when(orderPersistence.save(any())).thenReturn(orderData);
     }
 
     @Test
     public void newOrder() throws Exception {
-        PayloadAndAccount<OrderRequest> payloadAndAccount = new PayloadAndAccount<>(orderRequest, accountData, directoryData);
+        when(certificateAuthorityService.getByName(any())).thenReturn(new MockCertificateAuthority());
 
-        when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class), isA(Class.class)))
-                .thenReturn(payloadAndAccount);
+        AccountData accountData = MockUtils.buildMockAccountData();
+        //accountData = accountPersistence.save(accountData);
 
-        when(orderProcessor.buildNew(any(), any())).thenReturn(orderData);
+        OrderList orderList = new OrderList();
+        OrderListData orderListData = new OrderListData(orderList, "acme-test");
+        orderListData = orderListPersistence.save(orderListData);
+
+        accountData.getObject().setOrders(orderListData.buildUrl("http://localhost/"));
+        accountPersistence.save(accountData);
+
+        OrderRequest orderRequest = new OrderRequest();
+        Identifier identifier = new Identifier();
+        identifier.setType(IdentifierType.DNS.toString());
+        identifier.setValue("test.winllc.com");
+        orderRequest.setIdentifiers(new Identifier[]{identifier});
 
         JWSObject jwsObject = MockUtils.buildCustomJwsObject(orderRequest, "http://localhost/acme-test/new-order");
 
@@ -134,12 +180,11 @@ public class OrderServiceTest extends AbstractServiceTest {
 
     @Test
     public void getOrder() throws Exception {
-        orderData.getObject().setStatus(StatusType.PENDING.toString());
-        when(orderProcessor.buildCurrentOrder(any())).thenReturn(orderData);
-        when(orderPersistence.findById(any())).thenReturn(Optional.of(orderData));
+        OrderData orderData = MockUtils.buildMockOrderData(StatusType.READY);
+        orderData = orderPersistence.save(orderData);
 
         mockMvc.perform(
-                post("/acme-test/order/1")
+                post("/acme-test/order/"+orderData.getId())
                         .contentType("application/jose+json"))
                         //.content(json))
                 .andExpect(status().is(200));
@@ -150,27 +195,29 @@ public class OrderServiceTest extends AbstractServiceTest {
         CertificateRequest certificateRequest = new CertificateRequest();
         certificateRequest.setCsr(testCsr.replace("\n",""));
 
-        PayloadAndAccount<CertificateRequest> payloadAndAccount = new PayloadAndAccount<>(certificateRequest, accountData, directoryData);
+        OrderData orderData = MockUtils.buildMockOrderData(StatusType.READY);
+        orderData = orderPersistence.save(orderData);
 
-        when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class), isA(Class.class)))
-                .thenReturn(payloadAndAccount);
-
-        orderData.getObject().setStatus(StatusType.READY.toString());
-        when(orderProcessor.buildCurrentOrder(any())).thenReturn(orderData);
-        when(orderPersistence.save(any())).thenReturn(orderData);
-        when(orderPersistence.findById(any())).thenReturn(Optional.of(orderData));
+        JWSObject jwsObject = MockUtils.buildCustomJwsObject(certificateRequest,
+                "http://localhost/acme-test/order/"+orderData.getId()+"/finalize");
+        String json = MockUtils.jwsObjectAsString(jwsObject);
 
         mockMvc.perform(
-                post("/acme-test/order/1/finalize")
-                        .contentType("application/jose+json"))
-                //.content(json))
+                post("/acme-test/order/"+orderData.getId()+"/finalize")
+                        .contentType("application/jose+json")
+                .content(json))
                 .andExpect(status().is(200));
     }
 
     @Test
     public void orderList() throws Exception {
+        OrderList orderList = new OrderList();
+        orderList.setOrders(new String[]{"http://localhost/acme-test/order/1"});
+        OrderListData orderListData = new OrderListData(orderList, "acme-test");
+        orderListData = orderListPersistence.save(orderListData);
+
         mockMvc.perform(
-                get("/acme-test/orders/1")
+                get("/acme-test/orders/"+orderListData.getId())
                         .contentType("application/jose+json"))
                 //.content(json))
                 .andExpect(status().is(200));

@@ -7,6 +7,9 @@ import com.winllc.acme.common.model.acme.ProblemDetails;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.service.acme.BaseService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -16,6 +19,8 @@ import javax.servlet.http.HttpServletRequest;
 
 @ControllerAdvice
 public class GlobalExceptionHandler extends BaseService {
+
+    private static final Logger log = LogManager.getLogger(GlobalExceptionHandler.class);
 
     @Autowired
     private DirectoryDataService directoryDataService;
@@ -32,8 +37,7 @@ public class GlobalExceptionHandler extends BaseService {
             problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
         }
 
-        System.out.println("Could not process request to: "+request.getRequestURI());
-        ex.printStackTrace();
+        log.error("Could not process request to: "+request.getRequestURI(), ex);
 
         return buildErrorResponseEntity(problemDetails, directoryData);
     }

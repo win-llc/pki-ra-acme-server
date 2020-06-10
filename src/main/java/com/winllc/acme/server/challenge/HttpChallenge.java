@@ -193,6 +193,7 @@ public class HttpChallenge implements ChallengeVerification {
         }
     }
 
+    //todo move this somewhere else
     private SSLContext trustEveryone() {
         try {
             HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier(){

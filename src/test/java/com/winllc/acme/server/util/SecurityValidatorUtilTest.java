@@ -4,38 +4,40 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.util.Base64URL;
-import com.winllc.acme.common.model.acme.Directory;
-import com.winllc.acme.common.model.acme.Meta;
-import com.winllc.acme.common.model.data.DirectoryData;
-import com.winllc.acme.common.util.SecurityUtil;
-import com.winllc.acme.server.persistence.AccountPersistence;
-import com.winllc.acme.server.configuration.AppConfig;
 import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.Account;
+import com.winllc.acme.common.model.acme.Directory;
+import com.winllc.acme.common.model.acme.Meta;
 import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.model.requestresponse.AccountRequest;
+import com.winllc.acme.common.util.SecurityUtil;
+import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.text.ParseException;
 import java.util.Optional;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@RunWith(SpringRunner.class)
-@ContextConfiguration(classes = AppConfig.class)
-@WebMvcTest(SecurityValidatorUtil.class)
+@SpringBootTest(classes = AppConfig.class)
+@ActiveProfiles("test")
+@AutoConfigureMockMvc
 public class SecurityValidatorUtilTest {
 
     private static String newAccountRequest = "{\n" +
@@ -52,7 +54,7 @@ public class SecurityValidatorUtilTest {
     @MockBean
     private DirectoryDataService directoryDataService;
 
-    @Before
+    @BeforeEach
     public void before(){
         Directory directory = new Directory();
         directory.setNewNonce("https://example.com/acme/new-nonce");
@@ -79,6 +81,7 @@ public class SecurityValidatorUtilTest {
         when(accountPersistence.findById("account1")).thenReturn(Optional.of(accountData));
         when(accountPersistence.findFirstByJwkEquals(any())).thenReturn(Optional.of(accountData));
     }
+
 
     @Test
     public void generateRandomString() {

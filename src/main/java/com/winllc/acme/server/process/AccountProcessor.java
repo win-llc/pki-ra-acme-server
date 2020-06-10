@@ -61,96 +61,46 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
 
     public AccountData processCreateNewAccount(AccountRequest accountRequest, DirectoryData directoryData,
                                                AcmeJWSObject jwsObject) throws AcmeServerException {
-            AccountData accountData = buildNew(directoryData);
+        AccountData accountData = buildNew(directoryData);
+        Account account = accountData.getObject();
+        Directory directory = directoryData.getObject();
 
-            Directory directory = directoryData.getObject();
-            //todo verify ToS workflow is to spec
-            if (directory.getMeta() != null && directory.getMeta().getTermsOfService() != null) {
-                if (!accountRequest.getTermsOfServiceAgreed()) {
-                    log.debug("Has not agreed to ToS");
-                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED, 403);
-                    problemDetails.setDetail("Terms of Service agreement required");
-                    problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
-
-                    log.error(problemDetails);
-
-                    throw new AcmeServerException(problemDetails);
-                } else {
-                    //If ToS agreed to, update last agreed to date
-                    accountData.setLastAgreedToTermsOfServiceOn(Timestamp.valueOf(LocalDateTime.now()));
-                }
-            }
-
-            //Validate the data in the account request for valid syntax and format
-            ProblemDetails validationError = validateAccountRequest(accountRequest);
-            if (validationError == null) {
-                Account account = accountData.getObject();
-
-                //If external account required, perform further validation
-                if (directoryData.getObject().getMeta().isExternalAccountRequired()) {
-                    //If external account required, but none provided, return error
-                    if (accountRequest.getExternalAccountBinding() == null) {
-                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.EXTERNAL_ACCOUNT_REQUIRED, 403);
-
-                        log.error(problemDetails);
-
-                        throw new AcmeServerException(problemDetails);
-                    }
-
-                    JWSObject innerJwsObject = retrieveExternalAccountJWS(jwsObject);
-
-                    ExternalAccountProvider accountProvider = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
-                    boolean verified = accountProvider.verifyAccountBinding(innerJwsObject, jwsObject);
-
-                    if (verified) {
-                        log.debug("External Account verified");
-                        accountData.setJwk(jwsObject.getHeader().getJWK().toString());
-
-                        JWSObject externalAccountJWS;
-                        try {
-                            externalAccountJWS = accountRequest.buildExternalAccountJWSObject();
-                        } catch (ParseException e) {
-                            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL, 500);
-                            problemDetails.setDetail(e.getMessage());
-
-                            log.error("Could not parse externalAccount JWS", e);
-                            throw new AcmeServerException(problemDetails);
-                        }
-
-                        if (externalAccountJWS != null) {
-                            account.setExternalAccountBinding(accountRequest.getExternalAccountBinding().toJson());
-                            accountData.setEabKeyIdentifier(externalAccountJWS.getHeader().getKeyID());
-                        } else {
-                            ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL, 500);
-                            problemDetails.setDetail("Could not build JWS External Account Object");
-                            throw new AcmeServerException(problemDetails);
-                        }
-                    } else {
-                        //reject and return
-                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED, 403);
-                        problemDetails.setDetail("Could not verify external account");
-
-                        log.error(problemDetails);
-
-                        throw new AcmeServerException(problemDetails);
-                    }
-                }
-
-                account.setContact(accountRequest.getContact());
-
-                accountData.setJwk(jwsObject.getHeader().getJWK().toString());
-
-                accountData = accountPersistence.save(accountData);
-
-                log.info("Account created: " + accountData);
-
-                return accountData;
-
+        //todo verify ToS workflow is to spec
+        if (directory.termsOfServiceRequired()) {
+            if (accountRequest.getTermsOfServiceAgreed()) {
+                accountData.setLastAgreedToTermsOfServiceOn(Timestamp.valueOf(LocalDateTime.now()));
             } else {
-                log.error(validationError);
+                //If ToS agreed to, update last agreed to date
+                log.debug("Has not agreed to ToS");
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.USER_ACTION_REQUIRED, 403);
+                problemDetails.setDetail("Terms of Service agreement required");
+                problemDetails.setInstance(directoryData.getObject().getMeta().getTermsOfService());
 
-                throw new AcmeServerException(validationError);
+                log.error(problemDetails);
+
+                throw new AcmeServerException(problemDetails);
             }
+        }
+
+        //Validate the data in the account request for valid syntax and format
+        validateAccountRequest(accountRequest);
+
+        account.setContact(accountRequest.getContact());
+
+        //If external account required, perform further validation
+        if (directory.getMeta().isExternalAccountRequired()) {
+            processExternalAccountRequiredRequest(accountData, accountRequest, jwsObject, directoryData);
+        }
+
+        account.setContact(accountRequest.getContact());
+
+        accountData.setJwk(jwsObject.getHeader().getJWK().toString());
+
+        accountData = accountPersistence.save(accountData);
+
+        log.info("Account created: " + accountData);
+
+        return accountData;
     }
 
     public AccountData processReturnExisting(AcmeJWSObject jwsObject) throws AcmeServerException {
@@ -165,6 +115,58 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
         } else {
             //If no account exists, but account lookup requested, send error
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.ACCOUNT_DOES_NOT_EXIST, 400);
+            throw new AcmeServerException(problemDetails);
+        }
+    }
+
+    private void processExternalAccountRequiredRequest(AccountData accountData, AccountRequest accountRequest,
+                                                       AcmeJWSObject accountRequestJws,
+                                                       DirectoryData directoryData) throws AcmeServerException {
+        Account account = accountData.getObject();
+        //If external account required, but none provided, return error
+        if (accountRequest.getExternalAccountBinding() == null) {
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.EXTERNAL_ACCOUNT_REQUIRED, 403);
+
+            log.error(problemDetails);
+
+            throw new AcmeServerException(problemDetails);
+        }
+
+        JWSObject innerJwsObject = retrieveExternalAccountJWS(accountRequestJws);
+
+        ExternalAccountProvider accountProvider = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
+        boolean verified = accountProvider.verifyAccountBinding(innerJwsObject, accountRequestJws);
+
+        if (verified) {
+            log.debug("External Account verified");
+            accountData.setJwk(accountRequestJws.getHeader().getJWK().toString());
+
+            JWSObject externalAccountJWS;
+            try {
+                externalAccountJWS = accountRequest.buildExternalAccountJWSObject();
+            } catch (ParseException e) {
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL, 500);
+                problemDetails.setDetail(e.getMessage());
+
+                log.error("Could not parse externalAccount JWS", e);
+                throw new AcmeServerException(problemDetails);
+            }
+
+            if (externalAccountJWS != null) {
+                account.setExternalAccountBinding(accountRequest.getExternalAccountBinding().toJson());
+                accountData.setEabKeyIdentifier(externalAccountJWS.getHeader().getKeyID());
+            } else {
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL, 500);
+                problemDetails.setDetail("Could not build JWS External Account Object");
+                throw new AcmeServerException(problemDetails);
+            }
+        } else {
+            //reject and return
+            ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED, 403);
+            problemDetails.setDetail("Could not verify external account");
+
+            log.error(problemDetails);
+
             throw new AcmeServerException(problemDetails);
         }
     }
@@ -191,13 +193,13 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
         JWSHeader header = innerObject.getHeader();
 
         //The “alg” field MUST indicate a MAC-based algorithm
-        if(!JWSAlgorithm.Family.HMAC_SHA.contains(header.getAlgorithm())){
+        if (!JWSAlgorithm.Family.HMAC_SHA.contains(header.getAlgorithm())) {
             log.error("External Account Validation: Invalid algorithm");
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
         }
 
         //The “nonce” field MUST NOT be present
-        if(header.getCustomParam("nonce") != null){
+        if (header.getCustomParam("nonce") != null) {
             log.error("External Account Validation: Cannot contain nonce");
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
         }
@@ -205,7 +207,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
         //The “url” field MUST be set to the same value as the outer JWS
         String innerUrl = innerObject.getHeader().getCustomParam("url").toString();
         String outerUrl = outerObject.getHeaderAcmeUrl().toString();
-        if(!innerUrl.equalsIgnoreCase(outerUrl)){
+        if (!innerUrl.equalsIgnoreCase(outerUrl)) {
             log.error("External Account Validation: URL of innner and outer JWS did not match");
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
         }
@@ -215,8 +217,8 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     }
 
 
-    public AccountData buildNew(DirectoryData directoryData){
-        if(directoryData == null) throw new IllegalArgumentException("DirectoryData can't be null");
+    public AccountData buildNew(DirectoryData directoryData) {
+        if (directoryData == null) throw new IllegalArgumentException("DirectoryData can't be null");
 
         Account account = new Account();
         account.markValid();
@@ -238,16 +240,16 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     public AccountData deactivateAccount(AccountData accountData) throws InternalServerException {
         //if all goes well
         Account account = accountData.getObject();
-        if(account.checkStatusEquals(StatusType.VALID)) {
+        if (account.checkStatusEquals(StatusType.VALID)) {
             accountData.getObject().markDeactivated();
             accountData = accountPersistence.save(accountData);
 
             markInProgressAccountObjectsInvalid(accountData);
 
-            log.info("Account deactivated: "+accountData.getId());
+            log.info("Account deactivated: " + accountData.getId());
 
             return accountData;
-        }else{
+        } else {
             throw new InternalServerException("Account was not in state to be set deactivated");
         }
     }
@@ -255,26 +257,26 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     public AccountData accountRevoke(AccountData accountData) throws InternalServerException {
         //if all goes well
         Account account = accountData.getObject();
-        if(account.checkStatusEquals(StatusType.VALID)) {
+        if (account.checkStatusEquals(StatusType.VALID)) {
             account.markRevoked();
             accountData = accountPersistence.save(accountData);
 
             markInProgressAccountObjectsInvalid(accountData);
 
-            log.info("Account revoked: "+accountData.getId());
+            log.info("Account revoked: " + accountData.getId());
 
             return accountData;
-        }else{
+        } else {
             throw new InternalServerException("Account was not in state to be set revoked");
         }
     }
 
     //The server SHOULD cancel any pending operations authorized by the account’s key, such as certificate orders
     //todo move this to order processor
-    private void markInProgressAccountObjectsInvalid(AccountData accountData){
+    private void markInProgressAccountObjectsInvalid(AccountData accountData) {
         List<OrderData> orderDataList = orderPersistence.findAllByAccountIdEquals(accountData.getId());
         orderDataList.forEach(o -> {
-            if(!o.getObject().checkStatusEquals(StatusType.VALID)) {
+            if (!o.getObject().checkStatusEquals(StatusType.VALID)) {
                 o.getObject().setStatus(StatusType.INVALID.toString());
                 orderPersistence.save(o);
             }
@@ -282,15 +284,13 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     }
 
     //Verify account request meets requirements
-    private ProblemDetails validateAccountRequest(AccountRequest accountRequest) {
+    private void validateAccountRequest(AccountRequest accountRequest) throws AcmeServerException {
         ProblemDetails problemDetails = new ProblemDetails(ProblemType.COMPOUND);
         ProblemDetails contactError = validateContactField(accountRequest);
         if (contactError != null) {
             problemDetails.addSubproblem(contactError);
-            return problemDetails;
+            throw new AcmeServerException(problemDetails);
         }
-
-        return null;
     }
 
     private ProblemDetails validateContactField(AccountRequest accountRequest) {
@@ -298,7 +298,7 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
             for (String contact : accountRequest.getContact()) {
                 if (!validateEmail(contact)) {
                     ProblemDetails problemDetails = new ProblemDetails(ProblemType.INVALID_CONTACT);
-                    problemDetails.setDetail("Contact not valid: "+contact);
+                    problemDetails.setDetail("Contact not valid: " + contact);
                     return problemDetails;
                 }
             }

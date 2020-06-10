@@ -61,9 +61,7 @@ public class AccountService extends BaseService {
         if (!SecurityValidatorUtil.verifyJWS(jwsObject)) {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.MALFORMED, 500);
 
-            log.error(problemDetails);
-
-            return buildErrorResponseEntity(problemDetails, directoryData);
+            throw new AcmeServerException(problemDetails);
         }
 
         AccountRequest accountRequest = SecurityValidatorUtil.getPayloadFromJWSObject(jwsObject, AccountRequest.class);
@@ -88,7 +86,8 @@ public class AccountService extends BaseService {
     @RequestMapping(value = "{directory}/acct/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> update(@PathVariable String id, HttpServletRequest request, @PathVariable String directory) throws Exception {
         log.info("update account id: "+id);
-        PayloadAndAccount<AccountRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
+        PayloadAndAccount<AccountRequest> payloadAndAccount = securityValidatorUtil
+                .verifyJWSAndReturnPayloadForExistingAccount(request, id, AccountRequest.class);
 
         AccountRequest accountRequest = payloadAndAccount.getPayload();
         DirectoryData directoryData = payloadAndAccount.getDirectoryData();
@@ -114,6 +113,10 @@ public class AccountService extends BaseService {
                 }
             }
 
+            //Section 7.3.2 update the contacts
+            validateAccountRequest(accountRequest);
+            accountData.getObject().setContact(accountRequest.getContact());
+
             //Section 7.3.3
             if (!checkChangeInTermsOfService(accountData, directoryData)) {
                 ProblemDetails problemDetails = validateContactField(accountRequest);
@@ -123,7 +126,7 @@ public class AccountService extends BaseService {
                     accountData = accountPersistence.save(accountData);
 
                     return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
-                            .body(accountData);
+                            .body(accountData.getObject());
                 }else{
                     return buildBaseResponseEntity(500, directoryData)
                             .body(problemDetails);
@@ -250,15 +253,14 @@ public class AccountService extends BaseService {
     }
 
     //Verify account request meets requirements
-    private ProblemDetails validateAccountRequest(AccountRequest accountRequest) {
+    private void validateAccountRequest(AccountRequest accountRequest) throws AcmeServerException {
         ProblemDetails problemDetails = new ProblemDetails(ProblemType.COMPOUND);
         ProblemDetails contactError = validateContactField(accountRequest);
         if (contactError != null) {
             problemDetails.addSubproblem(contactError);
-            return problemDetails;
-        }
 
-        return null;
+            throw new AcmeServerException(problemDetails);
+        }
     }
 
     private ProblemDetails validateContactField(AccountRequest accountRequest) {

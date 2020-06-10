@@ -11,6 +11,7 @@ import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.OrderData;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.common.util.HttpCommandUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpException;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -166,19 +167,14 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     //Get rules applied to specified account from an external source
     @Override
     public AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
-        ExternalAccountProvider eap = externalAccountProviderService.findByName(settings.getMapsToExternalAccountProviderName());
-        String verificationUrl = eap.getAccountValidationRulesUrl()+"/"+accountData.getEabKeyIdentifier();
+        if(StringUtils.isNotEmpty(settings.getMapsToExternalAccountProviderName())) {
+            ExternalAccountProvider eap = externalAccountProviderService.findByName(settings.getMapsToExternalAccountProviderName());
 
-        try {
-            HttpPost httppost = new HttpPost(verificationUrl);
-
-            return HttpCommandUtil.process(httppost, 200, AccountValidationResponse.class);
-        }catch (HttpException e){
-            log.error("Did not receive expected return code");
-            throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve validation rules");
-        }catch (Exception e){
-            log.error("Could not get validation rules", e);
-            throw new AcmeServerException(ProblemType.SERVER_INTERNAL, e.getMessage());
+            return eap.getValidationRules(accountData);
+        }else{
+            AccountValidationResponse response = new AccountValidationResponse(accountData.getAccountId());
+            response.setAccountIsValid(true);
+            return response;
         }
     }
 

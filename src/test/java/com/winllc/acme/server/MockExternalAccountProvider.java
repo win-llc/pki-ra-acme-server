@@ -1,9 +1,10 @@
 package com.winllc.acme.server;
 
 import com.nimbusds.jose.JWSObject;
+import com.winllc.acme.common.AccountValidationResponse;
+import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.ExternalAccountProvider;
-import com.winllc.acme.common.model.AcmeJWSObject;
 
 import java.util.Collections;
 import java.util.List;
@@ -37,5 +38,12 @@ public class MockExternalAccountProvider implements ExternalAccountProvider {
     @Override
     public List<String> getPreAuthorizationIdentifiers(String accountKeyIdentifier) {
         return null;
+    }
+
+    @Override
+    public AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
+        AccountValidationResponse accountValidationResponse = new AccountValidationResponse("test1");
+        accountValidationResponse.setAccountIsValid(true);
+        return accountValidationResponse;
     }
 }

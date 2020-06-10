@@ -1,20 +1,25 @@
 package com.winllc.acme.server.process;
 
-import com.winllc.acme.server.MockUtils;
-import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.persistence.ChallengePersistence;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
+import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.Base64;
 
@@ -22,10 +27,10 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@RunWith(SpringRunner.class)
-@ContextConfiguration(classes = AppConfig.class)
-@WebMvcTest(ChallengeProcessor.class)
-@TestPropertySource(locations="classpath:application.properties")
+@SpringBootTest(classes = AppConfig.class)
+@ActiveProfiles("test")
+@AutoConfigureMockMvc
+@TestPropertySource(locations="classpath:application-test.properties")
 public class ChallengeProcessorTest {
 
     @Autowired
@@ -35,9 +40,29 @@ public class ChallengeProcessorTest {
     @MockBean
     private AuthorizationProcessor authorizationProcessor;
 
+    @Autowired
+    private DirectoryDataSettingsPersistence directoryDataSettingsPersistence;
+    @Autowired
+    private DirectoryDataService directoryDataService;
+
+    @BeforeEach
+    public void before() throws Exception {
+        DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
+        directoryDataSettings.setName("acme-test");
+        directoryDataSettings.setMetaExternalAccountRequired(true);
+        directoryDataSettings.setExternalAccountProviderName("test");
+        directoryDataSettings = directoryDataSettingsPersistence.save(directoryDataSettings);
+        directoryDataService.load(directoryDataSettings);
+    }
+
+    @AfterEach
+    public void after(){
+        directoryDataSettingsPersistence.deleteAll();
+    }
+
     @Test
     public void buildNew() {
-        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
         ChallengeData challengeData = challengeProcessor.buildNew(directoryData);
 
         Base64.Decoder urlDecoder = java.util.Base64.getUrlDecoder();
@@ -48,7 +73,7 @@ public class ChallengeProcessorTest {
 
     @Test
     public void processing() throws InternalServerException {
-        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
         ChallengeData challengeData = challengeProcessor.buildNew(directoryData);
         challengeData = challengeProcessor.processing(challengeData);
 

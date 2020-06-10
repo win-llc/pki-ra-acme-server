@@ -9,13 +9,16 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.winllc.acme.common.model.AcmeJWSObject;
-import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.common.contants.IdentifierType;
 import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.*;
 import com.winllc.acme.common.model.data.*;
+import com.winllc.acme.common.model.requestresponse.ExternalAccountBinding;
+import com.winllc.acme.common.util.CertUtil;
+import com.winllc.acme.common.util.SecurityUtil;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -170,18 +173,19 @@ public class MockUtils {
         }
 
         if(url != null){
-            builder.customParam("url", url);
+            builder = builder.customParam("url", url);
         }
 
         if(hasNonce) {
-            builder.customParam("nonce", "1");
+            builder = builder.customParam("nonce", RandomStringUtils.random(10));
         }
 
         if(kid != null){
-            builder.keyID(kid);
+            builder = builder.keyID(kid);
         }
 
-        JWSHeader jwsHeader = builder.build();
+        JWSHeader jwsHeader = builder
+                .build();
 
         Payload payload = new Payload(jsonPayload);
         JWSObject jwsObject = new JWSObject(jwsHeader, payload);
@@ -211,7 +215,7 @@ public class MockUtils {
 
         DirectoryData directoryData = new DirectoryData(directory);
         directoryData.setName("acme-test");
-        directoryData.setAllowPreAuthorization(false);
+        directoryData.setAllowPreAuthorization(true);
         return directoryData;
     }
 
@@ -219,6 +223,7 @@ public class MockUtils {
         Account account = new Account();
         account.setStatus(StatusType.VALID.toString());
         account.setOrders("http://localhost/acme-test/orders/1");
+        account.setContact(new String[]{"mailto:test@test.com"});
         AccountData accountData = new AccountData(account, "acme-test");
         accountData.setJwk(rsaJWK.toPublicJWK().toJSONString());
         accountData.setEabKeyIdentifier("eab1");
@@ -270,6 +275,24 @@ public class MockUtils {
 
         CertData certData = new CertData(base64Chain, directoryData.getName(), accountData.getId());
         return certData;
+    }
+
+    public static ExternalAccountBinding buildMockExternalAccountBinding(String url) throws JOSEException {
+        String testMacKey = SecurityUtil.generateRandomString(32);
+
+        JWSHeader.Builder builder = new JWSHeader.Builder(JWSAlgorithm.HS256)
+                .jwk(hmacJwk.toPublicJWK());
+        builder.keyID("kidtest1");
+        builder.customParam("url", url);
+
+        Payload payload = new Payload(MockUtils.rsaJWK.toJSONObject());
+
+        JWSSigner signer = new MACSigner(testMacKey);
+        JWSObject testObj = new JWSObject(builder.build(), payload);
+        testObj.sign(signer);
+
+        ExternalAccountBinding eab = new ExternalAccountBinding(testObj);
+        return eab;
     }
 
 }

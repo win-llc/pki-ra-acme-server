@@ -7,34 +7,38 @@ import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jose.util.JSONObjectUtils;
-import com.winllc.acme.server.MockExternalAccountProvider;
-import com.winllc.acme.server.MockUtils;
-import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.common.contants.ProblemType;
-import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.external.ExternalAccountProvider;
+import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.common.model.acme.Directory;
 import com.winllc.acme.common.model.acme.OrderList;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.model.data.OrderListData;
 import com.winllc.acme.common.model.requestresponse.AccountRequest;
 import com.winllc.acme.common.model.requestresponse.ExternalAccountBinding;
+import com.winllc.acme.server.MockExternalAccountProvider;
+import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.exceptions.InternalServerException;
+import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
+import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import net.minidev.json.JSONObject;
 import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.text.ParseException;
 import java.util.Optional;
@@ -53,52 +57,69 @@ deactiv.|                revoke |
         V                       V
    deactivated               revoked
  */
-@RunWith(SpringRunner.class)
-@ContextConfiguration(classes = AppConfig.class)
-@WebMvcTest(AccountProcessor.class)
+@SpringBootTest(classes = AppConfig.class)
+@ActiveProfiles("test")
+@AutoConfigureMockMvc
 public class AccountProcessorTest {
 
-    @MockBean
-    private AccountPersistence accountPersistence;
-    @MockBean
-    private OrderListPersistence orderListPersistence;
-    @MockBean
+    @Autowired
     private DirectoryDataService directoryDataService;
     @MockBean
     private ExternalAccountProviderService externalAccountProviderService;
     @Autowired
     private AccountProcessor accountProcessor;
+    @Autowired
+    private AccountPersistence accountPersistence;
+    @Autowired
+    private DirectoryDataSettingsPersistence directoryDataSettingsPersistence;
 
-    @Before
-    public void before(){
-        OrderList orderList = new OrderList();
-        OrderListData orderListData = new OrderListData(orderList, "directory");
-        when(orderListPersistence.save(any())).thenReturn(orderListData);
+    @BeforeEach
+    public void before() throws Exception {
+        when(externalAccountProviderService.findByName("test")).thenReturn(new MockExternalAccountProvider());
 
-        AccountData accountData = MockUtils.buildMockAccountData();
-        when(accountPersistence.save(any())).thenReturn(accountData);
+        DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
+        directoryDataSettings.setName("acme-test");
+        directoryDataSettings.setMetaExternalAccountRequired(true);
+        directoryDataSettings.setExternalAccountProviderName("test");
+        directoryDataSettings = directoryDataSettingsPersistence.save(directoryDataSettings);
+        directoryDataService.load(directoryDataSettings);
 
-        ExternalAccountProvider eap = new MockExternalAccountProvider();
-        when(externalAccountProviderService.findByName(any())).thenReturn(eap);
+        DirectoryDataSettings directoryDataSettings2 = new DirectoryDataSettings();
+        directoryDataSettings2.setName("acme-test-no-eab");
+        directoryDataSettings.setMetaExternalAccountRequired(false);
+        directoryDataSettings2 = directoryDataSettingsPersistence.save(directoryDataSettings2);
+        directoryDataService.load(directoryDataSettings2);
+    }
+
+    @AfterEach
+    public void after(){
+        directoryDataSettingsPersistence.deleteAll();
+        accountPersistence.deleteAll();
     }
 
     @Test
     public void request() throws Exception {
-        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
-        when(directoryDataService.getByName(any())).thenReturn(Optional.of(directoryData));
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
+
+        AccountData accountData = MockUtils.buildMockAccountData();
+        ExternalAccountBinding eab = MockUtils.buildMockExternalAccountBinding("http://localhost/acme-test/new-account");
 
         AccountRequest accountRequest = new AccountRequest();
+        accountRequest.setContact(new String[]{"mailto:user@winllc-dev.com"});
+        accountRequest.setTermsOfServiceAgreed(true);
+        accountData.getObject().setContact(accountRequest.getContact());
+        accountRequest.setExternalAccountBinding(eab);
 
-        AcmeJWSObject acmeJWSObject = buildTestJwsObject(accountRequest);
+        AcmeJWSObject acmeJWSObject = MockUtils.buildCustomAcmeJwsObject(accountRequest, "http://localhost/acme-test/new-account");
 
-        AccountData accountData = accountProcessor.processCreateNewAccount(accountRequest, directoryData, acmeJWSObject);
+        accountData = accountProcessor.processCreateNewAccount(accountRequest, directoryData, acmeJWSObject);
 
         assertEquals(directoryData.getName(), accountData.getDirectory());
     }
 
     @Test
     public void requestTosRequired() throws JsonProcessingException, JOSEException, ParseException {
-        DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
+        DirectoryData directoryData = directoryDataService.findByName("acme-test-no-eab");
         directoryData.getObject().getMeta().setTermsOfService("test");
 
         AccountRequest accountRequest = new AccountRequest();
@@ -127,7 +148,7 @@ public class AccountProcessorTest {
     public void requestExternalAccountRequired() throws ParseException, JOSEException, JsonProcessingException {
         AccountData mockAccountData = MockUtils.buildMockAccountData();
 
-        DirectoryData directoryData = MockUtils.buildMockDirectoryData(true);
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
         directoryData.getObject().getMeta().setTermsOfService("test");
 
         AccountRequest accountRequest = new AccountRequest();
@@ -155,34 +176,14 @@ public class AccountProcessorTest {
         }
     }
 
-    //@Test
+    @Test
     public void deactivateAccount() throws InternalServerException {
         AccountData accountData = MockUtils.buildMockAccountData();
         accountData.getObject().markValid();
 
         //todo mock save returning wrong object, move
-        //accountData = accountProcessor.deactivateAccount(accountData);
+        accountData = accountProcessor.deactivateAccount(accountData);
 
-        //assertEquals(accountData.getObject().getStatusType(), StatusType.INVALID);
-    }
-
-    private AcmeJWSObject buildTestJwsObject(Object obj) throws Exception{
-        ObjectMapper objectMapper = new ObjectMapper();
-        String accountRequestJson = objectMapper.writeValueAsString(obj);
-        JSONObject jsonObject = JSONObjectUtils.parse(accountRequestJson);
-
-        RSAKey rsaJwk = new RSAKeyGenerator(2048).generate();
-        JWSHeader jwsHeader = new JWSHeader.Builder(JWSAlgorithm.RS256)
-                .jwk(rsaJwk)
-                .customParam("nonce", "test")
-                .customParam("url", "http://acme.winllc.com/acme/new-account")
-                .build();
-        Payload payload = new Payload(jsonObject);
-
-        JWSSigner signer = new RSASSASigner(rsaJwk);
-
-        AcmeJWSObject acmeJWSObject = new AcmeJWSObject(jwsHeader, payload);
-        acmeJWSObject.sign(signer);
-        return acmeJWSObject;
+        assertEquals(accountData.getObject().getStatusType(), StatusType.DEACTIVATED);
     }
 }

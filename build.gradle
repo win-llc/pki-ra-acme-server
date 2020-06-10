@@ -43,7 +43,7 @@ dependencies {
     implementation group: 'javax.servlet', name: 'javax.servlet-api', version: '4.0.1'
 
     // https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.12.0'
+    //implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.12.0'
 
     // https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15
     //compile group: 'org.bouncycastle', name: 'bcprov-jdk15', version: '1.46'
@@ -58,7 +58,12 @@ dependencies {
 
 
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'junit', module: 'junit'
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
     }
+
+    // https://mvnrepository.com/artifact/de.svenkubiak/embedded-mongodb
+    //testCompile group: 'de.svenkubiak', name: 'embedded-mongodb', version: '5.0.5'
+
 
 }

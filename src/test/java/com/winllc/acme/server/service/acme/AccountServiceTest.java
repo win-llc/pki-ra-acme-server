@@ -1,33 +1,49 @@
 package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.JWSObject;
-import com.winllc.acme.server.Application;
-import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.model.requestresponse.AccountRequest;
+import com.winllc.acme.common.model.requestresponse.ExternalAccountBinding;
 import com.winllc.acme.common.model.requestresponse.KeyChangeRequest;
-import com.winllc.acme.server.process.AccountProcessor;
-import com.winllc.acme.server.service.AbstractServiceTest;
+import com.winllc.acme.server.Application;
+import com.winllc.acme.server.MockExternalAccountProvider;
+import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.persistence.AccountPersistence;
+import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import javax.servlet.http.HttpServletRequest;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AccountService.class)
-public class AccountServiceTest extends AbstractServiceTest {
+
+@SpringBootTest(classes = AppConfig.class)
+@ActiveProfiles("test")
+@AutoConfigureMockMvc
+public class AccountServiceTest {
 
     private static String newAccountRequest = "{\n" +
             "   \"protected\":\"eyJhbGciOiJSUzI1NiIsImp3ayI6eyJlIjoiQVFBQiIsImt0eSI6IlJTQSIsIm4iOiJ3X1JYeldlVVROQ0NxUkZSX2ttOUxIcHhtWU1nR0xDajc4RzNQcEgtMUdHQUtSUFVpaFVMckdRdjV0aTc0QWZPb2ZTbGRHTjlBTFgtU0tyclFYTUNoMjI3ZUl4RjhGS1JRR2RFVWpqOHVpdUFWSTZ3dnJXTWhMcUtzX3h1SHg4cXN5STg5M2p1QzhMU2RldW9fb0ZueHFMR0IyWWZKNmg3SXZiNlhBbGwtN09YRjdIV0Q5eDZvdEFoOUs0UHQxVlpBeERuQnhWT2FhNnNlZEF4Rm1QMGE5Y0dEMFFKYngtOTN4WkJSaTA5M203VnNsSVBaS2JtSTJ4LWtYSVNOeGV0R0tXZVIxWGtaTEljejB0aGRrU2tPNDBQYjVJUzVBN3hTOGUxNEpvQ21JNk11M0ZueG9rTm55QXdDZHFWOHk3Yi1oVjZFUTI5UDdWQnlURGo5bzYwZncifSwibm9uY2UiOiJNVFU0T0RBek1qZ3dOekF4Tmc9PSIsInVybCI6Imh0dHA6Ly8xOTIuMTY4LjEuMTM6ODE4MS9hY21lL25ldy1hY2NvdW50In0\",\n" +
@@ -39,28 +55,89 @@ public class AccountServiceTest extends AbstractServiceTest {
     private MockMvc mockMvc;
     @MockBean
     private SecurityValidatorUtil securityValidatorUtil;
+    @Autowired
+    private DirectoryDataSettingsPersistence directoryDataSettingsPersistence;
+    @Autowired
+    private DirectoryDataService directoryDataService;
+    @Autowired
+    private AccountPersistence accountPersistence;
     @MockBean
-    private AccountProcessor accountProcessor;
+    private ExternalAccountProviderService externalAccountProviderService;
+
+    @BeforeEach
+    public void before() throws Exception {
+        when(externalAccountProviderService.findByName("test")).thenReturn(new MockExternalAccountProvider());
+
+        DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
+        directoryDataSettings.setName("acme-test");
+        directoryDataSettings.setMetaExternalAccountRequired(true);
+        directoryDataSettings.setExternalAccountProviderName("test");
+        directoryDataSettings = directoryDataSettingsPersistence.save(directoryDataSettings);
+        directoryDataService.load(directoryDataSettings);
+
+        DirectoryDataSettings directoryDataSettings2 = new DirectoryDataSettings();
+        directoryDataSettings2.setName("acme-test-no-eab");
+        directoryDataSettings.setMetaExternalAccountRequired(false);
+        directoryDataSettings2 = directoryDataSettingsPersistence.save(directoryDataSettings2);
+        directoryDataService.load(directoryDataSettings2);
+    }
+
+    @AfterEach
+    public void after(){
+        directoryDataSettingsPersistence.deleteAll();
+        accountPersistence.deleteAll();
+    }
 
     @Test
     public void request() throws Exception {
         AccountData accountData = MockUtils.buildMockAccountData();
-
-        when(accountProcessor.processCreateNewAccount(any(), any(), any())).thenReturn(accountData);
+        ExternalAccountBinding eab = MockUtils.buildMockExternalAccountBinding("http://localhost/acme-test/new-account");
 
         AccountRequest accountRequest = new AccountRequest();
         accountRequest.setContact(new String[]{"mailto:user@winllc-dev.com"});
         accountRequest.setTermsOfServiceAgreed(true);
+        accountData.getObject().setContact(accountRequest.getContact());
+        accountRequest.setExternalAccountBinding(eab);
 
         JWSObject jwsObject = MockUtils.buildCustomAcmeJwsObject(accountRequest,
                 "http://localhost/acme-test/new-account");
         String json = MockUtils.jwsObjectAsString(jwsObject);
 
-        mockMvc.perform(
+        MvcResult result = mockMvc.perform(
                 post("/acme-test/new-account")
                         .contentType("application/jose+json")
                         .content(json))
-                .andExpect(status().is(201));
+                .andReturn();
+
+        String responseString = result.getResponse().getContentAsString();
+        assertEquals(201, result.getResponse().getStatus());
+        assertTrue(responseString.contains("\"status\":\"valid\""));
+        assertTrue(responseString.contains(accountRequest.getContact()[0]));
+        assertTrue(responseString.contains("\"orders\""));
+    }
+
+    @Test
+    public void requestNoExternalAccountBinding() throws Exception {
+        //todo set custom directory data with no external account binding
+        AccountRequest accountRequest = new AccountRequest();
+        accountRequest.setContact(new String[]{"mailto:user@winllc-dev.com"});
+        accountRequest.setTermsOfServiceAgreed(true);
+        //accountData.getObject().setContact(accountRequest.getContact());
+
+        JWSObject jwsObject = MockUtils.buildCustomAcmeJwsObject(accountRequest,
+                "http://localhost/acme-test-no-eab/new-account");
+        String json = MockUtils.jwsObjectAsString(jwsObject);
+
+        MvcResult result = mockMvc.perform(
+                post("/acme-test-no-eab/new-account")
+                        .contentType("application/jose+json")
+                        .content(json))
+                .andReturn();
+
+        String responseString = result.getResponse().getContentAsString();
+        assertTrue(responseString.contains("\"status\":\"valid\""));
+        assertTrue(responseString.contains(accountRequest.getContact()[0]));
+        assertTrue(responseString.contains("\"orders\""));
     }
 
     @Test
@@ -69,23 +146,26 @@ public class AccountServiceTest extends AbstractServiceTest {
         DirectoryData directoryData = MockUtils.buildMockDirectoryData(false);
 
         AccountRequest accountRequest = new AccountRequest();
-        accountRequest.setContact(new String[]{"mailto:newuser@winllc-dev.com"});
+        accountRequest.setContact(new String[]{"mailto:test@test.com"});
+        accountData.getObject().setContact(accountRequest.getContact());
 
         PayloadAndAccount<AccountRequest> payloadAndAccount = new PayloadAndAccount<>(accountRequest, accountData, directoryData);
         when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class), any(String.class),
                 isA(Class.class))).thenReturn(payloadAndAccount);
 
-        when(accountProcessor.deactivateAccount(accountData)).thenReturn(accountData);
-        when(accountProcessor.accountRevoke(accountData)).thenReturn(accountData);
 
         JWSObject jwsObject = MockUtils.buildCustomJwsObject(accountRequest, "http://localhost/acme-test/acct/"+accountData.getId());
         String json = MockUtils.jwsObjectAsString(jwsObject);
 
-        mockMvc.perform(
+        MvcResult result = mockMvc.perform(
                 post("/acme-test/acct/1")
                         .contentType("application/jose+json")
                         .content(json))
-                .andExpect(status().is(200));
+                .andReturn();
+
+        String responseString = result.getResponse().getContentAsString();
+        assertEquals(200, result.getResponse().getStatus());
+        assertTrue(responseString.contains(accountRequest.getContact()[0]));
     }
 
     @Test

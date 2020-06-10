@@ -17,10 +17,7 @@ import java.util.Set;
 
 public abstract class AbstractCertAuthority implements CertificateAuthority {
 
-    protected String name;
-    protected AcmeCertAuthorityType type;
     protected CertificateAuthoritySettings settings;
-
 
     protected AbstractCertAuthority(CertificateAuthoritySettings settings){
         this.settings = settings;

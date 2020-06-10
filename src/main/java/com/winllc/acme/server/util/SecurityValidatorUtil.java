@@ -9,6 +9,7 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.model.acme.Account;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.exceptions.MalformedRequest;
 import com.winllc.acme.common.model.AcmeJWSObject;
@@ -72,8 +73,21 @@ public class SecurityValidatorUtil {
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
                                                                                 Class<T> clazz) throws AcmeServerException {
-        AcmeURL kid = new AcmeURL(jwsObject.getHeader().getKeyID());
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest.getRequestURL().toString(), kid.getObjectId().get(), clazz);
+        String accountId;
+        if(StringUtils.isNotBlank(jwsObject.getHeader().getKeyID())){
+            AcmeURL kid = new AcmeURL(jwsObject.getHeader().getKeyID());
+            accountId = kid.getObjectId().get();
+        }else{
+            Optional<AccountData> firstByJwkEquals = accountPersistence.findFirstByJwkEquals(jwsObject.getHeader().getJWK().toString());
+            if(firstByJwkEquals.isPresent()){
+                AccountData accountData = firstByJwkEquals.get();
+                accountId = accountData.getId();
+            }else{
+                throw new AcmeServerException(ProblemType.SERVER_INTERNAL);
+            }
+        }
+
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest.getRequestURL().toString(), accountId, clazz);
     }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, String requestUrl,
@@ -102,7 +116,7 @@ public class SecurityValidatorUtil {
 
                 //Section 7.3.6
                 if (accountData.getObject().getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
-                    throw new AcmeServerException(ProblemType.UNAUTHORIZED);
+                    throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Account deactivated");
                 }
 
                 JWK accountJWK;

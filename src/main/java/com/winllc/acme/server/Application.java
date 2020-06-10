@@ -8,7 +8,7 @@ import javax.annotation.PostConstruct;
 @Component
 public class Application {
 
-    public static String baseURL = "http://192.168.1.13:8181/";
+    public static String baseURL = "http://192.168.1.3:8181/";
 
     @Value("${app.baseUrl}")
     public static void setBaseURL(String baseURL) {

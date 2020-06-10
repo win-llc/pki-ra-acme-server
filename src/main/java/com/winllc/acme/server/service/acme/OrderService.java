@@ -82,8 +82,9 @@ public class OrderService extends BaseService {
             OrderRequest orderRequest = payloadAndAccount.getPayload();
             AccountData accountData = payloadAndAccount.getAccountData();
 
-            Optional<ProblemDetails> problemDetailsOptional = caCanFulfill(orderRequest, directoryData, accountData);
-            if (orderRequest.isValid() && !problemDetailsOptional.isPresent()) {
+            caCanFulfill(orderRequest, directoryData, accountData);
+
+            if (orderRequest.isValid()) {
 
                 //CA can fulfill
                 OrderData orderData = orderProcessor.buildNew(directoryData, accountData);
@@ -109,36 +110,25 @@ public class OrderService extends BaseService {
                     orderListData.addOrder(Application.baseURL, orderData);
                     orderListPersistence.save(orderListData);
 
+                    log.debug("Order List updated: " + orderListData);
+                }
+
                 /*
                  If the server is willing to issue the requested certificate, it responds with a 201 (Created) response.
                  The body of this response is an order object reflecting the client’s request and any authorizations
                  the client must complete before the certificate will be issued.
                  */
-                    log.debug("Order List created: " + orderListData);
-                    return buildBaseResponseEntity(201, directoryData)
-                            .header("Retry-After", "10")
-                            .header("Location", orderData.buildUrl(Application.baseURL))
-                            .body(order);
-                } else {
-                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
-                    problemDetails.setDetail("Could not find Order List");
 
-                    log.error(problemDetails);
+                return buildBaseResponseEntity(201, directoryData)
+                        .header("Retry-After", "10")
+                        .header("Location", orderData.buildUrl(Application.baseURL))
+                        .body(order);
 
-                    return buildBaseResponseEntity(500, directoryData)
-                            .body(problemDetails);
-                }
             } else {
-                /*
-                The server MUST return an error if it cannot fulfill the request as specified,
-                and it MUST NOT issue a certificate with contents other than those requested.
-                If the server requires the request to be modified in a certain way,
-                it should indicate the required changes using an appropriate error type and description.
-                 */
-                ProblemDetails problemDetails = problemDetailsOptional.get();
-                log.error(problemDetails);
-                return buildBaseResponseEntity(403, directoryData)
-                        .body(problemDetails);
+                ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+                problemDetails.setDetail("Request not valid");
+
+                throw new AcmeServerException(problemDetails);
             }
         } catch (Exception e) {
             log.error("Could not create new-order", e);
@@ -151,7 +141,7 @@ public class OrderService extends BaseService {
 
     @RequestMapping(value = "{directory}/order/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> getOrder(@PathVariable String id, @PathVariable String directory) throws JsonProcessingException {
-        log.info("getOrder: "+id);
+        log.info("getOrder: " + id);
         Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
         DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
@@ -160,16 +150,16 @@ public class OrderService extends BaseService {
             OrderData orderData = orderDataOptional.get();
             orderData = orderProcessor.buildCurrentOrder(orderData);
 
-            log.info("Returning order: "+orderData.getId() + " :: Status: "+orderData.getObject().getStatus());
+            log.info("Returning order: " + orderData.getId() + " :: Status: " + orderData.getObject().getStatus());
 
-            if(orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
-                    orderData.getObject().getStatus().equals(StatusType.PENDING.toString())){
+            if (orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
+                    orderData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
                 return buildBaseResponseEntity(200, directoryData)
                         .header("Retry-After", "10")
                         .build();
-                       // .body(orderData.getObject());
-            }else{
-                if(log.isEnabled(Level.DEBUG)) {
+                // .body(orderData.getObject());
+            } else {
+                if (log.isEnabled(Level.DEBUG)) {
                     ObjectMapper mapper = new ObjectMapper();
                     String jsonObj = mapper.writeValueAsString(orderData.getObject());
                     log.debug("Returning order: " + jsonObj);
@@ -181,9 +171,9 @@ public class OrderService extends BaseService {
             }
 
 
-        }else{
+        } else {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
-            problemDetails.setDetail("Could not find order with ID: "+id);
+            problemDetails.setDetail("Could not find order with ID: " + id);
 
             log.error(problemDetails);
 
@@ -194,7 +184,7 @@ public class OrderService extends BaseService {
 
     @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
-        log.info("finalizeOrder: "+id);
+        log.info("finalizeOrder: " + id);
         Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
         DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
@@ -214,7 +204,7 @@ public class OrderService extends BaseService {
 
         //if order ready to be completed by passing authorization checks
         if (orderReadyForFinalize(orderData.getObject())) {
-            log.info("readyForFinalize: "+orderData.getId());
+            log.info("readyForFinalize: " + orderData.getId());
             String csr = certificateRequestPayloadAndAccount.getPayload().getCsr();
             try {
                 Optional<ProblemDetails> problemDetailsOptional = validateCsr(csr, orderData.getObject());
@@ -244,14 +234,14 @@ public class OrderService extends BaseService {
                 return buildBaseResponseEntity(500, directoryData)
                         .body(problemDetails);
             }
-        } else if(orderData.getObject().isValid()){
+        } else if (orderData.getObject().isValid()) {
             return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
                     .body(orderData.getObject());
-        } else if(orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString())){
+        } else if (orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString())) {
             return buildBaseResponseEntityWithRetryAfter(200, certificateRequestPayloadAndAccount.getDirectoryData(), 10)
                     .body(orderData.getObject());
         } else {
-            log.error("Order not ready to finalize: "+orderData);
+            log.error("Order not ready to finalize: " + orderData);
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.ORDER_NOT_READY);
 
             return buildBaseResponseEntity(403, certificateRequestPayloadAndAccount.getDirectoryData())
@@ -293,21 +283,32 @@ public class OrderService extends BaseService {
     }
 
     //Return problem details if CA can't issue, return empty if can fulfill
-    private Optional<ProblemDetails> caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData, AccountData accountData) throws AcmeServerException {
+     /*
+                The server MUST return an error if it cannot fulfill the request as specified,
+                and it MUST NOT issue a certificate with contents other than those requested.
+                If the server requires the request to be modified in a certain way,
+                it should indicate the required changes using an appropriate error type and description.
+                 */
+    private void caCanFulfill(OrderRequest orderRequest, DirectoryData directoryData, AccountData accountData)
+            throws AcmeServerException {
 
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
         ProblemDetails problemDetails = new ProblemDetails(ProblemType.COMPOUND);
         //If allowed to issue to all identifiers, return true
-        int allowedToIssueTo = 0;
+        boolean canIssue = true;
         for (Identifier identifier : orderRequest.getIdentifiers()) {
             if (!ca.canIssueToIdentifier(identifier, accountData)) {
                 ProblemDetails temp = new ProblemDetails(ProblemType.UNSUPPORTED_IDENTIFIER);
                 temp.setDetail("CA can't issue for: " + identifier);
                 problemDetails.addSubproblem(temp);
+                canIssue = false;
             }
         }
 
-        return problemDetails.getSubproblems() != null && problemDetails.getSubproblems().length > 0 ? Optional.of(problemDetails) : Optional.empty();
+        if (!canIssue) {
+            problemDetails.setStatus(403);
+            throw new AcmeServerException(problemDetails);
+        }
     }
 
 
@@ -327,13 +328,11 @@ public class OrderService extends BaseService {
 
         //todo include pre-authorizations from account
         DirectoryData directoryData = payloadAndAccount.getDirectoryData();
-        if(directoryData.isAllowPreAuthorization() && directoryData.getObject().getMeta().isExternalAccountRequired()){
+        if (directoryData.isAllowPreAuthorization() && directoryData.getObject().getMeta().isExternalAccountRequired()) {
             //todo
         }
 
         order.setAuthorizations(authorizationUrls.toArray(new String[0]));
-
-
     }
 
     private void finalizeOrder(final OrderData order, String csr) throws InternalServerException {
@@ -358,9 +357,10 @@ public class OrderService extends BaseService {
                 try {
                     Optional<AccountData> optionalAccount = accountPersistence.findById(order.getAccountId());
                     String eabKid = null;
-                    if(optionalAccount.isPresent()){
+                    if (optionalAccount.isPresent()) {
                         AccountData accountData = optionalAccount.get();
-                        if(StringUtils.isNotBlank(accountData.getEabKeyIdentifier())) eabKid = accountData.getEabKeyIdentifier();
+                        if (StringUtils.isNotBlank(accountData.getEabKeyIdentifier()))
+                            eabKid = accountData.getEabKeyIdentifier();
                     }
 
                     X509Certificate certificate = ca.issueCertificate(newOrder, eabKid, CertUtil.csrBase64ToPKC10Object(csr));

@@ -69,7 +69,6 @@ public class CertService extends BaseService {
         log.info("certDownload: "+id);
         try {
             DirectoryData directoryData = directoryDataService.findByName(directory);
-
             Optional<CertData> optionalCertData = certificatePersistence.findById(id);
 
             if (optionalCertData.isPresent()) {

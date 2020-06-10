@@ -67,6 +67,8 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
 
     @DeleteMapping("/delete/{name}")
     public void delete(@PathVariable String name) {
+        directoryDataMap.remove(name);
+
         persistence.deleteByName(name);
     }
 
