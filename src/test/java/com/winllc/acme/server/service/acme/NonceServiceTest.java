@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(classes = AppConfig.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-public class NonceServiceTest {
+public class NonceServiceTest extends AbstractServiceTest {
 
     @Autowired
     private MockMvc mockMvc;

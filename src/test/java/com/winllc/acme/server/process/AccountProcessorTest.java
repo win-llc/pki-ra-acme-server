@@ -2,6 +2,8 @@ package com.winllc.acme.server.process;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.Mongo;
+import com.mongodb.MongoClient;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -27,19 +29,26 @@ import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
+import de.flapdoodle.embed.mongo.MongodExecutable;
+import de.flapdoodle.embed.mongo.MongodProcess;
+import de.flapdoodle.embed.mongo.MongodStarter;
+import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
+import de.flapdoodle.embed.mongo.config.Net;
+import de.flapdoodle.embed.mongo.distribution.Version;
+import de.flapdoodle.embed.process.runtime.Network;
 import net.minidev.json.JSONObject;
 import org.junit.Before;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.net.UnknownHostException;
 import java.text.ParseException;
 import java.util.Optional;
 
@@ -60,7 +69,7 @@ deactiv.|                revoke |
 @SpringBootTest(classes = AppConfig.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-public class AccountProcessorTest {
+public class AccountProcessorTest extends AbstractServiceTest {
 
     @Autowired
     private DirectoryDataService directoryDataService;
@@ -72,6 +81,7 @@ public class AccountProcessorTest {
     private AccountPersistence accountPersistence;
     @Autowired
     private DirectoryDataSettingsPersistence directoryDataSettingsPersistence;
+
 
     @BeforeEach
     public void before() throws Exception {

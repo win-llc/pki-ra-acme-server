@@ -63,6 +63,13 @@ dependencies {
     }
 
     // https://mvnrepository.com/artifact/de.svenkubiak/embedded-mongodb
+    testCompile(group: 'de.svenkubiak', name: 'embedded-mongodb', version: '5.0.5'){
+        exclude module: "logback-classic"
+        exclude group: 'org.slf4j'
+    }
+
+
+    // https://mvnrepository.com/artifact/de.svenkubiak/embedded-mongodb
     //testCompile group: 'de.svenkubiak', name: 'embedded-mongodb', version: '5.0.5'
 
 

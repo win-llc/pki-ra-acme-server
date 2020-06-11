@@ -14,6 +14,7 @@ import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.util.PayloadAndAccount;
@@ -43,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(classes = AppConfig.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-public class AccountServiceTest {
+public class AccountServiceTest extends AbstractServiceTest {
 
     private static String newAccountRequest = "{\n" +
             "   \"protected\":\"eyJhbGciOiJSUzI1NiIsImp3ayI6eyJlIjoiQVFBQiIsImt0eSI6IlJTQSIsIm4iOiJ3X1JYeldlVVROQ0NxUkZSX2ttOUxIcHhtWU1nR0xDajc4RzNQcEgtMUdHQUtSUFVpaFVMckdRdjV0aTc0QWZPb2ZTbGRHTjlBTFgtU0tyclFYTUNoMjI3ZUl4RjhGS1JRR2RFVWpqOHVpdUFWSTZ3dnJXTWhMcUtzX3h1SHg4cXN5STg5M2p1QzhMU2RldW9fb0ZueHFMR0IyWWZKNmg3SXZiNlhBbGwtN09YRjdIV0Q5eDZvdEFoOUs0UHQxVlpBeERuQnhWT2FhNnNlZEF4Rm1QMGE5Y0dEMFFKYngtOTN4WkJSaTA5M203VnNsSVBaS2JtSTJ4LWtYSVNOeGV0R0tXZVIxWGtaTEljejB0aGRrU2tPNDBQYjVJUzVBN3hTOGUxNEpvQ21JNk11M0ZueG9rTm55QXdDZHFWOHk3Yi1oVjZFUTI5UDdWQnlURGo5bzYwZncifSwibm9uY2UiOiJNVFU0T0RBek1qZ3dOekF4Tmc9PSIsInVybCI6Imh0dHA6Ly8xOTIuMTY4LjEuMTM6ODE4MS9hY21lL25ldy1hY2NvdW50In0\",\n" +

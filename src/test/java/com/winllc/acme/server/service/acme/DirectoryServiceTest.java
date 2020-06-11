@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(classes = AppConfig.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-public class DirectoryServiceTest {
+public class DirectoryServiceTest extends AbstractServiceTest {
 
     @Autowired
     private MockMvc mockMvc;

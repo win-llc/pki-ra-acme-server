@@ -9,6 +9,7 @@ import com.winllc.acme.server.configuration.AppConfig;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import org.junit.Before;
 import org.junit.jupiter.api.AfterEach;
@@ -31,7 +32,7 @@ import static org.mockito.Mockito.when;
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @TestPropertySource(locations="classpath:application-test.properties")
-public class ChallengeProcessorTest {
+public class ChallengeProcessorTest extends AbstractServiceTest {
 
     @Autowired
     private ChallengeProcessor challengeProcessor;

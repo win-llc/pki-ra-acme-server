@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 public class HttpChallengeTest {
 
-    @Test
+    //@Test
     public void verify() {
         //todo
     }

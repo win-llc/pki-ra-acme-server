@@ -16,6 +16,7 @@ import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.PayloadAndAccount;
@@ -64,7 +65,7 @@ import static org.mockito.Mockito.when;
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @TestPropertySource(locations="classpath:application-test.properties")
-public class AuthorizationProcessorTest {
+public class AuthorizationProcessorTest extends AbstractServiceTest {
 
     @Autowired
     private AuthorizationPersistence authorizationPersistence;
