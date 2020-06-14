@@ -17,7 +17,7 @@ build:
   image: gradle:5.0-jdk8-alpine
   stage: build
   script:
-    - gradle build
+    - gradle -x test build
   artifacts:
     paths:
       - build/libs/*.jar
