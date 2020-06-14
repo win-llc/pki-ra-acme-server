@@ -5,6 +5,8 @@ services:
 
 variables:
   DOCKER_TLS_CERTDIR: ""
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  DOCKER_DRIVER: overlay
 
 stages:
   - build
@@ -15,7 +17,7 @@ build:
   image: gradle:5.0-jdk8-alpine
   stage: build
   script:
-    - gradle build
+    - gradlew --build-cache build
   artifacts:
     paths:
       - build/libs/*.jar
