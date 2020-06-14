@@ -25,7 +25,8 @@ public class DirectoryService {
     private DirectoryDataService directoryDataService;
 
     @RequestMapping(method = RequestMethod.GET, value = "{directoryName}/directory")
-    public ResponseEntity<?> directory(HttpServletRequest request, @PathVariable String directoryName){
+    public ResponseEntity<?> directory(HttpServletRequest request, @PathVariable String directoryName)
+            throws Exception {
         DirectoryData directoryData = directoryDataService.findByName(directoryName);
         Directory directory = directoryData.getObject();
 

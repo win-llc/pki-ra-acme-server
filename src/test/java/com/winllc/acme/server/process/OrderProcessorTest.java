@@ -65,7 +65,7 @@ public class OrderProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void buildNew() {
+    public void buildNew() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
         AccountData accountData = MockUtils.buildMockAccountData();
         try {
@@ -80,7 +80,7 @@ public class OrderProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void buildCurrentOrder() {
+    public void buildCurrentOrder() throws Exception {
         AuthorizationData pendingAuthorizationData = MockUtils.buildMockAuthorizationData(StatusType.PENDING);
 
         DirectoryData directoryData = directoryDataService.findByName("acme-test");

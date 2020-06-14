@@ -26,7 +26,7 @@ public class GlobalExceptionHandler extends BaseService {
     private DirectoryDataService directoryDataService;
 
     @ExceptionHandler(value = { Exception.class })
-    protected ResponseEntity<?> handleException(Exception ex, HttpServletRequest request){
+    protected ResponseEntity<?> handleException(Exception ex, HttpServletRequest request) throws Exception {
         AcmeURL acmeURL = new AcmeURL(request);
         DirectoryData directoryData = directoryDataService.findByName(acmeURL.getDirectoryIdentifier());
 

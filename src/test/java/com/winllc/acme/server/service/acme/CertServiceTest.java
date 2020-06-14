@@ -81,7 +81,7 @@ public class CertServiceTest extends AbstractServiceTest {
 
     @AfterEach
     public void after(){
-        directoryDataSettingsPersistence.deleteAll();
+        directoryDataService.delete("acme-test");
         accountPersistence.deleteAll();
     }
 

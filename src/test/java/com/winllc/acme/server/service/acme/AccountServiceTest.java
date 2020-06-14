@@ -85,8 +85,8 @@ public class AccountServiceTest extends AbstractServiceTest {
 
     @AfterEach
     public void after(){
-        directoryDataSettingsPersistence.deleteAll();
-        accountPersistence.deleteAll();
+        directoryDataService.delete("acme-test");
+        directoryDataService.delete("acme-test-no-eab");
     }
 
     @Test

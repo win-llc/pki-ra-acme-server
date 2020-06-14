@@ -25,6 +25,7 @@ import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,7 +91,11 @@ public class AuthzServiceTest extends AbstractServiceTest {
         directoryDataSettings.setExternalAccountProviderName("test");
         directoryDataSettings = directoryDataSettingsPersistence.save(directoryDataSettings);
         directoryDataService.load(directoryDataSettings);
+    }
 
+    @AfterEach
+    public void after(){
+        directoryDataService.delete("acme-test");
     }
 
     @Test

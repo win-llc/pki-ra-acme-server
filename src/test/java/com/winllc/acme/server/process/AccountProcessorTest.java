@@ -128,7 +128,7 @@ public class AccountProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void requestTosRequired() throws JsonProcessingException, JOSEException, ParseException {
+    public void requestTosRequired() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test-no-eab");
         directoryData.getObject().getMeta().setTermsOfService("test");
 
@@ -155,7 +155,7 @@ public class AccountProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void requestExternalAccountRequired() throws ParseException, JOSEException, JsonProcessingException {
+    public void requestExternalAccountRequired() throws Exception {
         AccountData mockAccountData = MockUtils.buildMockAccountData();
 
         DirectoryData directoryData = directoryDataService.findByName("acme-test");

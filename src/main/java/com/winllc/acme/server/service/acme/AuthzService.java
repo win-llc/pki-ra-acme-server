@@ -178,7 +178,7 @@ public class AuthzService extends BaseService {
 
     //Section 7.5.1
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> challenge(@PathVariable String id, @PathVariable String directory) throws AcmeServerException, JsonProcessingException {
+    public ResponseEntity<?> challenge(@PathVariable String id, @PathVariable String directory) throws Exception {
         log.info("getChallenge: " + id);
         Optional<ChallengeData> optionalChallengeData = challengePersistence.findById(id);
         DirectoryData directoryData = directoryDataService.findByName(directory);

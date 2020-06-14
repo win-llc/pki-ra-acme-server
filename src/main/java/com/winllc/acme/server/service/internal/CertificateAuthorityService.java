@@ -44,7 +44,7 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
 
     }
 
-    public void load(CertificateAuthoritySettings settings) throws Exception {
+    public CertificateAuthority load(CertificateAuthoritySettings settings) throws Exception {
         log.info("Loading Certificate Authority: "+settings.getName());
 
         CertificateAuthority ca = null;
@@ -59,6 +59,7 @@ public class CertificateAuthorityService implements SettingsService<CertificateA
 
         if(ca != null) {
             certificateAuthorityMap.put(ca.getName(), ca);
+            return ca;
         }else{
             throw new Exception("Could not recognize CA from settings");
         }

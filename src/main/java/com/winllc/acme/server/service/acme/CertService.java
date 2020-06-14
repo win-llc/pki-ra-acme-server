@@ -122,7 +122,7 @@ public class CertService extends BaseService {
     //Section 7.6
     @RequestMapping(value = "{directory}/revoke-cert", method = RequestMethod.POST,
             consumes = "application/jose+json", produces = "application/json")
-    public ResponseEntity<?> certRevoke(HttpServletRequest request, @PathVariable String directory) {
+    public ResponseEntity<?> certRevoke(HttpServletRequest request, @PathVariable String directory) throws Exception {
         DirectoryData directoryData = directoryDataService.findByName(directory);
         CertificateAuthority ca = certificateAuthorityService.getByName(directoryData.getMapsToCertificateAuthorityName());
         try {
@@ -218,7 +218,7 @@ public class CertService extends BaseService {
     an account that holds authorizations for all of the identifiers in the certificate.
     The server MUST also consider a revocation request valid if it is signed with the private key corresponding to the public key in the certificate.
      */
-    private boolean accountCanRevokeCertificate(X509Certificate certificate, AccountData accountData){
+    private boolean accountCanRevokeCertificate(X509Certificate certificate, AccountData accountData) throws Exception {
         List<String> dnsListInCert = CertUtil.getDNSSubjectAlts(certificate);
 
         if(StringUtils.isNotBlank(accountData.getEabKeyIdentifier())){

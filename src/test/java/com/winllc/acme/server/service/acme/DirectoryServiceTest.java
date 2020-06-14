@@ -35,7 +35,7 @@ public class DirectoryServiceTest extends AbstractServiceTest {
     @BeforeEach
     public void before() throws Exception {
         DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
-        directoryDataSettings.setName("acme-test");
+        directoryDataSettings.setName("acme-test3");
         directoryDataSettings.setMetaExternalAccountRequired(true);
         directoryDataSettings.setAllowPreAuthorization(true);
         directoryDataSettings.setExternalAccountProviderName("test");
@@ -45,14 +45,14 @@ public class DirectoryServiceTest extends AbstractServiceTest {
 
     @AfterEach
     public void after(){
-        directoryDataSettingsPersistence.deleteAll();
+        directoryDataService.delete("acme-test3");
     }
 
     @Test
     public void directory() throws Exception {
 
         mockMvc.perform(
-                get("/acme-test/directory"))
+                get("/acme-test3/directory"))
                         //.contentType("application/jose+json"))
                 //.content(json))
                 .andExpect(status().is(200));

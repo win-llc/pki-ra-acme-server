@@ -6,9 +6,9 @@ public interface SettingsService<T, R> {
     T save(T settings) throws Exception;
     T findSettingsByName(String name);
     T findSettingsById(String id) throws Exception;
-    R findByName(String name);
+    R findByName(String name) throws Exception;
     void delete(String name);
     List<T> findAllSettings();
     List<R> findAll();
-    void load(T settings) throws Exception;
+    R load(T settings) throws Exception;
 }

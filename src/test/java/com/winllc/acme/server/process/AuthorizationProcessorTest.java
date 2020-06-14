@@ -100,7 +100,7 @@ public class AuthorizationProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void buildNew(){
+    public void buildNew() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
         AuthorizationData authorizationData = authorizationProcessor.buildNew(directoryData);
 
@@ -108,7 +108,7 @@ public class AuthorizationProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void buildCurrentAuthorization(){
+    public void buildCurrentAuthorization() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
         AuthorizationData authorizationData = authorizationProcessor.buildNew(directoryData);
 
@@ -131,7 +131,7 @@ public class AuthorizationProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void buildAuthorizationForIdentifier() throws AcmeServerException {
+    public void buildAuthorizationForIdentifier() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
         ChallengeData challengeData = MockUtils.buildMockChallengeData(StatusType.PENDING);
         when(challengeProcessor.buildNew(any())).thenReturn(challengeData);

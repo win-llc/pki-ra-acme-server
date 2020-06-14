@@ -36,7 +36,7 @@ public class NonceServiceTest extends AbstractServiceTest {
     @BeforeEach
     public void before() throws Exception {
         DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
-        directoryDataSettings.setName("acme-test");
+        directoryDataSettings.setName("acme-test2");
         directoryDataSettings.setMetaExternalAccountRequired(true);
         directoryDataSettings.setAllowPreAuthorization(true);
         directoryDataSettings.setExternalAccountProviderName("test");
@@ -46,7 +46,7 @@ public class NonceServiceTest extends AbstractServiceTest {
 
     @AfterEach
     public void after(){
-        directoryDataSettingsPersistence.deleteAll();
+        directoryDataService.delete("acme-test2");
     }
 
     //@Test
@@ -57,7 +57,7 @@ public class NonceServiceTest extends AbstractServiceTest {
     @Test
     public void newNonceGet() throws Exception {
         mockMvc.perform(
-                get("/acme-test/new-nonce"))
+                get("/acme-test2/new-nonce"))
                 //.contentType("application/jose+json"))
                 //.content(json))
                 .andExpect(status().is(204));

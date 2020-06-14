@@ -54,11 +54,13 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
 
 
 
-    public void load(ExternalAccountProviderSettings settings){
+    public ExternalAccountProvider load(ExternalAccountProviderSettings settings){
         log.info("Loading External Account Provider: "+settings.getName());
+        //todo make more generic
         ExternalAccountProvider accountProvider = new WINLLCExternalAccountProvider(settings);
 
         externalAccountProviderMap.put(accountProvider.getName(), accountProvider);
+        return accountProvider;
     }
 
     @GetMapping("/findSettingsByName/{name}")

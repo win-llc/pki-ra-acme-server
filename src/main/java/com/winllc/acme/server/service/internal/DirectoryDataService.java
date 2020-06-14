@@ -61,8 +61,9 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
     }
 
     @GetMapping("/findByName/{name}")
-    public DirectoryData findByName(@PathVariable String name) {
-        return directoryDataMap.get(name);
+    public DirectoryData findByName(@PathVariable String name) throws Exception {
+        DirectoryDataSettings settingsByName = findSettingsByName(name);
+        return load(settingsByName);
     }
 
     @DeleteMapping("/delete/{name}")
@@ -83,11 +84,12 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
     }
 
     @Override
-    public void load(DirectoryDataSettings settings) throws Exception {
+    public DirectoryData load(DirectoryDataSettings settings) throws Exception {
         log.info("Loading Directory Data: "+settings.getName());
         DirectoryData directoryData = DirectoryData.buildFromSettings(Application.baseURL, settings);
 
         directoryDataMap.put(directoryData.getName(), directoryData);
+        return directoryData;
     }
 
     public Optional<DirectoryData> getByName(String name){
