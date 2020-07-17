@@ -1,10 +1,9 @@
 package com.winllc.acme.server.external;
 
 import com.nimbusds.jose.JWSObject;
-import com.winllc.acme.common.AccountValidationResponse;
+import com.winllc.acme.common.CertIssuanceValidationResponse;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.server.exceptions.InternalServerException;
 
 import java.util.List;
@@ -21,5 +20,5 @@ public interface ExternalAccountProvider {
     String getAccountValidationRulesUrl();
 
     List<String> getPreAuthorizationIdentifiers(String accountKeyIdentifier) throws InternalServerException;
-    AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException;
+    CertIssuanceValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException;
 }

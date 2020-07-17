@@ -1,10 +1,12 @@
 package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.AcmeCertAuthorityType;
-import com.winllc.acme.common.CAValidationRule;
+import com.winllc.acme.common.CertIssuanceValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.model.acme.Directory;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
@@ -33,7 +35,7 @@ public abstract class AbstractCertAuthority implements CertificateAuthority {
         return AcmeCertAuthorityType.valueOf(settings.getType());
     }
 
-    protected boolean canIssueToIdentifier(Identifier identifier, CAValidationRule validationRule){
+    protected boolean canIssueToIdentifier(Identifier identifier, CertIssuanceValidationRule validationRule){
 
         if(!identifier.getValue().contains(".") && validationRule.isAllowHostnameIssuance()){
             return true;
@@ -48,10 +50,11 @@ public abstract class AbstractCertAuthority implements CertificateAuthority {
     }
 
     @Override
-    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) throws AcmeServerException {
+    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData, DirectoryData directoryData)
+            throws AcmeServerException {
         Set<ChallengeType> challengeTypes = new HashSet<>();
-        if(canIssueToIdentifier(identifier, accountData)){
-            for (CAValidationRule rule : getValidationRules(accountData).getCaValidationRules()) {
+        if(canIssueToIdentifier(identifier, accountData, directoryData)){
+            for (CertIssuanceValidationRule rule : getValidationRules(accountData, directoryData).getCertIssuanceValidationRules()) {
                 if(canIssueToIdentifier(identifier, rule)){
                     if(rule.isRequireHttpChallenge()) challengeTypes.add(ChallengeType.HTTP);
                     if(rule.isRequireDnsChallenge()) challengeTypes.add(ChallengeType.DNS);

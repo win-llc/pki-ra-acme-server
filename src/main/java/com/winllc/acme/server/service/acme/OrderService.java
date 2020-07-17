@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.security.cert.X509Certificate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -154,10 +155,15 @@ public class OrderService extends BaseService {
 
             if (orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
                     orderData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
+
+                Order order = orderData.getObject();
+                order.addNotAfter(LocalDateTime.now().plusHours(1));
+                order.addNotBefore(LocalDateTime.now().minusHours(1));
+
                 return buildBaseResponseEntity(200, directoryData)
-                        .header("Retry-After", "10")
-                        .build();
-                // .body(orderData.getObject());
+                        //.header("Retry-After", "10")
+                        //.build();
+                 .body(order);
             } else {
                 if (log.isEnabled(Level.DEBUG)) {
                     ObjectMapper mapper = new ObjectMapper();
@@ -297,7 +303,7 @@ public class OrderService extends BaseService {
         //If allowed to issue to all identifiers, return true
         boolean canIssue = true;
         for (Identifier identifier : orderRequest.getIdentifiers()) {
-            if (!ca.canIssueToIdentifier(identifier, accountData)) {
+            if (!ca.canIssueToIdentifier(identifier, accountData, directoryData)) {
                 ProblemDetails temp = new ProblemDetails(ProblemType.UNSUPPORTED_IDENTIFIER);
                 temp.setDetail("CA can't issue for: " + identifier);
                 problemDetails.addSubproblem(temp);

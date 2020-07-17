@@ -2,12 +2,11 @@ package com.winllc.acme.server.external;
 
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.util.Base64URL;
-import com.winllc.acme.common.AccountValidationResponse;
+import com.winllc.acme.common.CertIssuanceValidationResponse;
 import com.winllc.acme.common.ExternalAccountProviderSettings;
 import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.util.HttpCommandUtil;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import org.apache.http.HttpException;
@@ -86,13 +85,13 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
     }
 
     @Override
-    public AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
+    public CertIssuanceValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
         String verificationUrl = getAccountValidationRulesUrl()+"/"+accountData.getEabKeyIdentifier();
 
         try {
             HttpPost httppost = new HttpPost(verificationUrl);
 
-            return HttpCommandUtil.process(httppost, 200, AccountValidationResponse.class);
+            return HttpCommandUtil.process(httppost, 200, CertIssuanceValidationResponse.class);
         }catch (HttpException e){
             log.error("Did not receive expected return code");
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve validation rules");

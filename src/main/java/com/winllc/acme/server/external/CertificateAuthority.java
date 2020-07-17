@@ -2,6 +2,8 @@ package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
 import com.winllc.acme.common.contants.ChallengeType;
+import com.winllc.acme.common.model.acme.Directory;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
@@ -23,8 +25,8 @@ public interface CertificateAuthority {
     Optional<CertificateDetails> getCertificateDetails(String serial);
     CertRevocationStatus isCertificateRevoked(X509Certificate certificate);
     Certificate[] getTrustChain() throws AcmeServerException;
-    AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException;
-    boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) throws AcmeServerException;
-    List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) throws AcmeServerException;
+    CertIssuanceValidationResponse getValidationRules(AccountData accountData, DirectoryData directoryData) throws AcmeServerException;
+    boolean canIssueToIdentifier(Identifier identifier, AccountData accountData, DirectoryData directoryData) throws AcmeServerException;
+    List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData, DirectoryData directoryData) throws AcmeServerException;
     static List<String> getRequiredProperties(){return new ArrayList<>();}
 }

@@ -236,7 +236,7 @@ public class AuthzService extends BaseService {
         if (identifier.getValue().startsWith("*")) {
             return false;
         } else {
-            return ca.canIssueToIdentifier(identifier, accountData);
+            return ca.canIssueToIdentifier(identifier, accountData, directoryData);
         }
     }
 

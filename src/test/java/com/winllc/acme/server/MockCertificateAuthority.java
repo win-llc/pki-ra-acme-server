@@ -3,8 +3,10 @@ package com.winllc.acme.server;
 import com.winllc.acme.common.*;
 import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.model.acme.Directory;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.model.data.OrderData;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.exceptions.AcmeServerException;
@@ -88,22 +90,25 @@ public class MockCertificateAuthority implements CertificateAuthority {
     }
 
     @Override
-    public AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
-        CAValidationRule validationRule = new CAValidationRule();
+    public CertIssuanceValidationResponse getValidationRules(AccountData accountData, DirectoryData directoryData)
+            throws AcmeServerException {
+        CertIssuanceValidationRule validationRule = new CertIssuanceValidationRule();
 
-        AccountValidationResponse validationResponse = new AccountValidationResponse("account1");
+        CertIssuanceValidationResponse validationResponse = new CertIssuanceValidationResponse("account1");
         validationResponse.setAccountIsValid(true);
-        validationResponse.setCaValidationRules(Collections.singletonList(validationRule));
+        validationResponse.setCertIssuanceValidationRules(Collections.singletonList(validationRule));
         return validationResponse;
     }
 
     @Override
-    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) throws AcmeServerException {
+    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData, DirectoryData directoryData)
+            throws AcmeServerException {
         return true;
     }
 
     @Override
-    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData) throws AcmeServerException {
+    public List<ChallengeType> getIdentifierChallengeRequirements(Identifier identifier, AccountData accountData, DirectoryData directoryData)
+            throws AcmeServerException {
         return Collections.singletonList(ChallengeType.HTTP);
     }
 }

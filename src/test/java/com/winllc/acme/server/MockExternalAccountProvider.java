@@ -1,7 +1,7 @@
 package com.winllc.acme.server;
 
 import com.nimbusds.jose.JWSObject;
-import com.winllc.acme.common.AccountValidationResponse;
+import com.winllc.acme.common.CertIssuanceValidationResponse;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.ExternalAccountProvider;
@@ -41,9 +41,9 @@ public class MockExternalAccountProvider implements ExternalAccountProvider {
     }
 
     @Override
-    public AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
-        AccountValidationResponse accountValidationResponse = new AccountValidationResponse("test1");
-        accountValidationResponse.setAccountIsValid(true);
-        return accountValidationResponse;
+    public CertIssuanceValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
+        CertIssuanceValidationResponse certIssuanceValidationResponse = new CertIssuanceValidationResponse("test1");
+        certIssuanceValidationResponse.setAccountIsValid(true);
+        return certIssuanceValidationResponse;
     }
 }

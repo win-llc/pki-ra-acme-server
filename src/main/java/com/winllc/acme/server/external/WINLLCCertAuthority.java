@@ -1,6 +1,7 @@
 package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.ra.RACertificateIssueRequest;
 import com.winllc.acme.common.ra.RACertificateRevokeRequest;
 import com.winllc.acme.common.util.CertUtil;
@@ -12,13 +13,12 @@ import com.winllc.acme.common.model.data.OrderData;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.common.util.HttpCommandUtil;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpException;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
+import org.springframework.util.CollectionUtils;
 
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -35,6 +35,7 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     private final String revokeCertPath = "/ca/revokeCertificate";
     private final String trustChainPath = "/ca/trustChain/";
     private final String certDetailsPath = "/ca/certDetails/";
+    private final String validationRulesPath = "/ca/validationRules/";
 
     private ExternalAccountProviderService externalAccountProviderService;
 
@@ -125,7 +126,6 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
             log.error("Could not process", e);
         }
 
-
         return Optional.empty();
     }
 
@@ -166,29 +166,71 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     //Get rules applied to specified account from an external source
     @Override
-    public AccountValidationResponse getValidationRules(AccountData accountData) throws AcmeServerException {
-        if(StringUtils.isNotEmpty(settings.getMapsToExternalAccountProviderName())) {
-            ExternalAccountProvider eap = externalAccountProviderService.findByName(settings.getMapsToExternalAccountProviderName());
+    public CertIssuanceValidationResponse getValidationRules(AccountData accountData, DirectoryData directoryData) throws AcmeServerException {
 
-            return eap.getValidationRules(accountData);
-        }else{
-            AccountValidationResponse response = new AccountValidationResponse(accountData.getAccountId());
-            response.setAccountIsValid(true);
-            return response;
+        boolean externalAccountRequired = directoryData.getObject().getMeta().isExternalAccountRequired();
+
+        CertIssuanceValidationResponse response = new CertIssuanceValidationResponse();
+
+        if(externalAccountRequired) {
+            if (StringUtils.isNotEmpty(directoryData.getExternalAccountProviderName())) {
+                ExternalAccountProvider eap = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
+
+                CertIssuanceValidationResponse validationRules = eap.getValidationRules(accountData);
+                if(!CollectionUtils.isEmpty(validationRules.getCertIssuanceValidationRules())) {
+                    response.getCertIssuanceValidationRules().addAll(validationRules.getCertIssuanceValidationRules());
+                }
+                response.setAccountIsValid(validationRules.isAccountIsValid());
+            } else {
+                response.setAccountIsValid(true);
+                return response;
+            }
         }
+
+        Optional<CertIssuanceValidationResponse> optionalResponse = getCAGlobalValidationRules();
+        if(optionalResponse.isPresent()){
+            CertIssuanceValidationResponse globalResponse = optionalResponse.get();
+            if(!CollectionUtils.isEmpty(globalResponse.getCertIssuanceValidationRules())) {
+                response.getCertIssuanceValidationRules().addAll(globalResponse.getCertIssuanceValidationRules());
+            }
+        }else{
+            log.info("No global CA rules found");
+        }
+
+        return response;
+    }
+
+    public Optional<CertIssuanceValidationResponse> getCAGlobalValidationRules() {
+        String fullUrl = settings.getBaseUrl()+validationRulesPath+settings.getMapsToCaConnectionName();
+        try {
+            URIBuilder builder = new URIBuilder(fullUrl);
+            HttpGet httpGet = new HttpGet(builder.build());
+
+            CertIssuanceValidationResponse response = HttpCommandUtil.process(httpGet, 200, CertIssuanceValidationResponse.class);
+
+            if(response != null){
+                return Optional.of(response);
+            }else{
+                log.debug("Response was empty");
+            }
+        } catch (Exception e) {
+            log.error("Could not process", e);
+        }
+
+        return Optional.empty();
     }
 
     @Override
-    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) throws AcmeServerException {
+    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData, DirectoryData directoryData) throws AcmeServerException {
 
-        AccountValidationResponse validationResponse = getValidationRules(accountData);
+        CertIssuanceValidationResponse validationResponse = getValidationRules(accountData, directoryData);
 
         //if account is not valid, do not issue
         if(!validationResponse.isAccountIsValid()) return false;
         //no rules, can issue
-        if(validationResponse.getCaValidationRules().size() == 0) return true;
+        if(validationResponse.getCertIssuanceValidationRules().size() == 0) return true;
 
-        for (CAValidationRule rule : validationResponse.getCaValidationRules()) {
+        for (CertIssuanceValidationRule rule : validationResponse.getCertIssuanceValidationRules()) {
             if(canIssueToIdentifier(identifier, rule)){
                 return true;
             }

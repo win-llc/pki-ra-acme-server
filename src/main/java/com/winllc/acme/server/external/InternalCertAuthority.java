@@ -2,8 +2,10 @@ package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
 import com.winllc.acme.common.contants.IdentifierType;
+import com.winllc.acme.common.model.acme.Directory;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.model.data.OrderData;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -112,30 +114,30 @@ public class InternalCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public AccountValidationResponse getValidationRules(AccountData accountData) {
+    public CertIssuanceValidationResponse getValidationRules(AccountData accountData, DirectoryData directoryData) {
         //todo
-        CAValidationRule rule = new CAValidationRule();
+        CertIssuanceValidationRule rule = new CertIssuanceValidationRule();
         rule.setBaseDomainName("winllc.com");
         rule.setAllowIssuance(true);
         rule.setRequireHttpChallenge(true);
         rule.setIdentifierType(IdentifierType.DNS.toString());
 
-        CAValidationRule rule2 = new CAValidationRule();
+        CertIssuanceValidationRule rule2 = new CertIssuanceValidationRule();
         rule2.setAllowHostnameIssuance(true);
 
-        List<CAValidationRule> rules = Stream.of(rule, rule2).collect(Collectors.toList());
-        AccountValidationResponse response = new AccountValidationResponse(accountData.getEabKeyIdentifier());
-        response.setCaValidationRules(rules);
+        List<CertIssuanceValidationRule> rules = Stream.of(rule, rule2).collect(Collectors.toList());
+        CertIssuanceValidationResponse response = new CertIssuanceValidationResponse(accountData.getEabKeyIdentifier());
+        response.setCertIssuanceValidationRules(rules);
         return response;
     }
 
 
     @Override
-    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData) {
+    public boolean canIssueToIdentifier(Identifier identifier, AccountData accountData, DirectoryData directoryData) {
         //no rules, can issue
-        if(getValidationRules(accountData).getCaValidationRules().size() == 0) return true;
+        if(getValidationRules(accountData, directoryData).getCertIssuanceValidationRules().size() == 0) return true;
 
-        for (CAValidationRule rule : getValidationRules(accountData).getCaValidationRules()) {
+        for (CertIssuanceValidationRule rule : getValidationRules(accountData, directoryData).getCertIssuanceValidationRules()) {
             if(canIssueToIdentifier(identifier, rule)){
                 return true;
             }

@@ -114,7 +114,8 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
     }
 
     //Based off the directory, get the CA, which has the rules for how to build authorizations for identifiers
-    public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, PayloadAndAccount payloadAndAccount, OrderData orderData) throws AcmeServerException {
+    public Optional<AuthorizationData> buildAuthorizationForIdentifier(Identifier identifier, PayloadAndAccount payloadAndAccount, OrderData orderData)
+            throws AcmeServerException {
         DirectoryData directory = payloadAndAccount.getDirectoryData();
         CertificateAuthority ca = certificateAuthorityService.getByName(directory.getMapsToCertificateAuthorityName());
 
@@ -123,9 +124,9 @@ public class AuthorizationProcessor implements AcmeDataProcessor<AuthorizationDa
         authorization.setIdentifier(identifier);
         authorization.willExpireInMinutes(60);
 
-        if(ca.canIssueToIdentifier(identifier, payloadAndAccount.getAccountData())){
+        if(ca.canIssueToIdentifier(identifier, payloadAndAccount.getAccountData(), directory)){
 
-            List<ChallengeType> identifierChallengeRequirements = ca.getIdentifierChallengeRequirements(identifier, payloadAndAccount.getAccountData());
+            List<ChallengeType> identifierChallengeRequirements = ca.getIdentifierChallengeRequirements(identifier, payloadAndAccount.getAccountData(), directory);
 
             //Check if CA requires extra validation for identifier
             if(identifierChallengeRequirements != null){
