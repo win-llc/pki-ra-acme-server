@@ -3,5 +3,5 @@ rootProject.name = 'ACME Server'
 include(":acme-common")
 project(":acme-common").projectDir = file("../acme-common")
 
-//include(":win-ra-client")
-//project(":win-ra-client").projectDir = file("../win-ra-client")
+include(":win-ra-client")
+project(":win-ra-client").projectDir = file("../win-ra-client")

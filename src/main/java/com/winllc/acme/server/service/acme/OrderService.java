@@ -73,7 +73,7 @@ public class OrderService extends BaseService {
 
     @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request, @PathVariable String directory) {
-        log.info("start newOrder");
+        log.info("STEP ONE - NEW ORDER");
         Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
         DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
@@ -140,9 +140,9 @@ public class OrderService extends BaseService {
         }
     }
 
-    @RequestMapping(value = "{directory}/order/{id}", method = RequestMethod.POST, consumes = "application/jose+json")
+    @RequestMapping(value = "{directory}/order/{id}", consumes = "application/jose+json")
     public ResponseEntity<?> getOrder(@PathVariable String id, @PathVariable String directory) throws JsonProcessingException {
-        log.info("getOrder: " + id);
+        log.info("STEP FOUR and SIX - ORDER STATUS");
         Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
         DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
@@ -160,7 +160,7 @@ public class OrderService extends BaseService {
                 order.addNotAfter(LocalDateTime.now().plusHours(1));
                 order.addNotBefore(LocalDateTime.now().minusHours(1));
 
-                return buildBaseResponseEntity(200, directoryData)
+                return buildBaseResponseEntityWithRetryAfter(200, directoryData, 10)
                         //.header("Retry-After", "10")
                         //.build();
                  .body(order);
@@ -188,9 +188,9 @@ public class OrderService extends BaseService {
         }
     }
 
-    @RequestMapping(value = "{directory}/order/{id}/finalize", method = RequestMethod.POST, consumes = "application/jose+json")
+    @RequestMapping(value = "{directory}/order/{id}/finalize", consumes = "application/jose+json")
     public ResponseEntity<?> finalizeOrder(@PathVariable String id, HttpServletRequest httpServletRequest, @PathVariable String directory) {
-        log.info("finalizeOrder: " + id);
+        log.info("STEP FIVE - FINALIZE ORDER");
         Optional<DirectoryData> directoryDataOptional = directoryDataService.getByName(directory);
         DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
@@ -224,7 +224,7 @@ public class OrderService extends BaseService {
 
                     log.info("Finalized order: " + orderData);
 
-                    return buildBaseResponseEntityWithRetryAfter(200, certificateRequestPayloadAndAccount.getDirectoryData(), 20)
+                    return buildBaseResponseEntityWithRetryAfter(200, certificateRequestPayloadAndAccount.getDirectoryData(), 10)
                             .body(orderData.getObject());
                 } else {
                     ProblemDetails problemDetails = problemDetailsOptional.get();
@@ -377,8 +377,8 @@ public class OrderService extends BaseService {
                     newOrder.getObject().setStatus(StatusType.VALID.toString());
                     newOrder.getObject().setCertificate(certData.buildUrl(Application.baseURL));
 
+                    log.info("Certificate issued for order: "+newOrder);
                     orderPersistence.save(newOrder);
-
                 } catch (Exception e) {
                     log.error("Could not finalize order", e);
                     //throw new InternalServerException("Could not issue certificate", e);

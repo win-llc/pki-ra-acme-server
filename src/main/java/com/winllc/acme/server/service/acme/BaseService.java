@@ -25,8 +25,9 @@ public abstract class BaseService {
     }
 
     protected ResponseEntity.BodyBuilder buildBaseResponseEntityWithRetryAfter(int status, DirectoryData directoryData, int waitInSeconds){
-        ResponseEntity.BodyBuilder base = buildBaseResponseEntity(status, directoryData);
-        return base.header("Retry-After", ""+waitInSeconds);
+        ResponseEntity.BodyBuilder base = buildBaseResponseEntity(status, directoryData)
+                .header("Retry-After", "" + waitInSeconds);
+        return base;
     }
 
     protected ResponseEntity.BodyBuilder buildBaseResponseEntity(int status, DirectoryData directoryData, HttpHeaders headers){

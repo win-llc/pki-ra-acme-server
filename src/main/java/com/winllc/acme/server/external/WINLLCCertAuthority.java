@@ -12,6 +12,7 @@ import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.OrderData;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.common.util.HttpCommandUtil;
+import com.winllc.ra.client.CertAuthorityConnection;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
@@ -50,51 +51,19 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     @Override
     public boolean revokeCertificate(X509Certificate certificate, int reason) throws AcmeServerException {
-        String fullUrl = settings.getBaseUrl()+revokeCertPath;
+        CertAuthorityConnection certAuthorityConnection = new CertAuthorityConnection(settings.getBaseUrl(), settings.getMapsToCaConnectionName());
 
-        Function<String, Boolean> processReturn = (content) -> {
-            try {
-                return true;
-            } catch (Exception e) {
-                log.error("Could not process revoke cert", e);
-            }
-            return false;
-        };
-
-        try {
-            RACertificateRevokeRequest revokeRequest = new RACertificateRevokeRequest(settings.getMapsToCaConnectionName());
-            revokeRequest.setReason(reason);
-            revokeRequest.setSerial(certificate.getSerialNumber().toString());
-
-            return HttpCommandUtil.processCustomJsonPost(fullUrl, revokeRequest, 200, processReturn);
-        }catch (Exception e){
-            log.error("Could not revoke cert", e);
-            return false;
-        }
+        return certAuthorityConnection.revokeCertificate(certificate, reason);
     }
 
     @Override
     public X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
-        String fullUrl = settings.getBaseUrl()+issueCertPath;
-
-        Function<String, X509Certificate> processCert = (content) -> {
-            try {
-                return CertUtil.base64ToCert(content);
-            } catch (Exception e) {
-                log.error("Could not covert base64 cert", e);
-            }
-            return null;
-        };
+        CertAuthorityConnection certAuthorityConnection = new CertAuthorityConnection(settings.getBaseUrl(), settings.getMapsToCaConnectionName());
 
         try {
-            String csr = CertUtil.certificationRequestToPEM(certificationRequest);
-            String dnsNames = Stream.of(orderData.getObject().getIdentifiers())
-                    .map(Identifier::getValue)
-                    .collect(Collectors.joining(","));
-
-            RACertificateIssueRequest raCertificateRequest = new RACertificateIssueRequest(eabKid, csr, dnsNames, settings.getMapsToCaConnectionName());
-
-            X509Certificate certificate = HttpCommandUtil.processCustomJsonPost(fullUrl, raCertificateRequest, 200, processCert);
+            X509Certificate certificate = certAuthorityConnection.issueCertificate(Stream.of(orderData.getObject()
+                            .getIdentifiers()).collect(Collectors.toSet()),
+                    eabKid, certificationRequest, "acme");
 
             if(certificate != null){
                 return certificate;
@@ -110,18 +79,10 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     @Override
     public Optional<CertificateDetails> getCertificateDetails(String serial) {
-        String fullUrl = settings.getBaseUrl()+certDetailsPath+settings.getMapsToCaConnectionName();
+        CertAuthorityConnection certAuthorityConnection = new CertAuthorityConnection(settings.getBaseUrl(), settings.getMapsToCaConnectionName());
+
         try {
-            URIBuilder builder = new URIBuilder(fullUrl);
-            builder.setParameter("serial", serial);
-            HttpGet httpGet = new HttpGet(builder.build());
-
-            CertificateDetails details = HttpCommandUtil.process(httpGet, 200, CertificateDetails.class);
-
-            if(details != null){
-                return Optional.of(details);
-            }
-
+            return certAuthorityConnection.getCertificateDetails(serial);
         } catch (Exception e) {
             log.error("Could not process", e);
         }
@@ -131,43 +92,26 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     @Override
     public CertRevocationStatus isCertificateRevoked(X509Certificate certificate) {
-        Optional<CertificateDetails> optionalCertificateDetails = getCertificateDetails(certificate.getSerialNumber().toString());
-        if(optionalCertificateDetails.isPresent()){
-            CertificateDetails certificateDetails = optionalCertificateDetails.get();
-            return certificateDetails.getStatus().equalsIgnoreCase("REVOKED") ? CertRevocationStatus.REVOKED : CertRevocationStatus.VALID;
-        }
+        CertAuthorityConnection certAuthorityConnection = new CertAuthorityConnection(settings.getBaseUrl(), settings.getMapsToCaConnectionName());
 
-        return CertRevocationStatus.UNKNOWN;
+        return certAuthorityConnection.isCertificateRevoked(certificate);
     }
 
     @Override
     public Certificate[] getTrustChain() throws AcmeServerException {
-        String url = settings.getBaseUrl()+trustChainPath+settings.getMapsToCaConnectionName();
-
-        Function<String, Certificate[]> processTrustChain = (content) -> {
-            try {
-                return CertUtil.trustChainStringToCertArray(content);
-            } catch (Exception e) {
-                log.error("Conversion failed", e);
-            }
-            return null;
-        };
-
-        HttpGet httpGet = new HttpGet(url);
+        CertAuthorityConnection certAuthorityConnection = new CertAuthorityConnection(settings.getBaseUrl(), settings.getMapsToCaConnectionName());
 
         try {
-            return HttpCommandUtil.processCustom(httpGet, 200, processTrustChain);
+            return certAuthorityConnection.getTrustChain();
         } catch (Exception e) {
             log.error("Could not process get", e);
             throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Could not retrieve trust chain");
         }
-
     }
 
     //Get rules applied to specified account from an external source
     @Override
     public CertIssuanceValidationResponse getValidationRules(AccountData accountData, DirectoryData directoryData) throws AcmeServerException {
-
         boolean externalAccountRequired = directoryData.getObject().getMeta().isExternalAccountRequired();
 
         CertIssuanceValidationResponse response = new CertIssuanceValidationResponse();

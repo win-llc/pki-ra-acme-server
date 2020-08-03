@@ -1,5 +1,6 @@
 package com.winllc.acme.server.challenge;
 
+import com.nimbusds.jose.jwk.JWK;
 import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.common.model.data.AccountData;
@@ -75,30 +76,29 @@ public class HttpChallenge implements ChallengeVerification {
         @Override
         public void run() {
             boolean success = false;
-            int retries = 3;
+            int retries = 4;
             int attempts = 0;
 
             while (attempts < retries && !success) {
                 try {
 
-                    Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(challenge.getAuthorizationId());
-                    AuthorizationData authorizationData = authorizationDataOptional.get();
-                    Optional<AccountData> accountDataOptional = accountPersistence.findById(authorizationData.getAccountId());
-
                     /*
                     try {
-                        //Sleep 10 seconds before retrying
-                        if (!success) Thread.sleep(5000);
+                        //Sleep 5 seconds before retrying
+                        Thread.sleep(3000);
                     } catch (InterruptedException e) {
                         log.error("Could not sleep thread", e);
                     }
 
                      */
 
+                    Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(challenge.getAuthorizationId());
+                    AuthorizationData authorizationData = authorizationDataOptional.get();
+                    Optional<AccountData> accountDataOptional = accountPersistence.findById(authorizationData.getAccountId());
+
                     String urlString = "http://" + authorizationDataOptional.get().getObject().getIdentifier().getValue()
                             + "/.well-known/acme-challenge/" + challenge.getObject().getToken();
 
-                    /*
                     String body = attemptChallenge(urlString);
 
                     JWK jwk = accountDataOptional.get().buildJwk();
@@ -112,42 +112,15 @@ public class HttpChallenge implements ChallengeVerification {
 
                     //todo add back
                     if (bodyValid) success = true;
-                    //success = true;
-
-                     */
-
-
-                    try {
-                        //Sleep 5 seconds before retrying
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e) {
-                        log.error("Could not sleep thread", e);
-                    }
-
-
-
-                    //success = attemptChallenge(urlString);
-                    success = attemptChallenge(urlString);
-                    //success = true;
 
                     challenge = challengeProcessor.validation(challenge, success, false);
-
-                    //challengePersistence.save(challenge);
+                    if(success) break;
                 } catch (Exception e) {
                     log.error("Could not verify HTTP", e);
                 } finally {
                     attempts++;
 
-                    try {
-                        //Sleep 5 seconds before retrying
-                        if (!success) Thread.sleep(5000);
-                    } catch (InterruptedException e) {
-                        log.error("Could not sleep thread", e);
-                    }
-
-
-
-                    if(attempts > retries){
+                    if(attempts >= retries && !success){
                         try {
                             challengeProcessor.validation(challenge, false, true);
                         } catch (InternalServerException e) {
@@ -158,7 +131,7 @@ public class HttpChallenge implements ChallengeVerification {
             }
         }
 
-        private boolean attemptChallenge(String url) {
+        private String attemptChallenge(String url) {
             log.info("Attempting challenge at: "+url);
             String result = null;
             HttpGet request = new HttpGet(url);
@@ -181,7 +154,7 @@ public class HttpChallenge implements ChallengeVerification {
                     if (responseCode == 200) {
                         log.info("Found a valid return code");
                         result = EntityUtils.toString(entity);
-                        return true;
+                        return result;
                     } else {
                         log.error("Invalid return code: " + responseCode);
                     }
@@ -189,7 +162,7 @@ public class HttpChallenge implements ChallengeVerification {
             } catch (Exception e) {
                 log.error("Unable to connect", e);
             }
-            return false;
+            return null;
         }
     }
 

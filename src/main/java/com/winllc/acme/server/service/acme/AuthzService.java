@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 //Section 7.4.1
 @RestController
@@ -111,9 +112,9 @@ public class AuthzService extends BaseService {
     }
 
     //Section 7.5
-    @RequestMapping(value = "{directory}/authz/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
+    @RequestMapping(value = "{directory}/authz/{id}", consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> authz(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) throws AcmeServerException {
-        log.info("getAuthz: " + id);
+        log.info("STEP TWO - GET CHALLENGES");
         Optional<AuthorizationData> optionalAuthorizationData = authorizationPersistence.findById(id);
 
         if (optionalAuthorizationData.isPresent()) {
@@ -146,6 +147,10 @@ public class AuthzService extends BaseService {
                 log.info("Returning current authorization: " + refreshedAuthorization);
 
                 ObjectMapper mapper = new ObjectMapper();
+
+                Stream.of(refreshedAuthorization.getObject().getChallenges())
+                        .forEach(c -> c.setStatus(null));
+
                 String jsonObj = mapper.writeValueAsString(refreshedAuthorization.getObject());
 
                 if (refreshedAuthorization.getObject().getStatus().equals(StatusType.PENDING.toString())) {
@@ -179,7 +184,7 @@ public class AuthzService extends BaseService {
     //Section 7.5.1
     @RequestMapping(value = "{directory}/chall/{id}", method = RequestMethod.POST, consumes = "application/jose+json", produces = "application/json")
     public ResponseEntity<?> challenge(@PathVariable String id, @PathVariable String directory) throws Exception {
-        log.info("getChallenge: " + id);
+        log.info("STEP THREE - POST CHALLENGES");
         Optional<ChallengeData> optionalChallengeData = challengePersistence.findById(id);
         DirectoryData directoryData = directoryDataService.findByName(directory);
 
@@ -205,9 +210,8 @@ public class AuthzService extends BaseService {
                 pd.setStatus(200);
                 pd.setSubproblems(null);
                 pd.setDetail("Challenge not ready");
-                challenge.setError(pd);
-                challenge.setStatus(StatusType.PROCESSING.toString());
-                ;
+                //challenge.setError(pd);
+                //challenge.setStatus(StatusType.PROCESSING.toString());
 
                 ObjectMapper objectMapper = new ObjectMapper();
                 String jsonObj = objectMapper.writeValueAsString(challenge);

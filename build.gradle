@@ -29,12 +29,18 @@ configurations {
             if (proj1 != null && proj1.buildFile.exists()) {
                 substitute module('com.winllc.acme.common:acme-common') with project(':acme-common')
             }
+
+            def proj2 = findProject(":win-ra-client")
+            if (proj2 != null && proj2.buildFile.exists()) {
+                substitute module('com.winllc.ra.client:win-ra-client') with project(':win-ra-client')
+            }
         }
     }
 }
 
 dependencies {
     implementation group: 'com.winllc.acme.common', name: 'acme-common', version: '1.0-SNAPSHOT'
+    implementation group: 'com.winllc.ra.client', name: 'win-ra-client', version: '1.0-SNAPSHOT'
 
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-web
     implementation('org.springframework.boot:spring-boot-starter-web')

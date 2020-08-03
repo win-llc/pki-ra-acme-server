@@ -66,7 +66,7 @@ public class CertService extends BaseService {
     //Section 7.4.2
     @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST)
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
-        log.info("certDownload: "+id);
+        log.info("STEP SEVEN - DOWNLOAD CERT");
         try {
             DirectoryData directoryData = directoryDataService.findByName(directory);
             Optional<CertData> optionalCertData = certificatePersistence.findById(id);
