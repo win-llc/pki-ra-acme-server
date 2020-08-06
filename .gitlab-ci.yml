@@ -14,7 +14,7 @@ stages:
   - deploy
 
 build:
-  image: gradle:5.0-jdk8-alpine
+  image: gradle:6.5-jdk14
   stage: build
   script:
     - gradle -x test build
