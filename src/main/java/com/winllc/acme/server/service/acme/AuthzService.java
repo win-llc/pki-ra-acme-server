@@ -148,8 +148,10 @@ public class AuthzService extends BaseService {
 
                 ObjectMapper mapper = new ObjectMapper();
 
-                Stream.of(refreshedAuthorization.getObject().getChallenges())
-                        .forEach(c -> c.setStatus(null));
+                if(refreshedAuthorization.getObject().getChallenges() != null) {
+                    Stream.of(refreshedAuthorization.getObject().getChallenges())
+                            .forEach(c -> c.setStatus(null));
+                }
 
                 String jsonObj = mapper.writeValueAsString(refreshedAuthorization.getObject());
 
