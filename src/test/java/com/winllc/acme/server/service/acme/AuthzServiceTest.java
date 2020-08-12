@@ -16,6 +16,7 @@ import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.MockCertificateAuthority;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
@@ -23,6 +24,8 @@ import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.AcmeTransactionManagement;
+import com.winllc.acme.server.util.CertIssuanceTransaction;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -68,11 +71,11 @@ public class AuthzServiceTest extends AbstractServiceTest {
 
     @MockBean
     private SecurityValidatorUtil securityValidatorUtil;
-    @MockBean
+    @Autowired
     private AuthorizationPersistence authorizationPersistence;
     @MockBean
     private AuthorizationProcessor authorizationProcessor;
-    @MockBean
+    @Autowired
     private ChallengePersistence challengePersistence;
     @Autowired
     private DirectoryDataService directoryDataService;
@@ -81,9 +84,15 @@ public class AuthzServiceTest extends AbstractServiceTest {
     @MockBean
     private CertificateAuthorityService certificateAuthorityService;
 
+    @Autowired
+    private AccountPersistence accountPersistence;
+    @Autowired
+    private AcmeTransactionManagement acmeTransactionManagement;
 
     @BeforeEach
     public void before() throws Exception {
+        when(certificateAuthorityService.getByName(any())).thenReturn(new MockCertificateAuthority());
+
         DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
         directoryDataSettings.setName("acme-test");
         directoryDataSettings.setMetaExternalAccountRequired(true);
@@ -114,7 +123,7 @@ public class AuthzServiceTest extends AbstractServiceTest {
         when(certificateAuthorityService.getByName(any())).thenReturn(new MockCertificateAuthority());
         when(authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount, null))
                 .thenReturn(Optional.of(authorizationData));
-        when(authorizationPersistence.save(any())).thenReturn(authorizationData);
+        //when(authorizationPersistence.save(any())).thenReturn(authorizationData);
         when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class),
                 isA(Class.class))).thenReturn(payloadAndAccount);
 
@@ -135,11 +144,17 @@ public class AuthzServiceTest extends AbstractServiceTest {
     @Test
     public void authz() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
-        AuthorizationData authorizationData = buildAuthorizationData(directoryData);
-        when(authorizationPersistence.findById(any())).thenReturn(Optional.of(authorizationData));
-        when(authorizationProcessor.buildCurrentAuthorization(any())).thenReturn(authorizationData);
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
 
         AccountData accountData = MockUtils.buildMockAccountData();
+        accountData = accountPersistence.save(accountData);
+
+        transaction.init(accountData, directoryData);
+        transaction.startOrder(MockUtils.buildMockOrderRequest());
+
+        AuthorizationData authorizationData = transaction.retrieveCurrentAuthorizations().get(0);
+        //when(authorizationPersistence.findById(any())).thenReturn(Optional.of(authorizationData));
+        //when(authorizationProcessor.buildCurrentAuthorization(any())).thenReturn(authorizationData);
 
         PayloadAndAccount<String> payloadAndAccount = new PayloadAndAccount<>("", accountData, directoryData);
 
@@ -150,7 +165,7 @@ public class AuthzServiceTest extends AbstractServiceTest {
         String json = MockUtils.jwsObjectAsString(jwsObject);
 
         mockMvc.perform(
-                post("/acme-test/authz/1")
+                post("/acme-test/authz/"+authorizationData.getId())
                         .contentType("application/jose+json")
                         .content(json))
                 .andExpect(status().is(200));
@@ -159,26 +174,33 @@ public class AuthzServiceTest extends AbstractServiceTest {
     @Test
     public void authzDeactivate() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
-        AuthorizationData authorizationData = buildAuthorizationData(directoryData);
-        Authorization authorization = authorizationData.getObject();
-        authorization.markDeactivated();
 
-        when(authorizationPersistence.findById(any())).thenReturn(Optional.of(authorizationData));
-        when(authorizationProcessor.buildCurrentAuthorization(any())).thenReturn(authorizationData);
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
 
         AccountData accountData = MockUtils.buildMockAccountData();
+        accountData = accountPersistence.save(accountData);
+
+        transaction.init(accountData, directoryData);
+        transaction.startOrder(MockUtils.buildMockOrderRequest());
+
+        AuthorizationData authorizationData = transaction.retrieveCurrentAuthorizations().get(0);
+        authorizationData.getObject().markDeactivated();
+
+        //when(authorizationPersistence.findById(any())).thenReturn(Optional.of(authorizationData));
+        when(authorizationProcessor.buildCurrentAuthorization(any())).thenReturn(authorizationData);
 
         PayloadAndAccount<Authorization> payloadAndAccount =
-                new PayloadAndAccount<>(authorization, accountData, directoryData);
+                new PayloadAndAccount<>(authorizationData.getObject(), accountData, directoryData);
 
         when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class), any(),
                 isA(Class.class))).thenReturn(payloadAndAccount);
 
-        JWSObject jwsObject = MockUtils.buildCustomJwsObject(authorization, "http://localhost/acme-test/authz/1");
+        JWSObject jwsObject = MockUtils.buildCustomJwsObject(authorizationData.getObject(),
+                "http://localhost/acme-test/authz/"+authorizationData.getId());
         String json = MockUtils.jwsObjectAsString(jwsObject);
 
         MvcResult result = mockMvc.perform(
-                post("/acme-test/authz/1")
+                post("/acme-test/authz/"+authorizationData.getId())
                         .contentType("application/jose+json")
                         .content(json))
                 .andReturn();
@@ -191,15 +213,18 @@ public class AuthzServiceTest extends AbstractServiceTest {
     public void challenge() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
 
-        Challenge challenge = new Challenge();
-        challenge.markPending();
-        challenge.setType(ChallengeType.HTTP.toString());
-        ChallengeData challengeData = new ChallengeData(challenge, directoryData.getName());
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
 
-        when(challengePersistence.findById(any())).thenReturn(Optional.of(challengeData));
+        AccountData accountData = MockUtils.buildMockAccountData();
+        accountData = accountPersistence.save(accountData);
+
+        transaction.init(accountData, directoryData);
+        transaction.startOrder(MockUtils.buildMockOrderRequest());
+
+        ChallengeData challengeData = transaction.retrieveCurrentChallenges().get(0);
 
         mockMvc.perform(
-                post("/acme-test/chall/1")
+                post("/acme-test/chall/"+challengeData.getId())
                         .contentType("application/jose+json"))
                         //.content(json))
                 .andExpect(status().is(200));

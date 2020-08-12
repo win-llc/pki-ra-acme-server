@@ -13,6 +13,7 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +22,7 @@ public interface CertificateAuthority {
     String getName();
     AcmeCertAuthorityType getType();
     boolean revokeCertificate(X509Certificate certificate, int reason) throws AcmeServerException;
-    X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException;
+    X509Certificate issueCertificate(Collection<Identifier> identifiers, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException;
     Optional<CertificateDetails> getCertificateDetails(String serial);
     CertRevocationStatus isCertificateRevoked(X509Certificate certificate);
     Certificate[] getTrustChain() throws AcmeServerException;

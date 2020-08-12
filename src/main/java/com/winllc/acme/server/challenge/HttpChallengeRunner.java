@@ -2,15 +2,17 @@ package com.winllc.acme.server.challenge;
 
 import com.nimbusds.jose.jwk.JWK;
 import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.server.exceptions.InternalServerException;
+import com.winllc.acme.common.model.acme.Authorization;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.AuthorizationData;
 import com.winllc.acme.common.model.data.ChallengeData;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.ChallengeProcessor;
 import com.winllc.acme.server.util.AcmeTransactionManagement;
+import com.winllc.acme.server.util.CertIssuanceTransaction;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -31,51 +33,18 @@ import java.security.cert.X509Certificate;
 import java.util.Optional;
 
 //Section 8.3
-@Component
-public class HttpChallenge implements ChallengeVerification {
+public class HttpChallengeRunner {
 
-    private static final Logger log = LogManager.getLogger(HttpChallenge.class);
+    private static final Logger log = LogManager.getLogger(HttpChallengeRunner.class);
 
-    @Autowired
-    private ChallengePersistence challengePersistence;
-    @Autowired
-    private ChallengeProcessor challengeProcessor;
-    @Autowired
-    private AuthorizationPersistence authorizationPersistence;
-    @Autowired
-    private AccountPersistence accountPersistence;
-
-    @Autowired
-    private AcmeTransactionManagement acmeTransactionManagement;
-
-    @Autowired
-    @Qualifier("appTaskExecutor")
-    private TaskExecutor taskExecutor;
-
-    public void verify(ChallengeData challenge) {
-        if (challenge.getObject().getStatus().equals(StatusType.PENDING.toString())) {
-            try {
-                challengeProcessor.processing(challenge);
-
-                challenge.getObject().setStatus(StatusType.PROCESSING.toString());
-                challenge = challengePersistence.save(challenge);
-
-                //new VerificationRunner(challenge).run();
-                taskExecutor.execute(new VerificationRunner(challenge));
-            } catch (Exception e) {
-                log.error("Could not verify", e);
-            }
-        } else {
-            log.info("Challenge not in pending state: " + challenge.getId());
-        }
-    }
-
-    private class VerificationRunner implements Runnable {
+    public static class VerificationRunner implements Runnable {
 
         private ChallengeData challenge;
+        private CertIssuanceTransaction certIssuanceTransaction;
 
-        public VerificationRunner(ChallengeData challenge) {
-            this.challenge = challenge;
+        public VerificationRunner(String challengeId, CertIssuanceTransaction certIssuanceTransaction) {
+            this.certIssuanceTransaction = certIssuanceTransaction;
+            this.challenge = this.certIssuanceTransaction.retrieveChallengeData(challengeId);
         }
 
         @Override
@@ -87,26 +56,15 @@ public class HttpChallenge implements ChallengeVerification {
             while (attempts < retries && !success) {
                 try {
 
-                    /*
-                    try {
-                        //Sleep 5 seconds before retrying
-                        Thread.sleep(3000);
-                    } catch (InterruptedException e) {
-                        log.error("Could not sleep thread", e);
-                    }
+                    AuthorizationData authorizationData = this.certIssuanceTransaction.retrieveAuthorizationData(challenge.getAuthorizationId());
+                    AccountData accountData = this.certIssuanceTransaction.getAccountData();
 
-                     */
-
-                    Optional<AuthorizationData> authorizationDataOptional = authorizationPersistence.findById(challenge.getAuthorizationId());
-                    AuthorizationData authorizationData = authorizationDataOptional.get();
-                    Optional<AccountData> accountDataOptional = accountPersistence.findById(authorizationData.getAccountId());
-
-                    String urlString = "http://" + authorizationDataOptional.get().getObject().getIdentifier().getValue()
+                    String urlString = "http://" + authorizationData.getObject().getIdentifier().getValue()
                             + "/.well-known/acme-challenge/" + challenge.getObject().getToken();
 
                     String body = attemptChallenge(urlString);
 
-                    JWK jwk = accountDataOptional.get().buildJwk();
+                    JWK jwk = accountData.buildJwk();
                     log.info(jwk.computeThumbprint().toString());
 
                     boolean bodyValid = false;
@@ -116,10 +74,18 @@ public class HttpChallenge implements ChallengeVerification {
                     }
 
                     //todo add back
-                    if (bodyValid) success = true;
-
-                    challenge = challengeProcessor.validation(challenge, success, false);
-                    if(success) break;
+                    if (bodyValid){
+                        success = true;
+                        certIssuanceTransaction.markChallengeComplete(challenge.getId());
+                        break;
+                    }else{
+                        try {
+                            //Sleep 5 seconds before retrying
+                            Thread.sleep(3000);
+                        } catch (InterruptedException e) {
+                            log.error("Could not sleep thread", e);
+                        }
+                    }
                 } catch (Exception e) {
                     log.error("Could not verify HTTP", e);
                 } finally {
@@ -127,8 +93,8 @@ public class HttpChallenge implements ChallengeVerification {
 
                     if(attempts >= retries && !success){
                         try {
-                            challengeProcessor.validation(challenge, false, true);
-                        } catch (InternalServerException e) {
+                            //challengeProcessor.validation(challenge, false, true);
+                        } catch (Exception e) {
                             log.error("Could not update challenge", e);
                         }
                     }
@@ -136,7 +102,7 @@ public class HttpChallenge implements ChallengeVerification {
             }
         }
 
-        private String attemptChallenge(String url) {
+        private static String attemptChallenge(String url) {
             log.info("Attempting challenge at: "+url);
             String result = null;
             HttpGet request = new HttpGet(url);
@@ -172,7 +138,7 @@ public class HttpChallenge implements ChallengeVerification {
     }
 
     //todo move this somewhere else
-    private SSLContext trustEveryone() {
+    private static SSLContext trustEveryone() {
         try {
             HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier(){
                 public boolean verify(String hostname, SSLSession session) {

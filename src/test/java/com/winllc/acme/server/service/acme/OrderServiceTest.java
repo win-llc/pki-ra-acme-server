@@ -27,6 +27,8 @@ import com.winllc.acme.server.process.OrderProcessor;
 import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.AcmeTransactionManagement;
+import com.winllc.acme.server.util.CertIssuanceTransaction;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.Before;
@@ -103,9 +105,13 @@ public class OrderServiceTest extends AbstractServiceTest {
     private OrderListPersistence orderListPersistence;
     @MockBean
     private CertificateAuthorityService certificateAuthorityService;
+    @Autowired
+    private AcmeTransactionManagement acmeTransactionManagement;
 
     @BeforeEach
     public void beforeEach() throws Exception {
+        when(certificateAuthorityService.getByName(any())).thenReturn(new MockCertificateAuthority());
+
         DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
         directoryDataSettings.setName("acme-test");
         directoryDataSettings.setMetaExternalAccountRequired(true);
@@ -119,7 +125,7 @@ public class OrderServiceTest extends AbstractServiceTest {
     }
 
     @AfterEach
-    public void after(){
+    public void afterEach(){
         directoryDataService.delete("acme-test");
         accountPersistence.deleteAll();
     }
@@ -149,10 +155,7 @@ public class OrderServiceTest extends AbstractServiceTest {
 
     @Test
     public void newOrder() throws Exception {
-        when(certificateAuthorityService.getByName(any())).thenReturn(new MockCertificateAuthority());
-
         AccountData accountData = MockUtils.buildMockAccountData();
-        //accountData = accountPersistence.save(accountData);
 
         OrderList orderList = new OrderList();
         OrderListData orderListData = new OrderListData(orderList, "acme-test");
@@ -180,11 +183,17 @@ public class OrderServiceTest extends AbstractServiceTest {
 
     @Test
     public void getOrder() throws Exception {
-        OrderData orderData = MockUtils.buildMockOrderData(StatusType.READY);
-        orderData = orderPersistence.save(orderData);
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
+
+        AccountData accountData = MockUtils.buildMockAccountData();
+        accountData = accountPersistence.save(accountData);
+
+        transaction.init(accountData, directoryData);
+        transaction.startOrder(MockUtils.buildMockOrderRequest());
 
         mockMvc.perform(
-                post("/acme-test/order/"+orderData.getId())
+                post("/acme-test/order/"+transaction.getOrderData().getId())
                         .contentType("application/jose+json"))
                         //.content(json))
                 .andExpect(status().is(200));
@@ -192,11 +201,23 @@ public class OrderServiceTest extends AbstractServiceTest {
 
     @Test
     public void finalizeOrder() throws Exception {
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
+
+        AccountData accountData = MockUtils.buildMockAccountData();
+        accountData = accountPersistence.save(accountData);
+
+        transaction.init(accountData, directoryData);
+        transaction.startOrder(MockUtils.buildMockOrderRequest());
+
+        transaction.retrieveCurrentChallenges().forEach(cd -> {
+            transaction.markChallengeComplete(cd.getId());
+        });
+        
+        OrderData orderData = transaction.getOrderData();
+
         CertificateRequest certificateRequest = new CertificateRequest();
         certificateRequest.setCsr(testCsr.replace("\n",""));
-
-        OrderData orderData = MockUtils.buildMockOrderData(StatusType.READY);
-        orderData = orderPersistence.save(orderData);
 
         JWSObject jwsObject = MockUtils.buildCustomJwsObject(certificateRequest,
                 "http://localhost/acme-test/order/"+orderData.getId()+"/finalize");

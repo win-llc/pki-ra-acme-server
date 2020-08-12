@@ -20,6 +20,8 @@ import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.process.OrderProcessor;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.AcmeTransactionManagement;
+import com.winllc.acme.server.util.CertIssuanceTransaction;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.commons.lang3.StringUtils;
@@ -41,6 +43,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 //Section 7.4
 @RestController
@@ -68,6 +71,9 @@ public class OrderService extends BaseService {
     private CertificateAuthorityService certificateAuthorityService;
 
     @Autowired
+    private AcmeTransactionManagement acmeTransactionManagement;
+
+    @Autowired
     @Qualifier("appTaskExecutor")
     private TaskExecutor taskExecutor;
 
@@ -83,6 +89,18 @@ public class OrderService extends BaseService {
             OrderRequest orderRequest = payloadAndAccount.getPayload();
             AccountData accountData = payloadAndAccount.getAccountData();
 
+            //todo use this as primary handler
+            CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
+            transaction.init(accountData, directoryData);
+            transaction.startOrder(orderRequest);
+
+            OrderData orderData = transaction.getOrderData();
+            return buildBaseResponseEntity(201, directoryData)
+                    .header("Retry-After", "10")
+                    .header("Location", orderData.buildUrl(Application.baseURL))
+                    .body(orderData.getObject());
+
+            /*
             caCanFulfill(orderRequest, directoryData, accountData);
 
             if (orderRequest.isValid()) {
@@ -96,8 +114,6 @@ public class OrderService extends BaseService {
                 order.setNotBefore(orderRequest.getNotBefore());
 
                 generateAuthorizationsForOrder(orderData, payloadAndAccount);
-
-                orderData = orderPersistence.save(orderData);
 
                 log.info("Order created: " + orderData.getId());
 
@@ -114,16 +130,16 @@ public class OrderService extends BaseService {
                     log.debug("Order List updated: " + orderListData);
                 }
 
-                /*
-                 If the server is willing to issue the requested certificate, it responds with a 201 (Created) response.
-                 The body of this response is an order object reflecting the client’s request and any authorizations
-                 the client must complete before the certificate will be issued.
-                 */
+
+                 //If the server is willing to issue the requested certificate, it responds with a 201 (Created) response.
+                 //The body of this response is an order object reflecting the client’s request and any authorizations
+                 //the client must complete before the certificate will be issued.
+
 
                 return buildBaseResponseEntity(201, directoryData)
                         .header("Retry-After", "10")
                         .header("Location", orderData.buildUrl(Application.baseURL))
-                        .body(order);
+                        .body(transaction.getOrder());
 
             } else {
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
@@ -131,6 +147,8 @@ public class OrderService extends BaseService {
 
                 throw new AcmeServerException(problemDetails);
             }
+
+             */
         } catch (Exception e) {
             log.error("Could not create new-order", e);
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
@@ -148,8 +166,11 @@ public class OrderService extends BaseService {
 
         Optional<OrderData> orderDataOptional = orderPersistence.findById(id);
         if (orderDataOptional.isPresent()) {
+
             OrderData orderData = orderDataOptional.get();
-            orderData = orderProcessor.buildCurrentOrder(orderData);
+            CertIssuanceTransaction transaction = acmeTransactionManagement.getTransaction(orderData.getTransactionId());
+
+            orderData = transaction.getOrderData();
 
             log.info("Returning order: " + orderData.getId() + " :: Status: " + orderData.getObject().getStatus());
 
@@ -206,8 +227,10 @@ public class OrderService extends BaseService {
         }
 
         Optional<OrderData> optionalOrderData = orderPersistence.findById(id);
-        OrderData orderData = orderProcessor.buildCurrentOrder(optionalOrderData.get());
+        OrderData orderData = optionalOrderData.get();
 
+        CertIssuanceTransaction transaction = acmeTransactionManagement.getTransaction(orderData.getTransactionId());
+        orderData = transaction.getOrderData();
         //if order ready to be completed by passing authorization checks
         if (orderReadyForFinalize(orderData.getObject())) {
             log.info("readyForFinalize: " + orderData.getId());
@@ -216,15 +239,17 @@ public class OrderService extends BaseService {
                 Optional<ProblemDetails> problemDetailsOptional = validateCsr(csr, orderData.getObject());
                 if (!problemDetailsOptional.isPresent()) {
 
-                    orderData.getObject().setStatus(StatusType.PROCESSING.toString());
-                    orderData = orderPersistence.save(orderData);
+                    //orderData.getObject().setStatus(StatusType.PROCESSING.toString());
+                    //orderData = orderPersistence.save(orderData);
 
                     //if checks pass, return
-                    finalizeOrder(orderData, csr);
+                    //finalizeOrder(orderData, csr);
+                    transaction.finalizeOrder(csr);
 
                     log.info("Finalized order: " + orderData);
 
                     return buildBaseResponseEntityWithRetryAfter(200, certificateRequestPayloadAndAccount.getDirectoryData(), 10)
+                            .header("Location", orderData.buildUrl(Application.baseURL))
                             .body(orderData.getObject());
                 } else {
                     ProblemDetails problemDetails = problemDetailsOptional.get();
@@ -242,9 +267,11 @@ public class OrderService extends BaseService {
             }
         } else if (orderData.getObject().isValid()) {
             return buildBaseResponseEntity(200, certificateRequestPayloadAndAccount.getDirectoryData())
+                    .header("Location", orderData.buildUrl(Application.baseURL))
                     .body(orderData.getObject());
         } else if (orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString())) {
             return buildBaseResponseEntityWithRetryAfter(200, certificateRequestPayloadAndAccount.getDirectoryData(), 10)
+                    .header("Location", orderData.buildUrl(Application.baseURL))
                     .body(orderData.getObject());
         } else {
             log.error("Order not ready to finalize: " + orderData);
@@ -339,6 +366,7 @@ public class OrderService extends BaseService {
         }
 
         order.setAuthorizations(authorizationUrls.toArray(new String[0]));
+        orderPersistence.save(orderData);
     }
 
     private void finalizeOrder(final OrderData order, String csr) throws InternalServerException {
@@ -369,7 +397,8 @@ public class OrderService extends BaseService {
                             eabKid = accountData.getEabKeyIdentifier();
                     }
 
-                    X509Certificate certificate = ca.issueCertificate(newOrder, eabKid, CertUtil.csrBase64ToPKC10Object(csr));
+                    X509Certificate certificate = ca.issueCertificate(Stream.of(newOrder.getObject().getIdentifiers()).collect(Collectors.toSet()),
+                            eabKid, CertUtil.csrBase64ToPKC10Object(csr));
                     String[] certWithChains = CertUtil.certAndChainsToPemArray(certificate, ca.getTrustChain());
                     CertData certData = new CertData(certWithChains, directoryData.getName(), newOrder.getAccountId());
                     certData = certificatePersistence.save(certData);

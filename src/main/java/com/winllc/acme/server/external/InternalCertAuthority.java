@@ -78,10 +78,10 @@ public class InternalCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) {
+    public X509Certificate issueCertificate(Collection<Identifier> identifiers, String eabKid, PKCS10CertificationRequest certificationRequest) {
         try {
             KeyStore ks = loadKeystore(caKeystoreLocation, caKeystorePassword);
-            return signCSR(orderData, certificationRequest, 30, ks, caKeystoreAlias, caKeystorePassword.toCharArray());
+            return signCSR(identifiers, certificationRequest, 30, ks, caKeystoreAlias, caKeystorePassword.toCharArray());
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -147,7 +147,7 @@ public class InternalCertAuthority extends AbstractCertAuthority {
 
 
 
-    private X509Certificate signCSR(OrderData orderData, PKCS10CertificationRequest csr, int validity, KeyStore keystore, String alias, char[] password) throws Exception {
+    private X509Certificate signCSR(Collection<Identifier> identifiers, PKCS10CertificationRequest csr, int validity, KeyStore keystore, String alias, char[] password) throws Exception {
         try {
             Security.addProvider(new BouncyCastleProvider());
 
@@ -165,7 +165,7 @@ public class InternalCertAuthority extends AbstractCertAuthority {
 
 
             X509v3CertificateBuilder certgen = new X509v3CertificateBuilder(issuer, serial, from, to,
-                    new X500Name("cn=" + orderData.getId()), csr.getSubjectPublicKeyInfo());
+                    new X500Name("cn=" + "test"), csr.getSubjectPublicKeyInfo());
             certgen.addExtension(X509Extension.basicConstraints, false, new BasicConstraints(false));
             //certgen.addExtension(X509Extension.subjectKeyIdentifier, false, new SubjectKeyIdentifier(csr.getSubjectPublicKeyInfo()));
 
@@ -197,7 +197,7 @@ public class InternalCertAuthority extends AbstractCertAuthority {
             }
 
             List<GeneralName> generalNameList = new ArrayList<>();
-            for (Identifier identifier : orderData.getObject().getIdentifiers()) {
+            for (Identifier identifier : identifiers) {
                 GeneralName altName = new GeneralName(GeneralName.dNSName, identifier.getValue());
                 generalNameList.add(altName);
             }

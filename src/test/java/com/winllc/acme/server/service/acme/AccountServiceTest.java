@@ -123,7 +123,6 @@ public class AccountServiceTest extends AbstractServiceTest {
         AccountRequest accountRequest = new AccountRequest();
         accountRequest.setContact(new String[]{"mailto:user@winllc-dev.com"});
         accountRequest.setTermsOfServiceAgreed(true);
-        //accountData.getObject().setContact(accountRequest.getContact());
 
         JWSObject jwsObject = MockUtils.buildCustomAcmeJwsObject(accountRequest,
                 "http://localhost/acme-test-no-eab/new-account");
@@ -139,6 +138,28 @@ public class AccountServiceTest extends AbstractServiceTest {
         assertTrue(responseString.contains("\"status\":\"valid\""));
         assertTrue(responseString.contains(accountRequest.getContact()[0]));
         assertTrue(responseString.contains("\"orders\""));
+    }
+
+    //@Test
+    public void updateTermsOfServiceChanged() throws Exception {
+        DirectoryDataSettings directoryDataSettings = directoryDataSettingsPersistence.findByName("acme-test-no-eab");
+        directoryDataSettings.setMetaTermsOfService("http://localhost/acme-test-no-eab/tos");
+        directoryDataService.load(directoryDataSettings);
+
+        AccountRequest accountRequest = new AccountRequest();
+        accountRequest.setContact(new String[]{"mailto:user@winllc-dev.com"});
+        accountRequest.setTermsOfServiceAgreed(true);
+
+        JWSObject jwsObject = MockUtils.buildCustomAcmeJwsObject(accountRequest,
+                "http://localhost/acme-test-no-eab/new-account");
+        String json = MockUtils.jwsObjectAsString(jwsObject);
+
+        MvcResult result = mockMvc.perform(
+                post("/acme-test/acct/1")
+                        .contentType("application/jose+json")
+                        .content(json))
+                .andReturn();
+        assertEquals(403, result.getResponse().getStatus());
     }
 
     @Test

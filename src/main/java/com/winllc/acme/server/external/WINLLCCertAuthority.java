@@ -57,12 +57,11 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
     }
 
     @Override
-    public X509Certificate issueCertificate(OrderData orderData, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
+    public X509Certificate issueCertificate(Collection<Identifier> identifiers, String eabKid, PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
         CertAuthorityConnection certAuthorityConnection = new CertAuthorityConnection(settings.getBaseUrl(), settings.getMapsToCaConnectionName());
 
         try {
-            X509Certificate certificate = certAuthorityConnection.issueCertificate(Stream.of(orderData.getObject()
-                            .getIdentifiers()).collect(Collectors.toSet()),
+            X509Certificate certificate = certAuthorityConnection.issueCertificate(new HashSet<>(identifiers),
                     eabKid, certificationRequest, "acme");
 
             if(certificate != null){

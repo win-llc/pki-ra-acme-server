@@ -16,6 +16,7 @@ import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.*;
 import com.winllc.acme.common.model.data.*;
 import com.winllc.acme.common.model.requestresponse.ExternalAccountBinding;
+import com.winllc.acme.common.model.requestresponse.OrderRequest;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.common.util.SecurityUtil;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -241,6 +242,7 @@ public class MockUtils {
         order.setStatus(statusType.toString());
         order.setIdentifiers(new Identifier[]{identifier});
         OrderData orderData = new OrderData(order, "acme-test", accountData.getId());
+        orderData.setTransactionId(UUID.randomUUID().toString());
 
         return orderData;
     }
@@ -293,6 +295,15 @@ public class MockUtils {
 
         ExternalAccountBinding eab = new ExternalAccountBinding(testObj);
         return eab;
+    }
+
+    public static OrderRequest buildMockOrderRequest(){
+        OrderRequest orderRequest = new OrderRequest();
+        Identifier identifier = new Identifier();
+        identifier.setType(IdentifierType.DNS.toString());
+        identifier.setValue("test.winllc.com");
+        orderRequest.setIdentifiers(new Identifier[]{identifier});
+        return orderRequest;
     }
 
 }

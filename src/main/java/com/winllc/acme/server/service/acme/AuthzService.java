@@ -20,6 +20,8 @@ import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.AcmeTransactionManagement;
+import com.winllc.acme.server.util.CertIssuanceTransaction;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.LogManager;
@@ -54,16 +56,16 @@ public class AuthzService extends BaseService {
     private SecurityValidatorUtil securityValidatorUtil;
     @Autowired
     private CertificateAuthorityService certificateAuthorityService;
+
     @Autowired
-    private HttpChallenge httpChallenge;
-    @Autowired
-    private DnsChallenge dnsChallenge;
+    private AcmeTransactionManagement acmeTransactionManagement;
 
     @RequestMapping(value = "{directory}/new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newAuthz(HttpServletRequest request, @PathVariable String directory) {
         log.info("start new authz");
         try {
-            PayloadAndAccount<Identifier> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Identifier.class);
+            PayloadAndAccount<Identifier> payloadAndAccount =
+                    securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, Identifier.class);
             DirectoryData directoryData = payloadAndAccount.getDirectoryData();
             if (directoryData.isAllowPreAuthorization()) {
                 Identifier identifier = payloadAndAccount.getPayload();
@@ -120,8 +122,13 @@ public class AuthzService extends BaseService {
         if (optionalAuthorizationData.isPresent()) {
             AuthorizationData authorizationData = optionalAuthorizationData.get();
 
+            final CertIssuanceTransaction transaction = acmeTransactionManagement.getTransaction(authorizationData.getTransactionId());
+            authorizationData = transaction.retrieveAuthorizationData(id);
+
             try {
-                AcmeJWSObject jwsObject = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
+                //AcmeJWSObject jwsObject = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
+                //todo re-add deactivate use-case
+                /*
                 PayloadAndAccount payloadAndAccount;
                 if (jwsObject.getPayload().toString().contentEquals("")) {
                     payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, request.getRequestURL().toString(), authorizationData.getAccountId(), String.class);
@@ -142,26 +149,31 @@ public class AuthzService extends BaseService {
                     }
                 }
 
-                AuthorizationData refreshedAuthorization = authorizationProcessor.buildCurrentAuthorization(authorizationData);
+                 */
 
-                log.info("Returning current authorization: " + refreshedAuthorization);
+                //AuthorizationData refreshedAuthorization = authorizationProcessor.buildCurrentAuthorization(authorizationData);
+
+                log.info("Returning current authorization: " + authorizationData);
 
                 ObjectMapper mapper = new ObjectMapper();
 
-                if(refreshedAuthorization.getObject().getChallenges() != null) {
-                    Stream.of(refreshedAuthorization.getObject().getChallenges())
+                /*
+                if(authorizationData.getObject().getChallenges() != null) {
+                    Stream.of(authorizationData.getObject().getChallenges())
                             .forEach(c -> c.setStatus(null));
                 }
 
-                String jsonObj = mapper.writeValueAsString(refreshedAuthorization.getObject());
+                 */
 
-                if (refreshedAuthorization.getObject().getStatus().equals(StatusType.PENDING.toString())) {
-                    return buildBaseResponseEntityWithRetryAfter(200, payloadAndAccount.getDirectoryData(), 20)
+                String jsonObj = mapper.writeValueAsString(authorizationData.getObject());
+
+                if (authorizationData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
+                    return buildBaseResponseEntityWithRetryAfter(200, transaction.getDirectoryData(), 20)
                             //.header("Link", "TODO")
                             .contentType(MediaType.APPLICATION_JSON)
                             .body(jsonObj);
                 } else {
-                    return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
+                    return buildBaseResponseEntity(200, transaction.getDirectoryData())
                             //.header("Link", "TODO")
                             .contentType(MediaType.APPLICATION_JSON)
                             .body(jsonObj);
@@ -192,12 +204,19 @@ public class AuthzService extends BaseService {
 
         if (optionalChallengeData.isPresent()) {
             ChallengeData updatedChallengeData = optionalChallengeData.get();
+
+            final CertIssuanceTransaction transaction = acmeTransactionManagement.getTransaction(updatedChallengeData.getTransactionId());
+            updatedChallengeData = transaction.retrieveChallengeData(id);
+
             Challenge challenge = updatedChallengeData.getObject();
 
             if (challenge.getStatus().equals(StatusType.PROCESSING.toString()) ||
                     challenge.getStatus().equals(StatusType.PENDING.toString())) {
 
                 if (challenge.getStatus().equals(StatusType.PENDING.toString())) {
+
+                    transaction.attemptChallenge(updatedChallengeData.getId());
+                    /*
                     switch (challenge.getType()) {
                         case "http-01":
                             httpChallenge.verify(updatedChallengeData);
@@ -206,6 +225,8 @@ public class AuthzService extends BaseService {
                             dnsChallenge.verify(updatedChallengeData);
                             break;
                     }
+
+                     */
                 }
 
                 ProblemDetails pd = new ProblemDetails(ProblemType.ORDER_NOT_READY);

@@ -22,6 +22,7 @@ import com.winllc.acme.server.persistence.CertificatePersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
+import com.winllc.acme.server.util.AcmeTransactionManagement;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.commons.lang3.StringUtils;
@@ -63,6 +64,9 @@ public class CertService extends BaseService {
     @Autowired
     private ExternalAccountProviderService externalAccountProviderService;
 
+    @Autowired
+    private AcmeTransactionManagement acmeTransactionManagement;
+
     //Section 7.4.2
     @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST)
     public ResponseEntity<?> certDownload(HttpServletRequest request, @PathVariable String id, @PathVariable String directory) {
@@ -77,7 +81,7 @@ public class CertService extends BaseService {
                 PayloadAndAccount<String> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, String.class);
 
                 HttpHeaders headers = new HttpHeaders();
-                headers.add("Content-Type", request.getHeader("Accept"));
+                headers.add("Content-Type", "application/pem-certificate-chain");
 
                 String returnCert = String.join(LINE_SEPARATOR, certData.getObject());
 

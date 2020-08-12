@@ -15,6 +15,7 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -61,7 +62,7 @@ public class MockCertificateAuthority implements CertificateAuthority {
     }
 
     @Override
-    public X509Certificate issueCertificate(OrderData orderData, String eabKid,
+    public X509Certificate issueCertificate(Collection<Identifier> identifiers, String eabKid,
                                             PKCS10CertificationRequest certificationRequest) throws AcmeServerException {
         try {
             return CertUtil.base64ToCert(testX509Cert);
