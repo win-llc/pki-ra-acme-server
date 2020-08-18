@@ -66,7 +66,6 @@ public class HttpChallengeRunner {
                         bodyValid = true;
                     }
 
-                    //todo add back
                     if (bodyValid){
                         success = true;
                         certIssuanceTransaction.markChallengeComplete(challenge.getId());
