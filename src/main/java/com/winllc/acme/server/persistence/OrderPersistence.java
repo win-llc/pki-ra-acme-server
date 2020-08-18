@@ -7,5 +7,6 @@ import java.util.*;
 public interface OrderPersistence extends DataPersistence<OrderData> {
 
     List<OrderData> findAllByAccountIdEquals(String accountId);
+    Optional<OrderData> findDistinctByTransactionIdEquals(String id);
 
 }

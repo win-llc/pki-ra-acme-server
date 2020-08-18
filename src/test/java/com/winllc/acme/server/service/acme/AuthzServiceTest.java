@@ -2,12 +2,10 @@ package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.common.DirectoryDataSettings;
-import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.common.contants.IdentifierType;
 import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.Authorization;
-import com.winllc.acme.common.model.acme.Challenge;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.AuthorizationData;
@@ -20,12 +18,11 @@ import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
-import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
-import com.winllc.acme.server.util.AcmeTransactionManagement;
-import com.winllc.acme.server.util.CertIssuanceTransaction;
+import com.winllc.acme.server.transaction.AcmeTransactionManagement;
+import com.winllc.acme.server.transaction.CertIssuanceTransaction;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -46,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -71,12 +69,6 @@ public class AuthzServiceTest extends AbstractServiceTest {
 
     @MockBean
     private SecurityValidatorUtil securityValidatorUtil;
-    @Autowired
-    private AuthorizationPersistence authorizationPersistence;
-    @MockBean
-    private AuthorizationProcessor authorizationProcessor;
-    @Autowired
-    private ChallengePersistence challengePersistence;
     @Autowired
     private DirectoryDataService directoryDataService;
     @Autowired
@@ -110,7 +102,6 @@ public class AuthzServiceTest extends AbstractServiceTest {
     @Test
     public void newAuthz() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
-        AuthorizationData authorizationData = buildAuthorizationData(directoryData);
 
         AccountData accountData = MockUtils.buildMockAccountData();
         Identifier identifier = new Identifier();
@@ -121,9 +112,6 @@ public class AuthzServiceTest extends AbstractServiceTest {
                 new PayloadAndAccount<>(identifier, accountData, directoryData);
 
         when(certificateAuthorityService.getByName(any())).thenReturn(new MockCertificateAuthority());
-        when(authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount, null))
-                .thenReturn(Optional.of(authorizationData));
-        //when(authorizationPersistence.save(any())).thenReturn(authorizationData);
         when(securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(any(HttpServletRequest.class),
                 isA(Class.class))).thenReturn(payloadAndAccount);
 
@@ -144,17 +132,13 @@ public class AuthzServiceTest extends AbstractServiceTest {
     @Test
     public void authz() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
-        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
-
         AccountData accountData = MockUtils.buildMockAccountData();
         accountData = accountPersistence.save(accountData);
 
-        transaction.init(accountData, directoryData);
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNewOrder(accountData, directoryData);
         transaction.startOrder(MockUtils.buildMockOrderRequest());
 
         AuthorizationData authorizationData = transaction.retrieveCurrentAuthorizations().get(0);
-        //when(authorizationPersistence.findById(any())).thenReturn(Optional.of(authorizationData));
-        //when(authorizationProcessor.buildCurrentAuthorization(any())).thenReturn(authorizationData);
 
         PayloadAndAccount<String> payloadAndAccount = new PayloadAndAccount<>("", accountData, directoryData);
 
@@ -175,19 +159,15 @@ public class AuthzServiceTest extends AbstractServiceTest {
     public void authzDeactivate() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
 
-        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
-
         AccountData accountData = MockUtils.buildMockAccountData();
         accountData = accountPersistence.save(accountData);
 
-        transaction.init(accountData, directoryData);
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNewOrder(accountData, directoryData);
+
         transaction.startOrder(MockUtils.buildMockOrderRequest());
 
         AuthorizationData authorizationData = transaction.retrieveCurrentAuthorizations().get(0);
         authorizationData.getObject().markDeactivated();
-
-        //when(authorizationPersistence.findById(any())).thenReturn(Optional.of(authorizationData));
-        when(authorizationProcessor.buildCurrentAuthorization(any())).thenReturn(authorizationData);
 
         PayloadAndAccount<Authorization> payloadAndAccount =
                 new PayloadAndAccount<>(authorizationData.getObject(), accountData, directoryData);
@@ -212,13 +192,11 @@ public class AuthzServiceTest extends AbstractServiceTest {
     @Test
     public void challenge() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
-
-        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
-
         AccountData accountData = MockUtils.buildMockAccountData();
         accountData = accountPersistence.save(accountData);
 
-        transaction.init(accountData, directoryData);
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNewOrder(accountData, directoryData);
+
         transaction.startOrder(MockUtils.buildMockOrderRequest());
 
         ChallengeData challengeData = transaction.retrieveCurrentChallenges().get(0);

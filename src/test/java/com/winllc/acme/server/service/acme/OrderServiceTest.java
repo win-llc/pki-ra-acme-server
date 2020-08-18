@@ -3,8 +3,6 @@ package com.winllc.acme.server.service.acme;
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.common.contants.IdentifierType;
-import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.common.model.acme.Account;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.acme.Order;
 import com.winllc.acme.common.model.acme.OrderList;
@@ -22,16 +20,11 @@ import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
-import com.winllc.acme.server.process.AccountProcessor;
-import com.winllc.acme.server.process.OrderProcessor;
 import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
-import com.winllc.acme.server.util.AcmeTransactionManagement;
-import com.winllc.acme.server.util.CertIssuanceTransaction;
-import com.winllc.acme.server.util.PayloadAndAccount;
-import com.winllc.acme.server.util.SecurityValidatorUtil;
-import org.junit.Before;
+import com.winllc.acme.server.transaction.AcmeTransactionManagement;
+import com.winllc.acme.server.transaction.CertIssuanceTransaction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,11 +35,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import javax.servlet.http.HttpServletRequest;
-import java.util.Optional;
-
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -184,12 +173,11 @@ public class OrderServiceTest extends AbstractServiceTest {
     @Test
     public void getOrder() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
-        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
-
         AccountData accountData = MockUtils.buildMockAccountData();
         accountData = accountPersistence.save(accountData);
 
-        transaction.init(accountData, directoryData);
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNewOrder(accountData, directoryData);
+
         transaction.startOrder(MockUtils.buildMockOrderRequest());
 
         mockMvc.perform(
@@ -202,12 +190,11 @@ public class OrderServiceTest extends AbstractServiceTest {
     @Test
     public void finalizeOrder() throws Exception {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
-        CertIssuanceTransaction transaction = acmeTransactionManagement.startNew();
-
         AccountData accountData = MockUtils.buildMockAccountData();
         accountData = accountPersistence.save(accountData);
 
-        transaction.init(accountData, directoryData);
+        CertIssuanceTransaction transaction = acmeTransactionManagement.startNewOrder(accountData, directoryData);
+
         transaction.startOrder(MockUtils.buildMockOrderRequest());
 
         transaction.retrieveCurrentChallenges().forEach(cd -> {

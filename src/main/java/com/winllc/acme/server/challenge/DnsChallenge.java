@@ -4,7 +4,6 @@ import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.server.persistence.ChallengePersistence;
-import com.winllc.acme.server.process.ChallengeProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +22,14 @@ public class DnsChallenge implements ChallengeVerification {
 
     @Autowired
     private ChallengePersistence challengePersistence;
-    @Autowired
-    private ChallengeProcessor challengeProcessor;
+    //@Autowired
+    //private ChallengeProcessor challengeProcessor;
 
 
     public void verify(ChallengeData challenge) {
         //TODO
         try {
-            challengeProcessor.processing(challenge);
+            //challengeProcessor.processing(challenge);
 
             challenge.getObject().setStatus(StatusType.PROCESSING.toString());
             challengePersistence.save(challenge);

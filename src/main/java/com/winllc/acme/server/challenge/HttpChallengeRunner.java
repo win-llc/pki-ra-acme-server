@@ -1,18 +1,12 @@
 package com.winllc.acme.server.challenge;
 
 import com.nimbusds.jose.jwk.JWK;
-import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.common.model.acme.Authorization;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.AuthorizationData;
 import com.winllc.acme.common.model.data.ChallengeData;
-import com.winllc.acme.server.exceptions.InternalServerException;
-import com.winllc.acme.server.persistence.AccountPersistence;
-import com.winllc.acme.server.persistence.AuthorizationPersistence;
-import com.winllc.acme.server.persistence.ChallengePersistence;
-import com.winllc.acme.server.process.ChallengeProcessor;
-import com.winllc.acme.server.util.AcmeTransactionManagement;
-import com.winllc.acme.server.util.CertIssuanceTransaction;
+import com.winllc.acme.server.transaction.AbstractTransaction;
+import com.winllc.acme.server.transaction.AuthorizationTransaction;
+import com.winllc.acme.server.transaction.CertIssuanceTransaction;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -21,16 +15,11 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.stereotype.Component;
 
 import javax.net.ssl.*;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.Optional;
 
 //Section 8.3
 public class HttpChallengeRunner {
@@ -40,11 +29,11 @@ public class HttpChallengeRunner {
     public static class VerificationRunner implements Runnable {
 
         private ChallengeData challenge;
-        private CertIssuanceTransaction certIssuanceTransaction;
+        private AuthorizationTransaction certIssuanceTransaction;
 
-        public VerificationRunner(String challengeId, CertIssuanceTransaction certIssuanceTransaction) {
+        public VerificationRunner(String challengeId, AuthorizationTransaction certIssuanceTransaction) {
             this.certIssuanceTransaction = certIssuanceTransaction;
-            this.challenge = this.certIssuanceTransaction.retrieveChallengeData(challengeId);
+            this.challenge = this.certIssuanceTransaction.retrieveChallengeData(challengeId).getData();
         }
 
         @Override
@@ -57,7 +46,7 @@ public class HttpChallengeRunner {
                 try {
 
                     AuthorizationData authorizationData = this.certIssuanceTransaction.retrieveAuthorizationData(challenge.getAuthorizationId());
-                    AccountData accountData = this.certIssuanceTransaction.getAccountData();
+                    AccountData accountData = this.certIssuanceTransaction.getTransactionContext().getAccountData();
 
                     String urlString = "http://" + authorizationData.getObject().getIdentifier().getValue()
                             + "/.well-known/acme-challenge/" + challenge.getObject().getToken();

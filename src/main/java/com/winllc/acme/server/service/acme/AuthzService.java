@@ -1,15 +1,12 @@
 package com.winllc.acme.server.service.acme;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.winllc.acme.server.Application;
-import com.winllc.acme.server.challenge.DnsChallenge;
-import com.winllc.acme.server.challenge.HttpChallenge;
 import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.model.AcmeJWSObject;
+import com.winllc.acme.server.Application;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
-import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.*;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.AuthorizationData;
@@ -17,11 +14,9 @@ import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
-import com.winllc.acme.server.process.AuthorizationProcessor;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
-import com.winllc.acme.server.util.AcmeTransactionManagement;
-import com.winllc.acme.server.util.CertIssuanceTransaction;
+import com.winllc.acme.server.transaction.*;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.LogManager;
@@ -36,7 +31,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 //Section 7.4.1
 @RestController
@@ -46,8 +40,8 @@ public class AuthzService extends BaseService {
 
     @Autowired
     private AuthorizationPersistence authorizationPersistence;
-    @Autowired
-    private AuthorizationProcessor authorizationProcessor;
+    //@Autowired
+    //private AuthorizationProcessor authorizationProcessor;
     @Autowired
     private ChallengePersistence challengePersistence;
     @Autowired
@@ -70,28 +64,14 @@ public class AuthzService extends BaseService {
             if (directoryData.isAllowPreAuthorization()) {
                 Identifier identifier = payloadAndAccount.getPayload();
 
-                if (serverWillingToIssueForIdentifier(identifier, directoryData, payloadAndAccount.getAccountData())) {
-                    Optional<AuthorizationData> authorizationOptional = authorizationProcessor.buildAuthorizationForIdentifier(identifier, payloadAndAccount, null);
-                    if (authorizationOptional.isPresent()) {
-                        AuthorizationData authorizationData = authorizationOptional.get();
+                PreAuthzTransaction preAuthzTransaction = acmeTransactionManagement.startNewPreAuthz(payloadAndAccount.getAccountData(), payloadAndAccount.getDirectoryData());
 
-                        authorizationData = authorizationPersistence.save(authorizationData);
+                preAuthzTransaction.start(identifier);
+                AuthorizationData authorizationData = preAuthzTransaction.getData();
 
-                        return buildBaseResponseEntity(201, directoryData)
-                                .header("Location", authorizationData.buildUrl(Application.baseURL))
-                                .body(authorizationData.getObject());
-                    } else {
-                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.REJECTED_IDENTIFIER);
-                        return buildBaseResponseEntity(403, directoryData)
-                                .body(problemDetails);
-                    }
-
-                } else {
-                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNSUPPORTED_IDENTIFIER);
-                    problemDetails.setDetail("Will not issue to: " + identifier);
-                    return buildBaseResponseEntity(403, payloadAndAccount.getDirectoryData())
-                            .body(problemDetails);
-                }
+                return buildBaseResponseEntity(201, directoryData)
+                        .header("Location", authorizationData.buildUrl(Application.baseURL))
+                        .body(authorizationData.getObject());
             } else {
                 //Pre-auth not allowed
                 ProblemDetails problemDetails = new ProblemDetails(ProblemType.UNAUTHORIZED);
@@ -122,18 +102,37 @@ public class AuthzService extends BaseService {
         if (optionalAuthorizationData.isPresent()) {
             AuthorizationData authorizationData = optionalAuthorizationData.get();
 
-            final CertIssuanceTransaction transaction = acmeTransactionManagement.getTransaction(authorizationData.getTransactionId());
-            authorizationData = transaction.retrieveAuthorizationData(id);
-
             try {
-                //AcmeJWSObject jwsObject = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
-                //todo re-add deactivate use-case
-                /*
-                PayloadAndAccount payloadAndAccount;
+                AcmeJWSObject jwsObject = SecurityValidatorUtil.getJWSObjectFromHttpRequest(request);
+
+                //if content is blank, normal authz workflow
                 if (jwsObject.getPayload().toString().contentEquals("")) {
-                    payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(jwsObject, request.getRequestURL().toString(), authorizationData.getAccountId(), String.class);
+                    AbstractTransaction transaction;
+                    if(authorizationData.getPreAuthz()){
+                        transaction = acmeTransactionManagement.getTransaction(
+                                authorizationData.getTransactionId(), PreAuthzTransaction.class);
+                    }else{
+                        transaction = acmeTransactionManagement.getTransaction(
+                                authorizationData.getTransactionId(), CertIssuanceTransaction.class);
+                    }
+
+
+                    log.info("Returning current authorization: " + authorizationData);
+                    if (authorizationData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
+                        return buildBaseResponseEntityWithRetryAfter(200, transaction.getTransactionContext().getDirectoryData(), 20)
+                                //.header("Link", "TODO")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .body(authorizationData.getObject());
+                    } else {
+                        return buildBaseResponseEntity(200, transaction.getTransactionContext().getDirectoryData())
+                                //.header("Link", "TODO")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .body(authorizationData.getObject());
+                    }
+
                 } else {
-                    payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, authorizationData.getAccountId(), Authorization.class);
+                    //If payload contains a status, most likely to deactivate
+                    PayloadAndAccount payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, authorizationData.getAccountId(), Authorization.class);
                     Authorization authorization = (Authorization) payloadAndAccount.getPayload();
 
                     //Section 7.5.2
@@ -146,37 +145,11 @@ public class AuthzService extends BaseService {
                         return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .body(authorizationData.getObject());
+                    }else{
+                        ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
+                        problemDetails.setDetail("Unexpected data in payload");
+                        throw new AcmeServerException(problemDetails);
                     }
-                }
-
-                 */
-
-                //AuthorizationData refreshedAuthorization = authorizationProcessor.buildCurrentAuthorization(authorizationData);
-
-                log.info("Returning current authorization: " + authorizationData);
-
-                ObjectMapper mapper = new ObjectMapper();
-
-                /*
-                if(authorizationData.getObject().getChallenges() != null) {
-                    Stream.of(authorizationData.getObject().getChallenges())
-                            .forEach(c -> c.setStatus(null));
-                }
-
-                 */
-
-                String jsonObj = mapper.writeValueAsString(authorizationData.getObject());
-
-                if (authorizationData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
-                    return buildBaseResponseEntityWithRetryAfter(200, transaction.getDirectoryData(), 20)
-                            //.header("Link", "TODO")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(jsonObj);
-                } else {
-                    return buildBaseResponseEntity(200, transaction.getDirectoryData())
-                            //.header("Link", "TODO")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(jsonObj);
                 }
 
             } catch (Exception e) {
@@ -205,8 +178,18 @@ public class AuthzService extends BaseService {
         if (optionalChallengeData.isPresent()) {
             ChallengeData updatedChallengeData = optionalChallengeData.get();
 
-            final CertIssuanceTransaction transaction = acmeTransactionManagement.getTransaction(updatedChallengeData.getTransactionId());
-            updatedChallengeData = transaction.retrieveChallengeData(id);
+            AuthorizationData authorizationData = authorizationPersistence.findById(updatedChallengeData.getAuthorizationId()).get();
+
+            AuthorizationTransaction authorizationTransaction;
+            if(authorizationData.getPreAuthz()){
+                authorizationTransaction = acmeTransactionManagement.getTransaction(updatedChallengeData.getTransactionId(),
+                        PreAuthzTransaction.class);
+            }else{
+                authorizationTransaction = acmeTransactionManagement.getTransaction(
+                        updatedChallengeData.getTransactionId(), CertIssuanceTransaction.class);
+            }
+
+            updatedChallengeData = authorizationTransaction.retrieveChallengeData(id).getData();
 
             Challenge challenge = updatedChallengeData.getObject();
 
@@ -215,18 +198,7 @@ public class AuthzService extends BaseService {
 
                 if (challenge.getStatus().equals(StatusType.PENDING.toString())) {
 
-                    transaction.attemptChallenge(updatedChallengeData.getId());
-                    /*
-                    switch (challenge.getType()) {
-                        case "http-01":
-                            httpChallenge.verify(updatedChallengeData);
-                            break;
-                        case "dns-01":
-                            dnsChallenge.verify(updatedChallengeData);
-                            break;
-                    }
-
-                     */
+                    authorizationTransaction.attemptChallenge(updatedChallengeData.getId());
                 }
 
                 ProblemDetails pd = new ProblemDetails(ProblemType.ORDER_NOT_READY);
