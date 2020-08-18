@@ -196,10 +196,7 @@ public class AuthzService extends BaseService {
             if (challenge.getStatus().equals(StatusType.PROCESSING.toString()) ||
                     challenge.getStatus().equals(StatusType.PENDING.toString())) {
 
-                if (challenge.getStatus().equals(StatusType.PENDING.toString())) {
-
-                    authorizationTransaction.attemptChallenge(updatedChallengeData.getId());
-                }
+                authorizationTransaction.attemptChallenge(updatedChallengeData.getId());
 
                 ProblemDetails pd = new ProblemDetails(ProblemType.ORDER_NOT_READY);
                 pd.setStatus(200);
@@ -214,11 +211,11 @@ public class AuthzService extends BaseService {
                 log.info("Challenge processing: " + jsonObj);
 
                 return buildBaseResponseEntityWithRetryAfter(200, directoryData, 10)
-                        //.header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
+                        .header("Link", "<"+authorizationData.buildUrl(Application.baseURL)+">;rel=\"up\"")
                         .body(challenge);
             } else {
                 return buildBaseResponseEntity(200, directoryData)
-                        //.header("Link", "<"+authOptional.get().buildUrl()+">;rel=\"up\"")
+                        .header("Link", "<"+authorizationData.buildUrl(Application.baseURL)+">;rel=\"up\"")
                         .body(updatedChallengeData.getObject());
             }
 

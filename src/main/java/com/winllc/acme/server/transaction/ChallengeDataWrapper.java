@@ -66,7 +66,7 @@ public class ChallengeDataWrapper extends DataWrapper<ChallengeData> {
         return this.challengeData;
     }
 
-    void markProcessing(){
+    public void markProcessing(){
         if(getStatus() == StatusType.PROCESSING || getStatus() == StatusType.PENDING){
             updateStatus(StatusType.PROCESSING);
         }

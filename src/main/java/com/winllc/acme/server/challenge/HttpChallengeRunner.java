@@ -7,6 +7,7 @@ import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.server.transaction.AbstractTransaction;
 import com.winllc.acme.server.transaction.AuthorizationTransaction;
 import com.winllc.acme.server.transaction.CertIssuanceTransaction;
+import com.winllc.acme.server.transaction.ChallengeDataWrapper;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -28,12 +29,12 @@ public class HttpChallengeRunner {
 
     public static class VerificationRunner implements Runnable {
 
-        private ChallengeData challenge;
+        private ChallengeDataWrapper challengeWrapper;
         private AuthorizationTransaction certIssuanceTransaction;
 
         public VerificationRunner(String challengeId, AuthorizationTransaction certIssuanceTransaction) {
             this.certIssuanceTransaction = certIssuanceTransaction;
-            this.challenge = this.certIssuanceTransaction.retrieveChallengeData(challengeId).getData();
+            this.challengeWrapper = this.certIssuanceTransaction.retrieveChallengeData(challengeId);
         }
 
         @Override
@@ -41,6 +42,9 @@ public class HttpChallengeRunner {
             boolean success = false;
             int retries = 4;
             int attempts = 0;
+
+            ChallengeData challenge = this.challengeWrapper.getData();
+            this.challengeWrapper.markProcessing();
 
             while (attempts < retries && !success) {
                 try {
