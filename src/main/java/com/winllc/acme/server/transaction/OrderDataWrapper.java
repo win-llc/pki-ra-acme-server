@@ -16,6 +16,7 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import org.apache.commons.lang3.StringUtils;
 
 import java.security.cert.X509Certificate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -56,6 +57,8 @@ public class OrderDataWrapper extends DataWrapper<OrderData> {
         order.setStatus(StatusType.PENDING.toString());
         order.setIdentifiers(orderRequest.getIdentifiers());
         order.willExpireInMinutes(30);
+        order.addNotBefore(LocalDateTime.now().minusDays(1));
+        order.addNotAfter(LocalDateTime.now().plusDays(1));
 
         //get pre-authz, use this for any identifiers that match the request
         AccountDataWrapper accountDataWrapper = new AccountDataWrapper(transactionContext.getAccountData(), transactionContext);

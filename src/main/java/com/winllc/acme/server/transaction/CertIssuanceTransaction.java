@@ -39,9 +39,11 @@ public class CertIssuanceTransaction extends AuthorizationTransaction {
         this.orderDataWrapper.reload();
     }
 
-    public void startOrder(OrderRequest orderRequest) throws Exception {
+    public OrderData startOrder(OrderRequest orderRequest) throws Exception {
         this.initialOrderRequest = orderRequest;
         this.orderDataWrapper = new OrderDataWrapper(this.initialOrderRequest, transactionContext);
+        updateOrderData();
+        return this.orderDataWrapper.getData();
     }
 
     public List<ChallengeData> retrieveCurrentChallenges() {

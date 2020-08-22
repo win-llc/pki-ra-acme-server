@@ -3,6 +3,7 @@ package com.winllc.acme.server.transaction;
 import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.common.model.acme.Authorization;
+import com.winllc.acme.common.model.acme.Challenge;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AuthorizationData;
 import com.winllc.acme.common.model.data.ChallengeData;
@@ -60,6 +61,7 @@ class AuthorizationDataWrapper extends DataWrapper<AuthorizationData> {
     void markValid(){
         if(getStatus() == StatusType.PENDING){
             updateStatus(StatusType.VALID);
+            orderDataWrapper.authzCompleted();
         }
     }
 
@@ -113,6 +115,13 @@ class AuthorizationDataWrapper extends DataWrapper<AuthorizationData> {
             if(this.challengeDataWrappers.size() == 0){
                 markValid();
                 orderDataWrapper.markReady();
+
+                ChallengeDataWrapper challengeDataWrapper =
+                        new ChallengeDataWrapper(this, ChallengeType.HTTP, this.transactionContext);
+                challengeDataWrapper.updateStatus(StatusType.VALID);
+
+                this.challengeDataWrappers.add(challengeDataWrapper);
+
             }else{
                 persist();
             }

@@ -72,9 +72,10 @@ public class OrderService extends BaseService {
 
             //todo use this as primary handler
             CertIssuanceTransaction transaction = acmeTransactionManagement.startNewOrder(accountData, directoryData);
-            transaction.startOrder(orderRequest);
+            OrderData orderData = transaction.startOrder(orderRequest);
 
-            OrderData orderData = transaction.getOrderData();
+            log.info("Location URL: "+orderData.buildUrl(Application.baseURL));
+
             return buildBaseResponseEntity(201, directoryData)
                     .header("Retry-After", "10")
                     .header("Location", orderData.buildUrl(Application.baseURL))
@@ -105,12 +106,15 @@ public class OrderService extends BaseService {
 
             log.info("Returning order: " + orderData.getId() + " :: Status: " + orderData.getObject().getStatus());
 
-            if (orderData.getObject().getStatus().equals(StatusType.PROCESSING.toString()) ||
-                    orderData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
+            Order order = orderData.getObject();
+            String status = order.getStatus();
 
-                Order order = orderData.getObject();
-                order.addNotAfter(LocalDateTime.now().plusHours(1));
-                order.addNotBefore(LocalDateTime.now().minusHours(1));
+            //debugging
+            ObjectMapper mapper = new ObjectMapper();
+            log.info("Location URL: "+orderData.buildUrl(Application.baseURL));
+            log.info("Order obj: "+mapper.writeValueAsString(order));
+
+            if (status.equals(StatusType.PROCESSING.toString())) {
 
                 return buildBaseResponseEntityWithRetryAfter(200, directoryData, 10)
                         .header("Location", orderData.buildUrl(Application.baseURL))
@@ -118,15 +122,9 @@ public class OrderService extends BaseService {
                         //.build();
                  .body(order);
             } else {
-                if (log.isEnabled(Level.DEBUG)) {
-                    ObjectMapper mapper = new ObjectMapper();
-                    String jsonObj = mapper.writeValueAsString(orderData.getObject());
-                    log.debug("Returning order: " + jsonObj);
-                }
-
                 return buildBaseResponseEntity(200, directoryData)
                         .header("Location", orderData.buildUrl(Application.baseURL))
-                        .body(orderData.getObject());
+                        .body(order);
             }
         } else {
             ProblemDetails problemDetails = new ProblemDetails(ProblemType.SERVER_INTERNAL);
@@ -176,12 +174,16 @@ public class OrderService extends BaseService {
                     //if checks pass, return
                     //finalizeOrder(orderData, csr);
                     transaction.finalizeOrder(csr);
+                    orderData = transaction.getOrderData();
+                    Order order = orderData.getObject();
 
-                    log.info("Finalized order: " + orderData);
+                    ObjectMapper objectMapper = new ObjectMapper();
+
+                    log.info("Finalized order: " + objectMapper.writeValueAsString(order));
 
                     return buildBaseResponseEntityWithRetryAfter(200, certificateRequestPayloadAndAccount.getDirectoryData(), 10)
                             .header("Location", orderData.buildUrl(Application.baseURL))
-                            .body(orderData.getObject());
+                            .body(order);
                 } else {
                     ProblemDetails problemDetails = problemDetailsOptional.get();
 

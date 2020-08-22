@@ -116,18 +116,19 @@ public class AuthzService extends BaseService {
                                 authorizationData.getTransactionId(), CertIssuanceTransaction.class);
                     }
 
+                    Authorization authorization = authorizationData.getObject();
 
-                    log.info("Returning current authorization: " + authorizationData);
-                    if (authorizationData.getObject().getStatus().equals(StatusType.PENDING.toString())) {
+                    log.info("Returning current authorization: " + new ObjectMapper().writeValueAsString(authorization));
+                    if (authorization.getStatus().equals(StatusType.PENDING.toString())) {
                         return buildBaseResponseEntityWithRetryAfter(200, transaction.getTransactionContext().getDirectoryData(), 20)
                                 //.header("Link", "TODO")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .body(authorizationData.getObject());
+                                .body(authorization);
                     } else {
                         return buildBaseResponseEntity(200, transaction.getTransactionContext().getDirectoryData())
                                 //.header("Link", "TODO")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .body(authorizationData.getObject());
+                                .body(authorization);
                     }
 
                 } else {

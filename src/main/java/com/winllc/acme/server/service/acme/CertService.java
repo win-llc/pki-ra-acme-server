@@ -102,7 +102,7 @@ public class CertService extends BaseService {
                     }
                 }
 
-                log.debug("Returning certificate: "+returnCert);
+                log.info("Returning certificate: "+returnCert);
 
                 return buildBaseResponseEntity(200, payloadAndAccount.getDirectoryData())
                         .headers(headers)
