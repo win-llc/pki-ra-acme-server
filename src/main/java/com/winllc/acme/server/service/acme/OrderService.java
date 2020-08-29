@@ -50,13 +50,9 @@ public class OrderService extends BaseService {
     private DirectoryDataService directoryDataService;
     @Autowired
     private SecurityValidatorUtil securityValidatorUtil;
-
     @Autowired
     private AcmeTransactionManagement acmeTransactionManagement;
 
-    @Autowired
-    @Qualifier("appTaskExecutor")
-    private TaskExecutor taskExecutor;
 
     @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newOrder(HttpServletRequest request, @PathVariable String directory) {
@@ -65,12 +61,14 @@ public class OrderService extends BaseService {
         DirectoryData directoryData = directoryDataOptional.orElseThrow(() -> new RuntimeException("Could not find DirectoryData"));
 
         try {
-            PayloadAndAccount<OrderRequest> payloadAndAccount = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, OrderRequest.class);
+            PayloadAndAccount<OrderRequest> payloadAndAccount
+                    = securityValidatorUtil.verifyJWSAndReturnPayloadForExistingAccount(request, OrderRequest.class);
 
             OrderRequest orderRequest = payloadAndAccount.getPayload();
             AccountData accountData = payloadAndAccount.getAccountData();
 
             //todo use this as primary handler
+            //todo verify account can issue
             CertIssuanceTransaction transaction = acmeTransactionManagement.startNewOrder(accountData, directoryData);
             OrderData orderData = transaction.startOrder(orderRequest);
 

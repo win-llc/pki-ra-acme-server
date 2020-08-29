@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 
 public class CertIssuanceTransaction extends AuthorizationTransaction {
 
-
     private OrderRequest initialOrderRequest;
     private OrderDataWrapper orderDataWrapper;
 

@@ -6,19 +6,23 @@ import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.exceptions.InternalServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
 import com.winllc.acme.common.model.acme.*;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.AuthorizationData;
 import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.persistence.AuthorizationPersistence;
 import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.transaction.*;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +33,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.naming.directory.DirContext;
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 //Section 7.4.1
@@ -40,8 +47,6 @@ public class AuthzService extends BaseService {
 
     @Autowired
     private AuthorizationPersistence authorizationPersistence;
-    //@Autowired
-    //private AuthorizationProcessor authorizationProcessor;
     @Autowired
     private ChallengePersistence challengePersistence;
     @Autowired
@@ -50,6 +55,8 @@ public class AuthzService extends BaseService {
     private SecurityValidatorUtil securityValidatorUtil;
     @Autowired
     private CertificateAuthorityService certificateAuthorityService;
+    @Autowired
+    private ExternalAccountProviderService externalAccountProviderService;
 
     @Autowired
     private AcmeTransactionManagement acmeTransactionManagement;
@@ -64,9 +71,12 @@ public class AuthzService extends BaseService {
             if (directoryData.isAllowPreAuthorization()) {
                 Identifier identifier = payloadAndAccount.getPayload();
 
-                PreAuthzTransaction preAuthzTransaction = acmeTransactionManagement.startNewPreAuthz(payloadAndAccount.getAccountData(), payloadAndAccount.getDirectoryData());
+               boolean identifierPreApproved = checkIdentifierAllowedPreAuthz(payloadAndAccount);
 
-                preAuthzTransaction.start(identifier);
+                PreAuthzTransaction preAuthzTransaction = acmeTransactionManagement
+                        .startNewPreAuthz(payloadAndAccount.getAccountData(), payloadAndAccount.getDirectoryData());
+
+                preAuthzTransaction.start(identifier, identifierPreApproved);
                 AuthorizationData authorizationData = preAuthzTransaction.getData();
 
                 return buildBaseResponseEntity(201, directoryData)
@@ -91,6 +101,34 @@ public class AuthzService extends BaseService {
             return ResponseEntity.status(500)
                     .body(problemDetails);
         }
+    }
+
+    //Get identifiers associated with account that are marked for pre-authz
+    private boolean checkIdentifierAllowedPreAuthz(PayloadAndAccount<Identifier> payloadAndAccount){
+        List<String> preAuthzIdentifiersForDirectory = getPreAuthzIdentifiersForDirectory(payloadAndAccount.getDirectoryData(), payloadAndAccount.getAccountData());
+
+        return preAuthzIdentifiersForDirectory.contains(payloadAndAccount.getPayload().getValue());
+    }
+
+    private List<String> getPreAuthzIdentifiersForDirectory(DirectoryData directoryData, AccountData accountData){
+        List<String> allowedIdentifiers = new ArrayList<>();
+        String accountProviderName = directoryData.getExternalAccountProviderName();
+        if(StringUtils.isNotBlank(accountProviderName)) {
+            ExternalAccountProvider accountProvider
+                    = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
+
+            if(accountProvider != null) {
+                try {
+                    List<String> preAuthorizationIdentifiers
+                            = accountProvider.getPreAuthorizationIdentifiers(accountData.getEabKeyIdentifier());
+                    allowedIdentifiers.addAll(preAuthorizationIdentifiers);
+                } catch (InternalServerException e) {
+                    log.error("Could not retrieve pre-authz", e);
+                }
+            }
+        }
+
+        return allowedIdentifiers;
     }
 
     //Section 7.5

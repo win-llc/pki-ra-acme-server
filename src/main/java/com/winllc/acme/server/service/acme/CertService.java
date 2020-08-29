@@ -50,7 +50,7 @@ import static org.apache.commons.io.IOUtils.LINE_SEPARATOR;
 @RestController
 public class CertService extends BaseService {
 
-    private Logger log = LogManager.getLogger(CertService.class);
+    private final Logger log = LogManager.getLogger(CertService.class);
 
     @Autowired
     private CertificatePersistence certificatePersistence;

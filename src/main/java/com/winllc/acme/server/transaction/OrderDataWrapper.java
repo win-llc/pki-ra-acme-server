@@ -72,21 +72,30 @@ public class OrderDataWrapper extends DataWrapper<OrderData> {
         if (orderRequest.getIdentifiers() != null) {
             ProblemDetails compoundProblems = new ProblemDetails(ProblemType.COMPOUND);
             for (Identifier identifier : orderRequest.getIdentifiers()) {
-                AuthorizationData preAuthz = preAuthzIdentifierMap.get(identifier);
-                if(preAuthz == null) {
-                    try {
+                IdentifierWrapper identifierWrapper = new IdentifierWrapper(identifier, transactionContext);
+                if(identifierWrapper.canIssue()) {
+
+                    AuthorizationData preAuthz = preAuthzIdentifierMap.get(identifier);
+                    if (preAuthz == null) {
+                        try {
+                            AuthorizationDataWrapper authorizationDataWrapper =
+                                    new AuthorizationDataWrapper(this, identifier, super.transactionContext);
+                            this.authorizationDataWrappers.add(authorizationDataWrapper);
+                        } catch (AcmeServerException e) {
+                            e.printStackTrace();
+                            compoundProblems.addSubproblem(e.getProblemDetails());
+                        }
+                    } else {
+                        //Add pre-authz data to list
                         AuthorizationDataWrapper authorizationDataWrapper =
-                                new AuthorizationDataWrapper(this, identifier, super.transactionContext);
+                                new AuthorizationDataWrapper(this, preAuthz, super.transactionContext);
                         this.authorizationDataWrappers.add(authorizationDataWrapper);
-                    } catch (AcmeServerException e) {
-                        e.printStackTrace();
-                        compoundProblems.addSubproblem(e.getProblemDetails());
                     }
                 }else{
-                    //Add pre-authz data to list
-                    AuthorizationDataWrapper authorizationDataWrapper =
-                            new AuthorizationDataWrapper(this, preAuthz, super.transactionContext);
-                    this.authorizationDataWrappers.add(authorizationDataWrapper);
+                    //todo verify this is the right error type
+                    ProblemDetails problemDetails = new ProblemDetails(ProblemType.REJECTED_IDENTIFIER);
+                    problemDetails.setDetail("Will not issue to: "+identifier.getValue());
+                    throw new AcmeServerException(problemDetails);
                 }
             }
 
