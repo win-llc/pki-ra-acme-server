@@ -13,7 +13,10 @@ import com.winllc.acme.common.model.requestresponse.OrderRequest;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
@@ -41,6 +44,8 @@ processing ------------+
   valid             invalid
  */
 public class OrderDataWrapper extends DataWrapper<OrderData> {
+    private static final Logger log = LogManager.getLogger(OrderDataWrapper.class);
+
     OrderData orderData;
     CertDataWrapper issuedCert;
     List<AuthorizationDataWrapper> authorizationDataWrappers;
@@ -49,6 +54,20 @@ public class OrderDataWrapper extends DataWrapper<OrderData> {
         super(transactionContext);
         init(orderRequest);
     }
+
+    OrderDataWrapper(OrderData orderData, TransactionContext transactionContext) throws Exception {
+        super(transactionContext);
+
+        Optional<OrderData> optionalData = transactionContext.getOrderPersistence().findById(orderData.getId());
+        if(optionalData.isPresent()){
+            this.orderData = orderData;
+
+            reloadChildren();
+        }else{
+            throw new Exception("Could not find OrderData in DB: "+orderData.getId());
+        }
+    }
+
 
     void init(OrderRequest orderRequest) throws Exception {
         this.authorizationDataWrappers = new ArrayList<>();
@@ -66,7 +85,7 @@ public class OrderDataWrapper extends DataWrapper<OrderData> {
                 .collect(Collectors.toMap(ad -> ad.getObject().getIdentifier(), ad -> ad));
 
         this.orderData = new OrderData(order, transactionContext.getDirectoryData().getName(),
-                transactionContext.getAccountData().getAccountId());
+                transactionContext.getAccountData().getId());
         this.orderData.getObject().setFinalize(orderData.buildUrl(Application.baseURL)+"/finalize");
 
         if (orderRequest.getIdentifiers() != null) {
@@ -82,7 +101,7 @@ public class OrderDataWrapper extends DataWrapper<OrderData> {
                                     new AuthorizationDataWrapper(this, identifier, super.transactionContext);
                             this.authorizationDataWrappers.add(authorizationDataWrapper);
                         } catch (AcmeServerException e) {
-                            e.printStackTrace();
+                            log.error("COuld not create pre-authz", e);
                             compoundProblems.addSubproblem(e.getProblemDetails());
                         }
                     } else {
@@ -133,6 +152,10 @@ public class OrderDataWrapper extends DataWrapper<OrderData> {
 
     void markInvalid(){
         updateStatus(StatusType.INVALID);
+
+        for(AuthorizationDataWrapper authz : authorizationDataWrappers){
+            authz.markRevoked();
+        }
     }
 
     void authzCompleted(){
@@ -168,7 +191,7 @@ public class OrderDataWrapper extends DataWrapper<OrderData> {
                     markValid();
                     persist();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.error("Could not finalize order", e);
                     markInvalid();
                 }
             }
@@ -176,18 +199,19 @@ public class OrderDataWrapper extends DataWrapper<OrderData> {
 
     }
 
-    void reload(){
-        Optional<OrderData> optionalData = transactionContext.getOrderPersistence()
-                .findDistinctByTransactionIdEquals(transactionContext.getTransactionId().toString());
-        if(optionalData.isPresent()){
-            this.orderData = optionalData.get();
+    @Override
+    void reloadChildren() {
+        authorizationDataWrappers = new ArrayList<>();
 
-            authorizationDataWrappers = new ArrayList<>();
-
-            List<AuthorizationData> authz = transactionContext.getAuthorizationPersistence().findAllByOrderIdEquals(this.orderData.getId());
-            for(AuthorizationData authorizationData : authz){
-                authorizationDataWrappers.add(new AuthorizationDataWrapper(this, authorizationData, transactionContext));
+        List<AuthorizationData> authz = transactionContext.getAuthorizationPersistence().findAllByOrderIdEquals(this.orderData.getId());
+        if(authz != null) {
+            for (AuthorizationData authorizationData : authz) {
+                AuthorizationDataWrapper wrapper = new AuthorizationDataWrapper(this, authorizationData, transactionContext);
+                wrapper.reloadChildren();
+                authorizationDataWrappers.add(wrapper);
             }
+        }else{
+            log.info("No authz found for order: "+orderData.getId());
         }
     }
 

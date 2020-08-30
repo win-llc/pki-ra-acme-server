@@ -3,10 +3,11 @@ package com.winllc.acme.server.transaction;
 import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.common.model.acme.Authorization;
-import com.winllc.acme.common.model.acme.Challenge;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AuthorizationData;
 import com.winllc.acme.common.model.data.ChallengeData;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,9 @@ import java.util.List;
               revoked      deactivated      expired
  */
 class AuthorizationDataWrapper extends DataWrapper<AuthorizationData> {
+
+    private static final Logger log = LogManager.getLogger(AuthorizationDataWrapper.class);
+
     boolean isPreAuthz = false;
     OrderDataWrapper orderDataWrapper;
     AuthorizationData authorizationData;
@@ -48,7 +52,9 @@ class AuthorizationDataWrapper extends DataWrapper<AuthorizationData> {
     AuthorizationDataWrapper(OrderDataWrapper orderDataWrapper,
                              AuthorizationData authorizationData, TransactionContext transactionContext){
         super(transactionContext);
-        initExisting(orderDataWrapper, authorizationData);
+        this.orderDataWrapper = orderDataWrapper;
+        this.authorizationData = authorizationData;
+        reloadChildren();
     }
 
     AuthorizationDataWrapper(Identifier identifier, TransactionContext transactionContext) throws Exception {
@@ -99,6 +105,9 @@ class AuthorizationDataWrapper extends DataWrapper<AuthorizationData> {
             authorization.setIdentifier(identifier);
 
             this.authorizationData = new AuthorizationData(authorization, super.transactionContext.getDirectoryData().getName());
+            if(orderDataWrapper != null) {
+                this.authorizationData.setOrderId(orderDataWrapper.getData().getId());
+            }
 
             List<ChallengeType> identifierChallengeRequirements =
                     super.transactionContext.getCa().getIdentifierChallengeRequirements(identifier,
@@ -131,21 +140,23 @@ class AuthorizationDataWrapper extends DataWrapper<AuthorizationData> {
         }
     }
 
-    void initExisting(OrderDataWrapper orderDataWrapper, AuthorizationData authorizationData){
-        this.orderDataWrapper = orderDataWrapper;
-        this.authorizationData = authorizationData;
-
+    @Override
+    void reloadChildren() {
         this.challengeDataWrappers = new ArrayList<>();
-
         List<ChallengeData> challenges = super.transactionContext.getChallengePersistence()
                 .findAllByAuthorizationIdEquals(this.authorizationData.getId());
-        for(ChallengeData challengeData : challenges){
-            this.challengeDataWrappers.add(new ChallengeDataWrapper(this, challengeData, super.transactionContext));
+
+        if(challenges != null) {
+            for (ChallengeData challengeData : challenges) {
+                this.challengeDataWrappers.add(new ChallengeDataWrapper(this, challengeData, super.transactionContext));
+            }
+        }else{
+            log.info("No challenges for: "+authorizationData.getId());
         }
     }
 
+
     void challengeCompleted(){
-        int total = challengeDataWrappers.size();
         int complete = 0;
         for(ChallengeDataWrapper wrapper : challengeDataWrappers){
             if(wrapper.getStatus() == StatusType.VALID) complete++;
@@ -157,7 +168,7 @@ class AuthorizationDataWrapper extends DataWrapper<AuthorizationData> {
                 orderDataWrapper.authzCompleted();
             }
         }else{
-            System.out.println("All challenges not complete");
+            log.info("All challenges not complete");
         }
     }
 

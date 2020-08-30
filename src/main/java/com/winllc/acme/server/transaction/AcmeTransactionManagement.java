@@ -53,9 +53,7 @@ public class AcmeTransactionManagement {
     }
 
     public CertIssuanceTransaction startNewOrder(AccountData accountData, DirectoryData directoryData){
-        TransactionContext transactionContext = new TransactionContext(accountPersistence, orderPersistence,
-                authorizationPersistence, challengePersistence,
-                certificateAuthorityService, certificatePersistence, taskExecutor, accountData, directoryData);
+        TransactionContext transactionContext = buildTransactionContext(accountData, directoryData);
 
         CertIssuanceTransaction transaction = new CertIssuanceTransaction(transactionContext);
         sessionIdCurrentTransactionMap.put(transaction.transactionContext.transactionId, transaction);
@@ -63,13 +61,25 @@ public class AcmeTransactionManagement {
     }
 
     public PreAuthzTransaction startNewPreAuthz(AccountData accountData, DirectoryData directoryData){
-        TransactionContext transactionContext = new TransactionContext(accountPersistence, orderPersistence,
-                authorizationPersistence, challengePersistence,
-                certificateAuthorityService, certificatePersistence, taskExecutor, accountData, directoryData);
+        TransactionContext transactionContext = buildTransactionContext(accountData, directoryData);
 
         PreAuthzTransaction transaction = new PreAuthzTransaction(transactionContext);
         sessionIdCurrentTransactionMap.put(transaction.transactionContext.transactionId, transaction);
         return transaction;
+    }
+
+    public OrderUpdateTransaction startNewOrderUpdate(AccountData accountData, DirectoryData directoryData){
+        TransactionContext transactionContext = buildTransactionContext(accountData, directoryData);
+
+        OrderUpdateTransaction transaction = new OrderUpdateTransaction(transactionContext);
+        sessionIdCurrentTransactionMap.put(transaction.transactionContext.transactionId, transaction);
+        return transaction;
+    }
+
+    private TransactionContext buildTransactionContext(AccountData accountData, DirectoryData directoryData){
+        return new TransactionContext(accountPersistence, orderPersistence,
+                authorizationPersistence, challengePersistence,
+                certificateAuthorityService, certificatePersistence, taskExecutor, accountData, directoryData);
     }
 
     public void updateTransaction(CertIssuanceTransaction transaction){

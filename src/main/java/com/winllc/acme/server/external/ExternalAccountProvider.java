@@ -14,7 +14,7 @@ public interface ExternalAccountProvider {
     String getName();
     boolean verifyAccountBinding(JWSObject jwsObject, JWSObject outerJWSObject) throws AcmeServerException;
 
-    List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier);
+    List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier) throws Exception;
     //For verification of JWS sent from client
     String getAccountVerificationUrl();
     String getAccountValidationRulesUrl();

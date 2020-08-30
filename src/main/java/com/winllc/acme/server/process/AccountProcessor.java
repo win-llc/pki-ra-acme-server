@@ -23,6 +23,8 @@ import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.OrderPersistence;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
+import com.winllc.acme.server.transaction.AcmeTransactionManagement;
+import com.winllc.acme.server.transaction.OrderUpdateTransaction;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -57,6 +59,8 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     private OrderListPersistence orderListPersistence;
     @Autowired
     private ExternalAccountProviderService externalAccountProviderService;
+    @Autowired
+    private AcmeTransactionManagement acmeTransactionManagement;
 
 
     public AccountData processCreateNewAccount(AccountRequest accountRequest, DirectoryData directoryData,
@@ -237,14 +241,14 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     }
 
     //Section 7.3.6
-    public AccountData deactivateAccount(AccountData accountData) throws InternalServerException {
+    public AccountData deactivateAccount(AccountData accountData, DirectoryData directoryData) throws InternalServerException {
         //if all goes well
         Account account = accountData.getObject();
         if (account.checkStatusEquals(StatusType.VALID)) {
             accountData.getObject().markDeactivated();
             accountData = accountPersistence.save(accountData);
 
-            markInProgressAccountObjectsInvalid(accountData);
+            markInProgressAccountObjectsInvalid(accountData, directoryData);
 
             log.info("Account deactivated: " + accountData.getId());
 
@@ -254,14 +258,14 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
         }
     }
 
-    public AccountData accountRevoke(AccountData accountData) throws InternalServerException {
+    public AccountData accountRevoke(AccountData accountData, DirectoryData directoryData) throws InternalServerException {
         //if all goes well
         Account account = accountData.getObject();
         if (account.checkStatusEquals(StatusType.VALID)) {
             account.markRevoked();
             accountData = accountPersistence.save(accountData);
 
-            markInProgressAccountObjectsInvalid(accountData);
+            markInProgressAccountObjectsInvalid(accountData, directoryData);
 
             log.info("Account revoked: " + accountData.getId());
 
@@ -273,14 +277,17 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
 
     //The server SHOULD cancel any pending operations authorized by the account’s key, such as certificate orders
     //todo move this to order processor
-    private void markInProgressAccountObjectsInvalid(AccountData accountData) {
+    private void markInProgressAccountObjectsInvalid(AccountData accountData, DirectoryData directoryData) {
         List<OrderData> orderDataList = orderPersistence.findAllByAccountIdEquals(accountData.getId());
-        orderDataList.forEach(o -> {
-            if (!o.getObject().checkStatusEquals(StatusType.VALID)) {
-                o.getObject().setStatus(StatusType.INVALID.toString());
-                orderPersistence.save(o);
+
+        for(OrderData orderData : orderDataList){
+            OrderUpdateTransaction orderUpdateTransaction = acmeTransactionManagement.startNewOrderUpdate(accountData, directoryData);
+            try {
+                orderUpdateTransaction.updateOrderStatus(orderData, StatusType.INVALID);
+            } catch (Exception e) {
+                log.error("Could not mark order invalid", e);
             }
-        });
+        }
     }
 
     //Verify account request meets requirements

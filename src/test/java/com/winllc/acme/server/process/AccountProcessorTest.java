@@ -14,12 +14,15 @@ import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.Directory;
+import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.acme.OrderList;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.model.data.OrderListData;
 import com.winllc.acme.common.model.requestresponse.AccountRequest;
 import com.winllc.acme.common.model.requestresponse.ExternalAccountBinding;
+import com.winllc.acme.common.model.requestresponse.OrderRequest;
+import com.winllc.acme.server.MockCertificateAuthority;
 import com.winllc.acme.server.MockExternalAccountProvider;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
@@ -30,8 +33,11 @@ import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.OrderListPersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
 import com.winllc.acme.server.service.AbstractServiceTest;
+import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
+import com.winllc.acme.server.transaction.AcmeTransactionManagement;
+import com.winllc.acme.server.transaction.CertIssuanceTransaction;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
@@ -42,10 +48,12 @@ import de.flapdoodle.embed.process.runtime.Network;
 import net.minidev.json.JSONObject;
 import org.junit.Before;
 import org.junit.jupiter.api.*;
+import org.mockito.internal.matchers.Or;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.annotation.Id;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.net.UnknownHostException;
@@ -81,7 +89,10 @@ public class AccountProcessorTest extends AbstractServiceTest {
     private AccountPersistence accountPersistence;
     @Autowired
     private DirectoryDataSettingsPersistence directoryDataSettingsPersistence;
-
+    @Autowired
+    private AcmeTransactionManagement acmeTransactionManagement;
+    @MockBean
+    private CertificateAuthorityService certificateAuthorityService;
 
     @BeforeEach
     public void before() throws Exception {
@@ -187,12 +198,26 @@ public class AccountProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void deactivateAccount() throws InternalServerException {
+    public void deactivateAccount() throws Exception {
+        when(certificateAuthorityService.getByName(any())).thenReturn(new MockCertificateAuthority());
+
+        DirectoryData directoryData = directoryDataService.findByName("acme-test");
         AccountData accountData = MockUtils.buildMockAccountData();
         accountData.getObject().markValid();
 
+        accountData = accountPersistence.save(accountData);
+
+        Identifier identifier = new Identifier();
+        identifier.setType("dns");
+        identifier.setValue("test.winllc-dev.com");
+
+        OrderRequest orderRequest = new OrderRequest();
+        orderRequest.setIdentifiers(new Identifier[]{identifier});
+        CertIssuanceTransaction certIssuanceTransaction = acmeTransactionManagement.startNewOrder(accountData, directoryData);
+        certIssuanceTransaction.startOrder(orderRequest);
+
         //todo mock save returning wrong object, move
-        accountData = accountProcessor.deactivateAccount(accountData);
+        accountData = accountProcessor.deactivateAccount(accountData, directoryData);
 
         assertEquals(accountData.getObject().getStatusType(), StatusType.DEACTIVATED);
     }

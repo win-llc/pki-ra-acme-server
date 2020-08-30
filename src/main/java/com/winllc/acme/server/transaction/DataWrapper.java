@@ -11,6 +11,7 @@ abstract class DataWrapper<T extends DataObject> {
         this.transactionContext = transactionContext;
     }
 
+    abstract void reloadChildren();
     abstract T getData();
     StatusType getStatus(){
         Object obj = getData().getObject();

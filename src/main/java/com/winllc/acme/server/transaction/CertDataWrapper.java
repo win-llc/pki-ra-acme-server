@@ -15,6 +15,11 @@ class CertDataWrapper extends DataWrapper<CertData> {
         super(transactionContext);
     }
 
+    @Override
+    void reloadChildren() {
+        //no children
+    }
+
 
     void certIssued(X509Certificate certificate) throws AcmeServerException, CertificateEncodingException {
         this.x509Certificate = certificate;

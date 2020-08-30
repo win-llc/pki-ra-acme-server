@@ -27,6 +27,11 @@ class AccountDataWrapper extends DataWrapper<AccountData> {
     }
 
     @Override
+    void reloadChildren() {
+        //no children
+    }
+
+    @Override
     AccountData getData() {
         return accountData;
     }

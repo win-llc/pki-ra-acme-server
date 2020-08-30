@@ -100,10 +100,10 @@ public class AccountService extends BaseService {
 
                 boolean updated = false;
                 if(accountRequest.getStatus().contentEquals(StatusType.DEACTIVATED.toString())) {
-                    accountData = accountProcessor.deactivateAccount(accountData);
+                    accountData = accountProcessor.deactivateAccount(accountData, directoryData);
                     updated = true;
                 }else if(accountRequest.getStatus().contentEquals(StatusType.REVOKED.toString())){
-                    accountData = accountProcessor.accountRevoke(accountData);
+                    accountData = accountProcessor.accountRevoke(accountData, directoryData);
                     updated = true;
                 }
 

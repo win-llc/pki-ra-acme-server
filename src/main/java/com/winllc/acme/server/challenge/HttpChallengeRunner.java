@@ -29,8 +29,8 @@ public class HttpChallengeRunner {
 
     public static class VerificationRunner implements Runnable {
 
-        private ChallengeDataWrapper challengeWrapper;
-        private AuthorizationTransaction certIssuanceTransaction;
+        private final ChallengeDataWrapper challengeWrapper;
+        private final AuthorizationTransaction certIssuanceTransaction;
 
         public VerificationRunner(String challengeId, AuthorizationTransaction certIssuanceTransaction) {
             this.certIssuanceTransaction = certIssuanceTransaction;
@@ -66,11 +66,11 @@ public class HttpChallengeRunner {
                         bodyValid = true;
                     }
 
-                    if (bodyValid){
+                    if (bodyValid) {
                         success = true;
                         certIssuanceTransaction.markChallengeComplete(challenge.getId());
                         break;
-                    }else{
+                    } else {
                         try {
                             //Sleep 5 seconds before retrying
                             Thread.sleep(3000);
@@ -83,8 +83,9 @@ public class HttpChallengeRunner {
                 } finally {
                     attempts++;
 
-                    if(attempts >= retries && !success){
+                    if (attempts >= retries && !success) {
                         try {
+                            //todo mark invalid
                             //challengeProcessor.validation(challenge, false, true);
                         } catch (Exception e) {
                             log.error("Could not update challenge", e);
@@ -95,7 +96,7 @@ public class HttpChallengeRunner {
         }
 
         private static String attemptChallenge(String url) {
-            log.info("Attempting challenge at: "+url);
+            log.info("Attempting challenge at: " + url);
             String result = null;
             HttpGet request = new HttpGet(url);
 
@@ -132,22 +133,28 @@ public class HttpChallengeRunner {
     //todo move this somewhere else
     private static SSLContext trustEveryone() {
         try {
-            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier(){
+            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
                 public boolean verify(String hostname, SSLSession session) {
                     return true;
-                }});
+                }
+            });
             SSLContext context = SSLContext.getInstance("TLS");
-            context.init(null, new X509TrustManager[]{new X509TrustManager(){
+            context.init(null, new X509TrustManager[]{new X509TrustManager() {
                 public void checkClientTrusted(X509Certificate[] chain,
-                                               String authType) {}
+                                               String authType) {
+                }
+
                 public void checkServerTrusted(X509Certificate[] chain,
-                                               String authType) throws CertificateException {}
+                                               String authType) throws CertificateException {
+                }
+
                 public X509Certificate[] getAcceptedIssuers() {
                     return new X509Certificate[0];
-                }}}, new SecureRandom());
+                }
+            }}, new SecureRandom());
             return context;
         } catch (Exception e) { // should never happen
-            e.printStackTrace();
+            log.error("Could not setup SSLContext", e);
         }
         return null;
     }

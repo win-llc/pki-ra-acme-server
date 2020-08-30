@@ -62,6 +62,11 @@ public class ChallengeDataWrapper extends DataWrapper<ChallengeData> {
         this.authorizationData = authorizationDataWrapper;
     }
 
+    @Override
+    void reloadChildren() {
+        //no children
+    }
+
     public ChallengeData getData(){
         return this.challengeData;
     }

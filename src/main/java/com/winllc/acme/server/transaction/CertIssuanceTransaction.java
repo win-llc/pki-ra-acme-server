@@ -34,9 +34,12 @@ public class CertIssuanceTransaction extends AuthorizationTransaction {
         return this.transactionContext.getDirectoryData();
     }
 
+    /*
     public void reloadData(AccountData accountData, DirectoryData directoryData){
         this.orderDataWrapper.reload();
     }
+
+     */
 
     public OrderData startOrder(OrderRequest orderRequest) throws Exception {
         this.initialOrderRequest = orderRequest;

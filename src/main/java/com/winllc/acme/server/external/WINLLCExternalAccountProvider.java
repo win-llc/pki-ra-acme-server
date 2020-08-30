@@ -46,18 +46,10 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
 
 
     @Override
-    public List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier) {
+    public List<String> getCanIssueToDomainsForExternalAccount(String accountKeyIdentifier) throws Exception {
         String url = baseUrl+"/validation/account/getCanIssueDomains/"+accountKeyIdentifier;
 
-        //todo clean up
-
-        try {
-            return HttpCommandUtil.process(new HttpGet(url), 200, List.class);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return null;
+        return HttpCommandUtil.process(new HttpGet(url), 200, List.class);
     }
 
     @Override

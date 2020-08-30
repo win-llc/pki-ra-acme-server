@@ -11,18 +11,18 @@ import org.springframework.core.task.TaskExecutor;
 import java.util.UUID;
 
 public class TransactionContext {
-    private AccountPersistence accountPersistence;
-    private OrderPersistence orderPersistence;
-    private AuthorizationPersistence authorizationPersistence;
-    private ChallengePersistence challengePersistence;
-    private CertificateAuthorityService certificateAuthorityService;
-    private CertificatePersistence certificatePersistence;
-    private TaskExecutor taskExecutor;
+    private final AccountPersistence accountPersistence;
+    private final OrderPersistence orderPersistence;
+    private final AuthorizationPersistence authorizationPersistence;
+    private final ChallengePersistence challengePersistence;
+    private final CertificateAuthorityService certificateAuthorityService;
+    private final CertificatePersistence certificatePersistence;
+    private final TaskExecutor taskExecutor;
 
     protected UUID transactionId;
-    private AccountData accountData;
-    private DirectoryData directoryData;
-    private CertificateAuthority ca;
+    private final AccountData accountData;
+    private final DirectoryData directoryData;
+    private final CertificateAuthority ca;
 
     public TransactionContext(AccountPersistence accountPersistence, OrderPersistence orderPersistence, AuthorizationPersistence authorizationPersistence,
                               ChallengePersistence challengePersistence, CertificateAuthorityService certificateAuthorityService,

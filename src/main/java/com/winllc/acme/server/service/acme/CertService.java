@@ -229,7 +229,8 @@ public class CertService extends BaseService {
             DirectoryData directoryData = directoryDataService.findByName(accountData.getDirectory());
             ExternalAccountProvider accountProvider = externalAccountProviderService.findByName(directoryData.getExternalAccountProviderName());
 
-            List<String> canIssueToDomains = accountProvider.getCanIssueToDomainsForExternalAccount(accountData.getEabKeyIdentifier());
+            List<String> canIssueToDomains =
+                    accountProvider.getCanIssueToDomainsForExternalAccount(accountData.getEabKeyIdentifier());
 
             boolean allValid = true;
             for(String certDns : dnsListInCert){
