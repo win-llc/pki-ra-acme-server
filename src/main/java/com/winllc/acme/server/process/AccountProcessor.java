@@ -276,7 +276,6 @@ public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     }
 
     //The server SHOULD cancel any pending operations authorized by the account’s key, such as certificate orders
-    //todo move this to order processor
     private void markInProgressAccountObjectsInvalid(AccountData accountData, DirectoryData directoryData) {
         List<OrderData> orderDataList = orderPersistence.findAllByAccountIdEquals(accountData.getId());
 

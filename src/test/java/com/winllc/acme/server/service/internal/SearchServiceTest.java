@@ -52,7 +52,4 @@ public class SearchServiceTest extends AbstractServiceTest {
         .andExpect(content().contentType("application/json"));
     }
 
-    public void searchForCerts() {
-        //todo
-    }
 }

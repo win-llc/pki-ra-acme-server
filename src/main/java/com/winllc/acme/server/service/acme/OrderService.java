@@ -17,6 +17,7 @@ import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.transaction.AcmeTransactionManagement;
 import com.winllc.acme.server.transaction.CertIssuanceTransaction;
+import com.winllc.acme.server.util.NonceUtil;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.logging.log4j.Level;
@@ -42,16 +43,22 @@ public class OrderService extends BaseService {
 
     private static final Logger log = LogManager.getLogger(OrderService.class);
 
-    @Autowired
-    private OrderPersistence orderPersistence;
-    @Autowired
-    private OrderListPersistence orderListPersistence;
-    @Autowired
-    private DirectoryDataService directoryDataService;
-    @Autowired
-    private SecurityValidatorUtil securityValidatorUtil;
-    @Autowired
-    private AcmeTransactionManagement acmeTransactionManagement;
+    private final OrderPersistence orderPersistence;
+    private final OrderListPersistence orderListPersistence;
+    private final DirectoryDataService directoryDataService;
+    private final SecurityValidatorUtil securityValidatorUtil;
+    private final AcmeTransactionManagement acmeTransactionManagement;
+
+    protected OrderService(NonceUtil nonceUtil, OrderPersistence orderPersistence,
+                           OrderListPersistence orderListPersistence, DirectoryDataService directoryDataService,
+                           SecurityValidatorUtil securityValidatorUtil, AcmeTransactionManagement acmeTransactionManagement) {
+        super(nonceUtil);
+        this.orderPersistence = orderPersistence;
+        this.orderListPersistence = orderListPersistence;
+        this.directoryDataService = directoryDataService;
+        this.securityValidatorUtil = securityValidatorUtil;
+        this.acmeTransactionManagement = acmeTransactionManagement;
+    }
 
 
     @RequestMapping(value = "{directory}/new-order", method = RequestMethod.POST, consumes = "application/jose+json")

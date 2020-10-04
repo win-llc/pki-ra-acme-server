@@ -22,6 +22,7 @@ import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.transaction.AcmeTransactionManagement;
+import com.winllc.acme.server.util.NonceUtil;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.commons.lang3.StringUtils;
@@ -52,19 +53,26 @@ public class CertService extends BaseService {
 
     private final Logger log = LogManager.getLogger(CertService.class);
 
-    @Autowired
-    private CertificatePersistence certificatePersistence;
-    @Autowired
-    private DirectoryDataService directoryDataService;
-    @Autowired
-    private SecurityValidatorUtil securityValidatorUtil;
-    @Autowired
-    private CertificateAuthorityService certificateAuthorityService;
-    @Autowired
-    private ExternalAccountProviderService externalAccountProviderService;
+    private final CertificatePersistence certificatePersistence;
+    private final DirectoryDataService directoryDataService;
+    private final SecurityValidatorUtil securityValidatorUtil;
+    private final CertificateAuthorityService certificateAuthorityService;
+    private final ExternalAccountProviderService externalAccountProviderService;
 
-    @Autowired
-    private AcmeTransactionManagement acmeTransactionManagement;
+    private final AcmeTransactionManagement acmeTransactionManagement;
+
+    protected CertService(NonceUtil nonceUtil, CertificatePersistence certificatePersistence,
+                          DirectoryDataService directoryDataService, SecurityValidatorUtil securityValidatorUtil,
+                          CertificateAuthorityService certificateAuthorityService, ExternalAccountProviderService externalAccountProviderService,
+                          AcmeTransactionManagement acmeTransactionManagement) {
+        super(nonceUtil);
+        this.certificatePersistence = certificatePersistence;
+        this.directoryDataService = directoryDataService;
+        this.securityValidatorUtil = securityValidatorUtil;
+        this.certificateAuthorityService = certificateAuthorityService;
+        this.externalAccountProviderService = externalAccountProviderService;
+        this.acmeTransactionManagement = acmeTransactionManagement;
+    }
 
     //Section 7.4.2
     @RequestMapping(value = "{directory}/cert/{id}", method = RequestMethod.POST)

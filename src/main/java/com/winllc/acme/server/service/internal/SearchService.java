@@ -18,10 +18,13 @@ import java.util.stream.Collectors;
 @RequestMapping("/search")
 public class SearchService {
 
-    @Autowired
-    private AccountPersistence accountPersistence;
-    @Autowired
-    private CertificatePersistence certificatePersistence;
+    private final AccountPersistence accountPersistence;
+    private final CertificatePersistence certificatePersistence;
+
+    public SearchService(AccountPersistence accountPersistence, CertificatePersistence certificatePersistence) {
+        this.accountPersistence = accountPersistence;
+        this.certificatePersistence = certificatePersistence;
+    }
 
     @GetMapping("/findCertsAssociatedWithExternalAccount/{eabKeyIdentifier}")
     public List<String> findCertsAssociatedWithExternalAccount(@PathVariable String eabKeyIdentifier){
@@ -44,12 +47,4 @@ public class SearchService {
         return allCerts;
     }
 
-    @PostMapping("/search/certs")
-    public List<CertData> searchForCerts(CertSearchParam certSearchParam){
-        //todo
-
-        String query = certSearchParam.buildQuery(NoSqlCertSearchConverter.build());
-
-        return null;
-    }
 }

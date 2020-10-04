@@ -8,6 +8,7 @@ import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.service.acme.BaseService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
+import com.winllc.acme.server.util.NonceUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +23,12 @@ public class GlobalExceptionHandler extends BaseService {
 
     private static final Logger log = LogManager.getLogger(GlobalExceptionHandler.class);
 
-    @Autowired
-    private DirectoryDataService directoryDataService;
+    private final DirectoryDataService directoryDataService;
+
+    public GlobalExceptionHandler(DirectoryDataService directoryDataService, NonceUtil nonceUtil) {
+        super(nonceUtil);
+        this.directoryDataService = directoryDataService;
+    }
 
     @ExceptionHandler(value = { Exception.class })
     protected ResponseEntity<?> handleException(Exception ex, HttpServletRequest request) throws Exception {

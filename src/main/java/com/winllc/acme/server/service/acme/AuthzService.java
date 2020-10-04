@@ -20,6 +20,7 @@ import com.winllc.acme.server.service.internal.CertificateAuthorityService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.transaction.*;
+import com.winllc.acme.server.util.NonceUtil;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.commons.lang3.StringUtils;
@@ -45,21 +46,28 @@ public class AuthzService extends BaseService {
 
     private static final Logger log = LogManager.getLogger(AuthzService.class);
 
-    @Autowired
-    private AuthorizationPersistence authorizationPersistence;
-    @Autowired
-    private ChallengePersistence challengePersistence;
-    @Autowired
-    private DirectoryDataService directoryDataService;
-    @Autowired
-    private SecurityValidatorUtil securityValidatorUtil;
-    @Autowired
-    private CertificateAuthorityService certificateAuthorityService;
-    @Autowired
-    private ExternalAccountProviderService externalAccountProviderService;
+    private final AuthorizationPersistence authorizationPersistence;
+    private final ChallengePersistence challengePersistence;
+    private final DirectoryDataService directoryDataService;
+    private final SecurityValidatorUtil securityValidatorUtil;
+    private final CertificateAuthorityService certificateAuthorityService;
+    private final ExternalAccountProviderService externalAccountProviderService;
 
-    @Autowired
-    private AcmeTransactionManagement acmeTransactionManagement;
+    private final AcmeTransactionManagement acmeTransactionManagement;
+
+    protected AuthzService(NonceUtil nonceUtil, AuthorizationPersistence authorizationPersistence,
+                           ChallengePersistence challengePersistence, DirectoryDataService directoryDataService,
+                           SecurityValidatorUtil securityValidatorUtil, CertificateAuthorityService certificateAuthorityService,
+                           ExternalAccountProviderService externalAccountProviderService, AcmeTransactionManagement acmeTransactionManagement) {
+        super(nonceUtil);
+        this.authorizationPersistence = authorizationPersistence;
+        this.challengePersistence = challengePersistence;
+        this.directoryDataService = directoryDataService;
+        this.securityValidatorUtil = securityValidatorUtil;
+        this.certificateAuthorityService = certificateAuthorityService;
+        this.externalAccountProviderService = externalAccountProviderService;
+        this.acmeTransactionManagement = acmeTransactionManagement;
+    }
 
     @RequestMapping(value = "{directory}/new-authz", method = RequestMethod.POST, consumes = "application/jose+json")
     public ResponseEntity<?> newAuthz(HttpServletRequest request, @PathVariable String directory) {
@@ -159,12 +167,10 @@ public class AuthzService extends BaseService {
                     log.info("Returning current authorization: " + new ObjectMapper().writeValueAsString(authorization));
                     if (authorization.getStatus().equals(StatusType.PENDING.toString())) {
                         return buildBaseResponseEntityWithRetryAfter(200, transaction.getTransactionContext().getDirectoryData(), 20)
-                                //.header("Link", "TODO")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .body(authorization);
                     } else {
                         return buildBaseResponseEntity(200, transaction.getTransactionContext().getDirectoryData())
-                                //.header("Link", "TODO")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .body(authorization);
                     }

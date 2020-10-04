@@ -18,8 +18,13 @@ import javax.servlet.http.HttpServletRequest;
 @RestController
 public class NonceService {
 
-    @Autowired
-    private DirectoryDataService directoryDataService;
+    private final DirectoryDataService directoryDataService;
+    private final NonceUtil nonceUtil;
+
+    public NonceService(DirectoryDataService directoryDataService, NonceUtil nonceUtil) {
+        this.directoryDataService = directoryDataService;
+        this.nonceUtil = nonceUtil;
+    }
 
     @RequestMapping(value = "{directory}/new-nonce", method = RequestMethod.HEAD)
     public ResponseEntity<?> newNonceHead(HttpServletRequest request, @PathVariable String directory)
@@ -40,7 +45,7 @@ public class NonceService {
     }
 
     private HttpHeaders generateHeaders(DirectoryData directoryData){
-        String nonce = NonceUtil.generateNonce();
+        String nonce = nonceUtil.generateNonce();
         HttpHeaders headers = new HttpHeaders();
         headers.add("Replay-Nonce", nonce);
         headers.add("Cache-Control", "no-store");

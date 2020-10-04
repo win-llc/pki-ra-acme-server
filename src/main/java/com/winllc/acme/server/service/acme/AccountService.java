@@ -15,6 +15,7 @@ import com.winllc.acme.common.model.requestresponse.KeyChangeRequest;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.process.AccountProcessor;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
+import com.winllc.acme.server.util.NonceUtil;
 import com.winllc.acme.server.util.SecurityValidatorUtil;
 import com.winllc.acme.server.util.PayloadAndAccount;
 import org.apache.commons.lang3.StringUtils;
@@ -39,14 +40,20 @@ public class AccountService extends BaseService {
 
     private static final Logger log = LogManager.getLogger(AccountService.class);
 
-    @Autowired
-    private AccountPersistence accountPersistence;
-    @Autowired
-    private AccountProcessor accountProcessor;
-    @Autowired
-    private DirectoryDataService directoryDataService;
-    @Autowired
-    private SecurityValidatorUtil securityValidatorUtil;
+    private final AccountPersistence accountPersistence;
+    private final AccountProcessor accountProcessor;
+    private final DirectoryDataService directoryDataService;
+    private final SecurityValidatorUtil securityValidatorUtil;
+
+    protected AccountService(NonceUtil nonceUtil, AccountPersistence accountPersistence,
+                             AccountProcessor accountProcessor, DirectoryDataService directoryDataService,
+                             SecurityValidatorUtil securityValidatorUtil) {
+        super(nonceUtil);
+        this.accountPersistence = accountPersistence;
+        this.accountProcessor = accountProcessor;
+        this.directoryDataService = directoryDataService;
+        this.securityValidatorUtil = securityValidatorUtil;
+    }
 
     //Section 7.3
     @RequestMapping(value = "{directory}/new-account", method = RequestMethod.POST, consumes = "application/jose+json")

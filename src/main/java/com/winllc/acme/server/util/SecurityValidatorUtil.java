@@ -37,10 +37,15 @@ public class SecurityValidatorUtil {
 
     private static final Logger log = LogManager.getLogger(SecurityValidatorUtil.class);
 
-    @Autowired
-    private DirectoryDataService directoryDataService;
-    @Autowired
-    private AccountPersistence accountPersistence;
+    private final DirectoryDataService directoryDataService;
+    private final AccountPersistence accountPersistence;
+    private final NonceUtil nonceUtil;
+
+    public SecurityValidatorUtil(DirectoryDataService directoryDataService, AccountPersistence accountPersistence, NonceUtil nonceUtil) {
+        this.directoryDataService = directoryDataService;
+        this.accountPersistence = accountPersistence;
+        this.nonceUtil = nonceUtil;
+    }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
@@ -135,8 +140,8 @@ public class SecurityValidatorUtil {
 
                 String nonce = jwsObject.getNonce();
                 //Verify nonce has not been used
-                if (!NonceUtil.checkNonceUsed(nonce)) {
-                    NonceUtil.markNonceUsed(nonce);
+                if (!nonceUtil.checkNonceUsed(nonce)) {
+                    nonceUtil.markNonceUsed(nonce);
                 } else {
                     //NONCE has been used before, possible replay attack
                     //Section 6.5.2

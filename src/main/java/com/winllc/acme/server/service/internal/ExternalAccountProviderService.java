@@ -19,10 +19,13 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
 
     private static final Logger log = LogManager.getLogger(ExternalAccountProviderService.class);
 
-    @Autowired
-    private ExternalAccountProviderSettingsPersistence persistence;
+    private final ExternalAccountProviderSettingsPersistence persistence;
 
     private Map<String, ExternalAccountProvider> externalAccountProviderMap;
+
+    public ExternalAccountProviderService(ExternalAccountProviderSettingsPersistence persistence) {
+        this.persistence = persistence;
+    }
 
     @PostConstruct
     private void postConstruct(){

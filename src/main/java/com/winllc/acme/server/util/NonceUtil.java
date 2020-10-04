@@ -1,33 +1,40 @@
 package com.winllc.acme.server.util;
 
 import org.apache.commons.codec.binary.Base64;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.stereotype.Component;
 
-import java.io.UnsupportedEncodingException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+@Component
 public class NonceUtil {
 
-    public static List<String> usedNonces = new ArrayList<>();
-    public static List<String> unUsedNonces = new ArrayList<>();
+    private final CacheManager cacheManager;
 
-    public static String generateNonce() {
+    public NonceUtil(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
+    public String generateNonce() {
         String dateTimeString = Long.toString(new Date().getTime());
         byte[] nonceByte = dateTimeString.getBytes();
         String nonce = Base64.encodeBase64String(nonceByte);
-        unUsedNonces.add(nonce);
+
+        cacheManager.getCache("unusedNonce").put(nonce, nonce);
+
         return nonce;
     }
 
-    public static void markNonceUsed(String nonce){
-        usedNonces.add(nonce);
+    public void markNonceUsed(String nonce){
+        cacheManager.getCache("usedNonce").put(nonce, nonce);
     }
 
-    public static boolean checkNonceUsed(String nonce){
-        return usedNonces.contains(nonce);
+    public boolean checkNonceUsed(String nonce){
+        Cache.ValueWrapper usedNonce = cacheManager.getCache("usedNonce").get(nonce);
+        return usedNonce != null;
     }
 
 }

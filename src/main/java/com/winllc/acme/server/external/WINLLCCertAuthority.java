@@ -32,10 +32,6 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     private static final Logger log = LogManager.getLogger(WINLLCCertAuthority.class);
 
-    private final String issueCertPath = "/ca/issueCertificate";
-    private final String revokeCertPath = "/ca/revokeCertificate";
-    private final String trustChainPath = "/ca/trustChain/";
-    private final String certDetailsPath = "/ca/certDetails/";
     private final String validationRulesPath = "/ca/validationRules/";
 
     private ExternalAccountProviderService externalAccountProviderService;
@@ -51,7 +47,8 @@ public class WINLLCCertAuthority extends AbstractCertAuthority {
 
     @Override
     public boolean revokeCertificate(X509Certificate certificate, int reason) throws AcmeServerException {
-        CertAuthorityConnection certAuthorityConnection = new CertAuthorityConnection(settings.getBaseUrl(), settings.getMapsToCaConnectionName());
+        CertAuthorityConnection certAuthorityConnection
+                = new CertAuthorityConnection(settings.getBaseUrl(), settings.getMapsToCaConnectionName());
 
         return certAuthorityConnection.revokeCertificate(certificate, reason);
     }
