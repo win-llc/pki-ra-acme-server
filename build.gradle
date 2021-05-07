@@ -50,6 +50,8 @@ dependencies {
     //implementation group: 'org.springframework.boot', name: 'spring-boot-starter-data-mongodb'
     // https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api
     implementation group: 'javax.servlet', name: 'javax.servlet-api', version: '4.0.1'
+    
+    compile 'com.winllc.ra.client:ra-client:1.0.0-20201212.153007-6'
 
     // https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine
     compile group: 'com.github.ben-manes.caffeine', name: 'caffeine', version: '2.8.5'
