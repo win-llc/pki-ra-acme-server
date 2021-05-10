@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.SimpleMongoDbFactory;
 
 //@Configuration
-//@PropertySource(value = "classpath:application.properties")
+//@PropertySource(value = "classpath:application-local.properties")
 public class MongoConfig {
 
     @Autowired

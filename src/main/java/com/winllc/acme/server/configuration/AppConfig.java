@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 @SpringBootApplication
 @ComponentScan("com.winllc.acme.server")
 @EnableMongoRepositories(basePackages = "com.winllc.acme.server.persistence")
-@PropertySource(value = "classpath:application.properties")
+//@PropertySource(value = "classpath:application-local.properties")
 @EnableCaching
 public class AppConfig {
 
