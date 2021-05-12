@@ -34,8 +34,8 @@ import java.util.concurrent.TimeUnit;
 @EnableCaching
 public class AppConfig {
 
-    @Value("${spring.data.mongodb.uri}")
-    private String uri;
+    //@Value("${spring.data.mongodb.uri}")
+    // String uri;
 
     public static void main(String[] args){
         SpringApplication.run(AppConfig.class, args);
@@ -51,6 +51,7 @@ public class AppConfig {
         return poolTaskExecutor;
     }
 
+    /*
     @Bean
     public MongoDbFactory mongoDbFactory() {
         return new SimpleMongoDbFactory(new MongoClientURI(uri));
@@ -63,6 +64,8 @@ public class AppConfig {
         return mongoTemplate;
 
     }
+
+     */
 
     @Bean
     public Caffeine caffeineConfig() {
