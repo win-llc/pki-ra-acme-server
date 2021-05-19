@@ -8,11 +8,13 @@ import javax.annotation.PostConstruct;
 @Component
 public class Application {
 
-    public static String baseURL = "http://192.168.1.4:8181/";
-
-    //todo not working
     @Value("${app.baseUrl}")
-    public static void setBaseURL(String baseURL) {
-        Application.baseURL = baseURL;
+    private String tempBaseUrl;
+
+    public static String baseURL;
+
+    @Value("${app.baseUrl}")
+    public void setTempBaseUrl(String tempBaseUrl) {
+        Application.baseURL = tempBaseUrl;
     }
 }
