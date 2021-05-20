@@ -34,21 +34,12 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
     private void postConstruct(){
         externalAccountProviderMap = new ConcurrentHashMap<>();
 
-        for(ExternalAccountProviderSettings providerSettings : persistence.findAll()){
+        for(ExternalAccountProviderSettings providerSettings : findAllSettings()){
             try {
                 load(providerSettings);
             }catch (Exception e){
                 log.error("Coulc not load External Account Provider: "+providerSettings, e);
             }
-        }
-
-        //Load a default account provider if available
-        if(Objects.nonNull(defaultProperties.getBaseUrl()) && Objects.nonNull(defaultProperties.getName())){
-            ExternalAccountProviderSettings settings = new ExternalAccountProviderSettings();
-            settings.setBaseUrl(defaultProperties.getBaseUrl());
-            settings.setName(defaultProperties.getName());
-
-            load(settings);
         }
     }
 
@@ -99,7 +90,18 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
 
     @GetMapping("/findAllSettings")
     public List<ExternalAccountProviderSettings> findAllSettings() {
-        return new ArrayList<>(persistence.findAll());
+        List<ExternalAccountProviderSettings> list = new ArrayList<>(persistence.findAll());
+
+        //Load a default account provider if available
+        if(Objects.nonNull(defaultProperties.getBaseUrl()) && Objects.nonNull(defaultProperties.getName())){
+            ExternalAccountProviderSettings settings = new ExternalAccountProviderSettings();
+            settings.setBaseUrl(defaultProperties.getBaseUrl());
+            settings.setName(defaultProperties.getName());
+
+            list.add(settings);
+        }
+
+        return list;
     }
 
     @GetMapping("/findAll")
