@@ -20,14 +20,14 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
 
     private static final Logger log = LogManager.getLogger(ExternalAccountProviderService.class);
 
-    @Autowired
-    private AccountProviderDefaultProperties defaultProperties;
+    private final AccountProviderDefaultProperties defaultProperties;
     private final ExternalAccountProviderSettingsPersistence persistence;
 
     private Map<String, ExternalAccountProvider> externalAccountProviderMap;
 
-    public ExternalAccountProviderService(ExternalAccountProviderSettingsPersistence persistence) {
+    public ExternalAccountProviderService(ExternalAccountProviderSettingsPersistence persistence, AccountProviderDefaultProperties defaultProperties) {
         this.persistence = persistence;
+        this.defaultProperties = defaultProperties;
     }
 
     @PostConstruct
@@ -71,7 +71,17 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
 
     @GetMapping("/findSettingsByName/{name}")
     public ExternalAccountProviderSettings findSettingsByName(@PathVariable String name) {
-        return persistence.findByName(name);
+        ExternalAccountProviderSettings settings = persistence.findByName(name);
+
+        if(settings == null){
+            Optional<ExternalAccountProviderSettings> defaultOptional = getDefaultProvider();
+            if(defaultOptional.isPresent()){
+                ExternalAccountProviderSettings temp = defaultOptional.get();
+                if(temp.getName().equalsIgnoreCase(name)) settings = temp;
+            }
+        }
+
+        return settings;
     }
 
     @GetMapping("/findSettingsById/{id}")
@@ -92,14 +102,7 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
     public List<ExternalAccountProviderSettings> findAllSettings() {
         List<ExternalAccountProviderSettings> list = new ArrayList<>(persistence.findAll());
 
-        //Load a default account provider if available
-        if(Objects.nonNull(defaultProperties.getBaseUrl()) && Objects.nonNull(defaultProperties.getName())){
-            ExternalAccountProviderSettings settings = new ExternalAccountProviderSettings();
-            settings.setBaseUrl(defaultProperties.getBaseUrl());
-            settings.setName(defaultProperties.getName());
-
-            list.add(settings);
-        }
+        getDefaultProvider().ifPresent(p -> list.add(p));
 
         return list;
     }
@@ -107,5 +110,17 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
     @GetMapping("/findAll")
     public List<ExternalAccountProvider> findAll() {
         return new ArrayList<>(externalAccountProviderMap.values());
+    }
+
+    private Optional<ExternalAccountProviderSettings> getDefaultProvider(){
+        if(Objects.nonNull(defaultProperties.getBaseUrl()) && Objects.nonNull(defaultProperties.getName())){
+            ExternalAccountProviderSettings settings = new ExternalAccountProviderSettings();
+            settings.setBaseUrl(defaultProperties.getBaseUrl());
+            settings.setName(defaultProperties.getName());
+
+            return Optional.of(settings);
+        }else{
+            return Optional.empty();
+        }
     }
 }
