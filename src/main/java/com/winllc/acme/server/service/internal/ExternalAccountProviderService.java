@@ -1,6 +1,7 @@
 package com.winllc.acme.server.service.internal;
 
 import com.winllc.acme.common.ExternalAccountProviderSettings;
+import com.winllc.acme.server.configuration.AccountProviderDefaultProperties;
 import com.winllc.acme.server.external.ExternalAccountProvider;
 import com.winllc.acme.server.external.WINLLCExternalAccountProvider;
 import com.winllc.acme.server.persistence.internal.ExternalAccountProviderSettingsPersistence;
@@ -19,6 +20,8 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
 
     private static final Logger log = LogManager.getLogger(ExternalAccountProviderService.class);
 
+    @Autowired
+    private AccountProviderDefaultProperties defaultProperties;
     private final ExternalAccountProviderSettingsPersistence persistence;
 
     private Map<String, ExternalAccountProvider> externalAccountProviderMap;
@@ -37,6 +40,15 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
             }catch (Exception e){
                 log.error("Coulc not load External Account Provider: "+providerSettings, e);
             }
+        }
+
+        //Load a default account provider if available
+        if(Objects.nonNull(defaultProperties.getBaseUrl()) && Objects.nonNull(defaultProperties.getName())){
+            ExternalAccountProviderSettings settings = new ExternalAccountProviderSettings();
+            settings.setBaseUrl(defaultProperties.getBaseUrl());
+            settings.setName(defaultProperties.getName());
+
+            load(settings);
         }
     }
 

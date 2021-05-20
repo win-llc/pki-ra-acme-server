@@ -26,15 +26,14 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
     private static final Logger log = LogManager.getLogger(WINLLCExternalAccountProvider.class);
 
     private String name;
-    private String linkedDirectoryName;
     private String baseUrl;
-    private String accountVerificationUrl;
-    private String accountValidationRulesUrl;
+    private String accountVerificationUrl = "/validation/account/verify";
+    private String accountValidationRulesUrl = "/validation/rules";
 
     public WINLLCExternalAccountProvider(ExternalAccountProviderSettings settings){
         this.name = settings.getName();
-        this.accountVerificationUrl = settings.getAccountVerificationUrl();
-        this.accountValidationRulesUrl = settings.getAccountValidationRulesUrl();
+        //this.accountVerificationUrl = settings.getAccountVerificationUrl();
+        //this.accountValidationRulesUrl = settings.getAccountValidationRulesUrl();
         this.baseUrl = settings.getBaseUrl();
     }
 
@@ -54,12 +53,12 @@ public class WINLLCExternalAccountProvider implements ExternalAccountProvider {
 
     @Override
     public String getAccountVerificationUrl() {
-        return accountVerificationUrl;
+        return baseUrl+accountVerificationUrl;
     }
 
     @Override
     public String getAccountValidationRulesUrl() {
-        return accountValidationRulesUrl;
+        return baseUrl+accountValidationRulesUrl;
     }
 
     @Override
