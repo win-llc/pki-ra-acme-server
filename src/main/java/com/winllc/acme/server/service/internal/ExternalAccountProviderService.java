@@ -51,7 +51,19 @@ public class ExternalAccountProviderService implements SettingsService<ExternalA
 
     @PostMapping("/save")
     public ExternalAccountProviderSettings save(@RequestBody ExternalAccountProviderSettings settings){
-        settings = persistence.save(settings);
+
+        Optional<ExternalAccountProviderSettings> defaultProvider = getDefaultProvider();
+
+        if(defaultProvider.isPresent()){
+            ExternalAccountProviderSettings defaultSettings = defaultProvider.get();
+
+            //Ignore if update requested for default settings
+            if(!defaultSettings.getName().equalsIgnoreCase(settings.getName())){
+                settings = persistence.save(settings);
+            }
+        }else{
+            settings = persistence.save(settings);
+        }
 
         load(settings);
 
