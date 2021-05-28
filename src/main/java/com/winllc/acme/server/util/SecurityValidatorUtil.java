@@ -1,7 +1,10 @@
 package com.winllc.acme.server.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.*;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
@@ -9,27 +12,24 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.common.model.acme.Account;
-import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.exceptions.MalformedRequest;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.AcmeURL;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.exceptions.MalformedRequest;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import net.minidev.json.JSONObject;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.*;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component

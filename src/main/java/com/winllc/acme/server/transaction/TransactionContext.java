@@ -1,6 +1,5 @@
 package com.winllc.acme.server.transaction;
 
-import com.winllc.acme.common.model.acme.Account;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.external.CertificateAuthority;

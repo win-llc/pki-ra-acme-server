@@ -1,16 +1,13 @@
 package com.winllc.acme.server.transaction;
 
-import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.common.contants.StatusType;
 import com.winllc.acme.common.model.data.*;
 import com.winllc.acme.common.model.requestresponse.OrderRequest;
 import com.winllc.acme.server.Application;
-import com.winllc.acme.server.challenge.HttpChallengeRunner;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class CertIssuanceTransaction extends AuthorizationTransaction {

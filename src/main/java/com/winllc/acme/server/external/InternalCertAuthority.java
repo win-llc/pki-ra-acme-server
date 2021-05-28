@@ -2,11 +2,9 @@ package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
 import com.winllc.acme.common.contants.IdentifierType;
-import com.winllc.acme.common.model.acme.Directory;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;
-import com.winllc.acme.common.model.data.OrderData;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.*;
@@ -32,7 +30,8 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.util.encoders.Base64;
 import org.bouncycastle.x509.extension.AuthorityKeyIdentifierStructure;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.math.BigInteger;
 import java.security.KeyStore;
 import java.security.PrivateKey;

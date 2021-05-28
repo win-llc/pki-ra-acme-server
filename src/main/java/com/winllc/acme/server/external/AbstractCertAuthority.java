@@ -5,11 +5,10 @@ import com.winllc.acme.common.CertIssuanceValidationRule;
 import com.winllc.acme.common.CertificateAuthoritySettings;
 import com.winllc.acme.common.contants.ChallengeType;
 import com.winllc.acme.common.contants.ProblemType;
-import com.winllc.acme.common.model.acme.Directory;
-import com.winllc.acme.common.model.data.DirectoryData;
-import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
+import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.server.exceptions.AcmeServerException;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;

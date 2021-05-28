@@ -1,6 +1,5 @@
 package com.winllc.acme.server.service.acme;
 
-import com.winllc.acme.common.model.AcmeURL;
 import com.winllc.acme.common.model.acme.Directory;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.service.internal.DirectoryDataService;

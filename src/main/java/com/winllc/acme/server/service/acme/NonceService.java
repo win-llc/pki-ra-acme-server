@@ -1,11 +1,9 @@
 package com.winllc.acme.server.service.acme;
 
-import com.winllc.acme.common.model.AcmeURL;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
 import com.winllc.acme.server.util.NonceUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;

@@ -2,18 +2,15 @@ package com.winllc.acme.server.transaction;
 
 import com.winllc.acme.common.contants.ProblemType;
 import com.winllc.acme.common.contants.StatusType;
-import com.winllc.acme.common.model.acme.Account;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.acme.Order;
 import com.winllc.acme.common.model.acme.ProblemDetails;
-import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.AuthorizationData;
 import com.winllc.acme.common.model.data.OrderData;
 import com.winllc.acme.common.model.requestresponse.OrderRequest;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.exceptions.AcmeServerException;
-import com.winllc.acme.server.util.SecurityValidatorUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

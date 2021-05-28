@@ -1,17 +1,13 @@
 package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
-import com.winllc.acme.common.model.data.DirectoryData;
-import com.winllc.acme.common.ra.RACertificateIssueRequest;
-import com.winllc.acme.common.ra.RACertificateRevokeRequest;
-import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.common.contants.ProblemType;
-import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
-import com.winllc.acme.common.model.data.OrderData;
-import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
+import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.util.HttpCommandUtil;
+import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.ra.client.CertAuthorityConnection;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
@@ -24,9 +20,6 @@ import org.springframework.util.CollectionUtils;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class WINLLCCertAuthority extends AbstractCertAuthority {
 

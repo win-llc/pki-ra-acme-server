@@ -1,12 +1,8 @@
 package com.winllc.acme.server.transaction;
 
 import com.winllc.acme.common.contants.ChallengeType;
-import com.winllc.acme.common.model.acme.Challenge;
 import com.winllc.acme.common.model.data.AuthorizationData;
-import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.server.challenge.HttpChallengeRunner;
-
-import java.util.Optional;
 
 public abstract class AuthorizationTransaction extends AbstractTransaction {
     AuthorizationTransaction(TransactionContext transactionContext) {

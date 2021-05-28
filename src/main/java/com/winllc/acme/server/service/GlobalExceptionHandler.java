@@ -1,17 +1,15 @@
 package com.winllc.acme.server.service;
 
 import com.winllc.acme.common.contants.ProblemType;
-import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.common.model.AcmeURL;
 import com.winllc.acme.common.model.acme.ProblemDetails;
 import com.winllc.acme.common.model.data.DirectoryData;
+import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.service.acme.BaseService;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
-import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
 import com.winllc.acme.server.util.NonceUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
