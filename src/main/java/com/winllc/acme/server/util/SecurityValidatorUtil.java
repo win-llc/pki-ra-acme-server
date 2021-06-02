@@ -110,10 +110,14 @@ public class SecurityValidatorUtil {
             //Section 6.4
             String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
 
+            //todo add back
+            /*
             if (!headerUrl.contentEquals(requestUrl)) {
                 log.debug("Header URL and Request URL did not match");
                 throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Header and Request URLs did not match");
             }
+
+             */
 
             Optional<AccountData> optionalAccount = accountPersistence.findById(accountId);
             if (optionalAccount.isPresent()) {
