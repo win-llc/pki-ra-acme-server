@@ -24,10 +24,13 @@ import net.minidev.json.JSONObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.ParseException;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -40,6 +43,9 @@ public class SecurityValidatorUtil {
     private final DirectoryDataService directoryDataService;
     private final AccountPersistence accountPersistence;
     private final NonceUtil nonceUtil;
+
+    @Value("${reverseproxy.basepath}")
+    private String reverseProxyBasePath;
 
     public SecurityValidatorUtil(DirectoryDataService directoryDataService, AccountPersistence accountPersistence, NonceUtil nonceUtil) {
         this.directoryDataService = directoryDataService;
@@ -110,9 +116,22 @@ public class SecurityValidatorUtil {
             //Section 6.4
             String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
 
-            if (!headerUrl.contentEquals(requestUrl)) {
-                log.info("Header URL and Request URL did not match, HEADER: "+headerUrl + " REQUEST: "+requestUrl);
-                throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Header and Request URLs did not match");
+            try {
+                URL reqUrl = new URL(requestUrl);
+                URL headUrl = new URL(headerUrl);
+
+                if(StringUtils.isNotBlank(reverseProxyBasePath)){
+                    reqUrl = new URL(reqUrl.getProtocol(), reqUrl.getHost(), reqUrl.getPort(), reverseProxyBasePath+reqUrl.getPath());
+                }
+
+                if(!headUrl.equals(reqUrl)){
+                    log.info("Header URL and Request URL did not match, HEADER: "+headUrl + " REQUEST: "+reqUrl);
+                    throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Header and Request URLs did not match");
+                }
+
+            } catch (MalformedURLException e) {
+                log.error("Bad URL", e);
+                throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Invalid URL");
             }
 
             Optional<AccountData> optionalAccount = accountPersistence.findById(accountId);
