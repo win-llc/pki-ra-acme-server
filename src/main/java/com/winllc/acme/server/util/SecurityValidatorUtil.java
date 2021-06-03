@@ -73,13 +73,13 @@ public class SecurityValidatorUtil {
         }
 
 
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest.getRequestURL().toString(), kid, clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, kid, clazz);
     }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(HttpServletRequest httpServletRequest,
                                                                                 String accountId, Class<T> clazz) throws AcmeServerException {
         AcmeJWSObject jwsObject = getJWSObjectFromHttpRequest(httpServletRequest);
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest.getRequestURL().toString(), accountId, clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, accountId, clazz);
     }
 
     public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
@@ -98,11 +98,20 @@ public class SecurityValidatorUtil {
             }
         }
 
-        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest.getRequestURL().toString(), accountId, clazz);
+        return verifyJWSAndReturnPayloadForExistingAccount(jwsObject, httpServletRequest, accountId, clazz);
     }
 
-    public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, String requestUrl,
+    public <T> PayloadAndAccount<T> verifyJWSAndReturnPayloadForExistingAccount(AcmeJWSObject jwsObject, HttpServletRequest httpServletRequest,
                                                                                 String accountId, Class<T> clazz) throws AcmeServerException {
+        String requestUrl = httpServletRequest.getRequestURL().toString();
+
+        //Handle reverse proxy protocol forwarding
+        String proto = httpServletRequest.getProtocol();
+        String forwardedProto = httpServletRequest.getHeader("X-Forwarded-Proto");
+        if(forwardedProto != null){
+            proto = forwardedProto;
+        }
+
         //Section 6.2
         if (!jwsObject.hasValidHeaderFields()) {
             log.info("Invalid header field found");
@@ -117,7 +126,8 @@ public class SecurityValidatorUtil {
             String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
 
             try {
-                URL reqUrl = new URL(requestUrl);
+                URL tempReqUrl = new URL(requestUrl);
+                URL reqUrl = new URL(proto, tempReqUrl.getHost(), tempReqUrl.getPort(), tempReqUrl.getPath());
                 URL headUrl = new URL(headerUrl);
 
                 if(StringUtils.isNotBlank(reverseProxyBasePath)){
