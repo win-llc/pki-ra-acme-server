@@ -111,7 +111,7 @@ public class SecurityValidatorUtil {
             String headerUrl = jwsObject.getHeaderAcmeUrl().getUrl();
 
             if (!headerUrl.contentEquals(requestUrl)) {
-                log.debug("Header URL and Request URL did not match");
+                log.debug("Header URL and Request URL did not match, HEADER: "+headerUrl + " REQUEST: "+requestUrl);
                 throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Header and Request URLs did not match");
             }
 
