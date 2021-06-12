@@ -106,7 +106,7 @@ public class SecurityValidatorUtil {
         String requestUrl = httpServletRequest.getRequestURL().toString();
 
         //Handle reverse proxy protocol forwarding
-        String proto = httpServletRequest.getProtocol();
+        String proto = httpServletRequest.isSecure() ? "https" : "http";
         String forwardedProto = httpServletRequest.getHeader("X-Forwarded-Proto");
         if(forwardedProto != null){
             proto = forwardedProto;
