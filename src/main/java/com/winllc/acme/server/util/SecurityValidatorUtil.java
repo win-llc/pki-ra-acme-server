@@ -192,8 +192,8 @@ public class SecurityValidatorUtil {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             if (StringUtils.isNotBlank(jwsObject.getPayload().toString())) {
-                JSONObject jsonObject = jwsObject.getPayload().toJSONObject();
-                return objectMapper.readValue(jsonObject.toJSONString(), clazz);
+                //JSONObject jsonObject = jwsObject.getPayload().toJSONObject();
+                return objectMapper.readValue(jwsObject.getPayload().toString(), clazz);
             } else {
                 return (T) "";
             }

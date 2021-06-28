@@ -15,8 +15,6 @@ import com.winllc.acme.server.MockCertificateAuthority;
 import com.winllc.acme.server.MockUtils;
 import com.winllc.acme.server.configuration.AppConfig;
 import com.winllc.acme.server.persistence.AccountPersistence;
-import com.winllc.acme.server.persistence.AuthorizationPersistence;
-import com.winllc.acme.server.persistence.ChallengePersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
 import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.CertificateAuthorityService;
@@ -37,13 +35,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;

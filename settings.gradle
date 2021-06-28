@@ -1,4 +1,11 @@
-rootProject.name = 'ACME Server'
+pluginManagement {
+    plugins {
+        id 'org.springframework.boot' version "2.5.0"
+        id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    }
+}
+
+rootProject.name = 'winllc-acme-server'
 
 include(":acme-common")
 project(":acme-common").projectDir = file("../acme-common")

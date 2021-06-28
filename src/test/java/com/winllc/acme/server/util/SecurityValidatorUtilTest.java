@@ -18,8 +18,6 @@ import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.service.AbstractServiceTest;
 import com.winllc.acme.server.service.internal.DirectoryDataService;
-import org.junit.Before;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +30,6 @@ import java.text.ParseException;
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
