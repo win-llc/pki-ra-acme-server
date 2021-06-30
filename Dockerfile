@@ -1,4 +1,4 @@
-FROM openjdk:14-jdk-alpine
+FROM openjdk:11.0.11-jdk-slim
 ENV ENV=dev
 VOLUME /tmp
 COPY build/libs/winllc-acme-server-1.0-SNAPSHOT.jar app.jar

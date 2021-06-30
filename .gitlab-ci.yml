@@ -13,13 +13,13 @@ stages:
   - package
 
 build:
-  image: gradle:7.1-jdk16
+  image: gradle:7.1-jdk11
   stage: build
   script:
     - gradle -x test build
   artifacts:
     paths:
-      - build/libs/*.jar
+      - build/libs/winllc-acme-server-1.0-SNAPSHOT.jar
 
 package:
   stage: package
