@@ -47,6 +47,9 @@ public class SecurityValidatorUtil {
     @Value("${reverseproxy.basepath}")
     private String reverseProxyBasePath;
 
+    @Value("${reverseproxy.url}")
+    private String reverseProxyUrl;
+
     public SecurityValidatorUtil(DirectoryDataService directoryDataService, AccountPersistence accountPersistence, NonceUtil nonceUtil) {
         this.directoryDataService = directoryDataService;
         this.accountPersistence = accountPersistence;
@@ -132,6 +135,11 @@ public class SecurityValidatorUtil {
 
                 if(StringUtils.isNotBlank(reverseProxyBasePath)){
                     reqUrl = new URL(reqUrl.getProtocol(), reqUrl.getHost(), reqUrl.getPort(), reverseProxyBasePath+reqUrl.getPath());
+                }
+
+                if(StringUtils.isNotBlank(reverseProxyUrl)){
+                    URL rpUrl = new URL(reverseProxyUrl);
+                    reqUrl = new URL(rpUrl.getProtocol(), rpUrl.getHost(), rpUrl.getPort(), reqUrl.getPath());
                 }
 
                 if(!headUrl.equals(reqUrl)){
