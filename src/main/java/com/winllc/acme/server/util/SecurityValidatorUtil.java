@@ -252,7 +252,7 @@ public class SecurityValidatorUtil {
         JWSAlgorithm jwsAlgorithm = jwsObject.getHeader().getAlgorithm();
 
         if (JWSAlgorithm.Family.EC.contains(jwsAlgorithm)) {
-            return new ECDSAVerifier((ECKey) jwsObject.getHeader().getJWK().toPublicJWK());
+            return new ECDSAVerifier((ECKey) jwkToVerify.toPublicJWK());
         } else if (JWSAlgorithm.Family.ED.contains(jwsAlgorithm)) {
             throw new RuntimeException("Not supported: " + jwsAlgorithm.getName());
         } else if (JWSAlgorithm.Family.HMAC_SHA.contains(jwsAlgorithm)) {
