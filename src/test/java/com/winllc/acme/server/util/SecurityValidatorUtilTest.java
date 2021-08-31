@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.util.Base64URL;
-import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.constants.StatusType;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.Account;
 import com.winllc.acme.common.model.acme.Directory;

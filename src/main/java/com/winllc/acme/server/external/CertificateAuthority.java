@@ -4,7 +4,7 @@ import com.winllc.acme.common.AcmeCertAuthorityType;
 import com.winllc.acme.common.CertIssuanceValidationResponse;
 import com.winllc.acme.common.CertRevocationStatus;
 import com.winllc.acme.common.CertificateDetails;
-import com.winllc.acme.common.contants.ChallengeType;
+import com.winllc.acme.common.constants.ChallengeType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;

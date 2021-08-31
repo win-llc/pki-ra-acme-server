@@ -1,6 +1,6 @@
 package com.winllc.acme.server.transaction;
 
-import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.constants.StatusType;
 import com.winllc.acme.common.model.data.OrderData;
 
 public class OrderUpdateTransaction extends AbstractTransaction {

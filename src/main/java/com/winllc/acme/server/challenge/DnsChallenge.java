@@ -1,6 +1,6 @@
 package com.winllc.acme.server.challenge;
 
-import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.constants.StatusType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.ChallengeData;
 import com.winllc.acme.server.persistence.ChallengePersistence;

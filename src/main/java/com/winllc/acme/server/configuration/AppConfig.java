@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
+import org.springframework.boot.autoconfigure.ldap.LdapAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.embedded.EmbeddedMongoAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.cache.CacheManager;
@@ -24,7 +25,8 @@ import java.util.concurrent.TimeUnit;
         DataSourceTransactionManagerAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class,
         EmbeddedMongoAutoConfiguration.class,
-        ElasticsearchDataAutoConfiguration.class
+        ElasticsearchDataAutoConfiguration.class,
+        LdapAutoConfiguration.class
 })
 @ComponentScan("com.winllc.acme.server")
 @EnableMongoRepositories(basePackages = "com.winllc.acme.server.persistence")

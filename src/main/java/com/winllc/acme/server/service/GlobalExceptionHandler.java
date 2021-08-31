@@ -1,6 +1,6 @@
 package com.winllc.acme.server.service;
 
-import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.constants.ProblemType;
 import com.winllc.acme.common.model.AcmeURL;
 import com.winllc.acme.common.model.acme.ProblemDetails;
 import com.winllc.acme.common.model.data.DirectoryData;

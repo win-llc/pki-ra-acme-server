@@ -1,7 +1,7 @@
 package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
-import com.winllc.acme.common.contants.IdentifierType;
+import com.winllc.acme.common.constants.IdentifierType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;

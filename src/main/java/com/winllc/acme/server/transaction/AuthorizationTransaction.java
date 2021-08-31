@@ -1,6 +1,6 @@
 package com.winllc.acme.server.transaction;
 
-import com.winllc.acme.common.contants.ChallengeType;
+import com.winllc.acme.common.constants.ChallengeType;
 import com.winllc.acme.common.model.data.AuthorizationData;
 import com.winllc.acme.server.challenge.HttpChallengeRunner;
 

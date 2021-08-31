@@ -1,8 +1,8 @@
 package com.winllc.acme.server.service.acme;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.winllc.acme.common.contants.ProblemType;
-import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.constants.ProblemType;
+import com.winllc.acme.common.constants.StatusType;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.Authorization;
 import com.winllc.acme.common.model.acme.Challenge;

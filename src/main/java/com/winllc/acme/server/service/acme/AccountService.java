@@ -1,8 +1,8 @@
 package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.jwk.JWK;
-import com.winllc.acme.common.contants.ProblemType;
-import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.constants.ProblemType;
+import com.winllc.acme.common.constants.StatusType;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.ProblemDetails;
 import com.winllc.acme.common.model.data.AccountData;

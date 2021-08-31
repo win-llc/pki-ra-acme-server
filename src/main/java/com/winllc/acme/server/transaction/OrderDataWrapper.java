@@ -1,7 +1,7 @@
 package com.winllc.acme.server.transaction;
 
-import com.winllc.acme.common.contants.ProblemType;
-import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.constants.ProblemType;
+import com.winllc.acme.common.constants.StatusType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.acme.Order;
 import com.winllc.acme.common.model.acme.ProblemDetails;

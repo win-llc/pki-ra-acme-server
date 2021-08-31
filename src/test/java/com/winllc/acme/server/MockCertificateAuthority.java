@@ -1,8 +1,8 @@
 package com.winllc.acme.server;
 
 import com.winllc.acme.common.*;
-import com.winllc.acme.common.contants.ChallengeType;
-import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.constants.ChallengeType;
+import com.winllc.acme.common.constants.ProblemType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;

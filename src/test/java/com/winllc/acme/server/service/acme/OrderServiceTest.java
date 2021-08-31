@@ -2,7 +2,7 @@ package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.common.DirectoryDataSettings;
-import com.winllc.acme.common.contants.IdentifierType;
+import com.winllc.acme.common.constants.IdentifierType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.acme.Order;
 import com.winllc.acme.common.model.acme.OrderList;

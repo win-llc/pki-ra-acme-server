@@ -2,8 +2,8 @@ package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.common.DirectoryDataSettings;
-import com.winllc.acme.common.contants.IdentifierType;
-import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.constants.IdentifierType;
+import com.winllc.acme.common.constants.StatusType;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.acme.Authorization;
 import com.winllc.acme.common.model.acme.Identifier;

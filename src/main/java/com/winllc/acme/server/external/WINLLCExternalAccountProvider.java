@@ -4,7 +4,7 @@ import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.util.Base64URL;
 import com.winllc.acme.common.CertIssuanceValidationResponse;
 import com.winllc.acme.common.ExternalAccountProviderSettings;
-import com.winllc.acme.common.contants.ProblemType;
+import com.winllc.acme.common.constants.ProblemType;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.util.HttpCommandUtil;
 import com.winllc.acme.server.exceptions.AcmeServerException;

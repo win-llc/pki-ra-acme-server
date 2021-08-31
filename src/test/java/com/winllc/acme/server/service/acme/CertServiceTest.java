@@ -2,7 +2,7 @@ package com.winllc.acme.server.service.acme;
 
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.common.DirectoryDataSettings;
-import com.winllc.acme.common.contants.RevocationReason;
+import com.winllc.acme.common.constants.RevocationReason;
 import com.winllc.acme.common.model.AcmeJWSObject;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.CertData;

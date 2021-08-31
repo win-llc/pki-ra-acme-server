@@ -1,6 +1,6 @@
 package com.winllc.acme.server.transaction;
 
-import com.winllc.acme.common.contants.StatusType;
+import com.winllc.acme.common.constants.StatusType;
 import com.winllc.acme.common.model.data.*;
 import com.winllc.acme.common.model.requestresponse.OrderRequest;
 import com.winllc.acme.server.Application;
