@@ -1,6 +1,7 @@
 package com.winllc.acme.server.external;
 
 import com.winllc.acme.common.*;
+import com.winllc.acme.common.client.CertAuthorityConnection;
 import com.winllc.acme.common.constants.ProblemType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
@@ -8,7 +9,6 @@ import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.util.HttpCommandUtil;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.service.internal.ExternalAccountProviderService;
-import com.winllc.ra.client.CertAuthorityConnection;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
