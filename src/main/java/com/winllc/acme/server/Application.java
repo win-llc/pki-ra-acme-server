@@ -6,9 +6,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class Application {
 
-    @Value("${app.baseUrl}")
-    private String tempBaseUrl;
-
     public static String baseURL;
 
     @Value("${app.baseUrl}")

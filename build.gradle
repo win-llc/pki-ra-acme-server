@@ -35,7 +35,7 @@ configurations {
 }
 
 dependencies {
-    implementation group: 'com.winllc.acme.common', name: 'acme-common', version: '1.0-SNAPSHOT'
+    implementation group: 'com.winllc.acme.common', name: 'pki-ra-common', version: '1.0-SNAPSHOT'
 
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-web
     implementation('org.springframework.boot:spring-boot-starter-web')
