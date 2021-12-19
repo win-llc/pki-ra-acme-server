@@ -5,7 +5,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'winllc-acme-server'
+rootProject.name = 'pki-ra-acme-server'
 
 include(":acme-common")
 project(":acme-common").projectDir = file("../acme-common")
