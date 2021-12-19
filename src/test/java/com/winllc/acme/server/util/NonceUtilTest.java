@@ -2,6 +2,7 @@ package com.winllc.acme.server.util;
 
 
 import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.service.AbstractServiceTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(classes = AppConfig.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-class NonceUtilTest {
+class NonceUtilTest extends AbstractServiceTest {
 
     @Autowired
     private NonceUtil nonceUtil;

@@ -26,9 +26,9 @@ test {
 configurations {
     all {
         resolutionStrategy.dependencySubstitution {
-            def proj1 = findProject(":acme-common")
+            def proj1 = findProject(":pki-ra-common")
             if (proj1 != null && proj1.buildFile.exists()) {
-                substitute module('com.winllc.acme.common:acme-common') with project(':acme-common')
+                substitute module('com.winllc.acme.common:pki-ra-common') with project(':pki-ra-common')
             }
         }
     }
