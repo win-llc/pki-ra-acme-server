@@ -8,4 +8,4 @@ pluginManagement {
 rootProject.name = 'pki-ra-acme-server'
 
 include(":pki-ra-common")
-project(":pki-ra-common").projectDir = file("../pki-ra-common")
+//project(":pki-ra-common").projectDir = file("../pki-ra-common")
