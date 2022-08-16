@@ -26,7 +26,8 @@ build:
     - ./gradlew bootJar
   artifacts:
     paths:
-      - build/libs/winllc-acme-server-1.0-SNAPSHOT.jar
+      - build/libs/pki-ra-acme-server-1.0-SNAPSHOT.jar
+    expire_in: 1 week
 
 package:
   stage: package
