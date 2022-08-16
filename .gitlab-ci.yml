@@ -10,13 +10,20 @@ variables:
 
 stages:
   - build
+  - test
   - package
 
+test:
+  image: openjdk:14
+  stage: test
+  script:
+    - ./gradlew test
+
 build:
-  image: gradle:jdk14
+  image: openjdk:14
   stage: build
   script:
-    - gradle -x test build
+    - ./gradlew assemble
   artifacts:
     paths:
       - build/libs/winllc-acme-server-1.0-SNAPSHOT.jar
