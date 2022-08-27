@@ -25,13 +25,6 @@ import org.testcontainers.utility.DockerImageName;
 @AutoConfigureMockMvc
 public class AbstractServiceTest {
 
-    public static final MongoDBContainer test = new MongoDBContainer(DockerImageName.parse("mongo:4.0.10"))
-            //.withCreateContainerCmdModifier(cmd -> cmd.withHostConfig(
-           //         new HostConfig().withPortBindings(new PortBinding(Ports.Binding.bindPort(1389), new ExposedPort(1389)))
-           // ))
-            .withEnv("MONGO_INITDB_DATABASE", "acme")
-            ;
-
     public static GenericContainer mongoDBContainer = new GenericContainer<>(DockerImageName.parse("mongo:4.0.10")
             .asCompatibleSubstituteFor("mongo"))
             .withExposedPorts(27017)

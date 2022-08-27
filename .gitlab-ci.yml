@@ -1,7 +1,8 @@
 image: docker:latest
 services:
   - name: docker:dind
-    command: ["--insecure-registry=registry.gitlab.winllc-dev.com"]
+    command: ["--insecure-registry=registry.gitlab.winllc-dev.com", "--tls=false"]
+    alias: docker
 
 variables:
   TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
