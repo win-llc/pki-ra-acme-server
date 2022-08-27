@@ -1,0 +1,43 @@
+server:
+  port: 8181
+
+app:
+  baseUrl: http://winra.winllc-dev.com:8181/
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb://appuser:password@mongodb:27017/acme
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  health:
+    elasticsearch:
+      enabled: false
+
+accountprovider:
+  default-provider:
+    name: winllc
+    type:
+    baseUrl:
+
+acme:
+  default-directory:
+    name: acme
+    allowPreAuthorization: true
+    mapsToCertificateAuthorityName:
+    externalAccountProviderName: winllc
+    termsOfServiceLastUpdatedOn:
+    termsOfServiceHistory:
+    metaTermsOfService:
+    metaWebsite:
+    metaCaaIdentities:
+    metaExternalAccountRequired:
+
+reverseproxy:
+  enabled: false
+  url: https://winra.winllc-dev.com
+  basepath: /acme

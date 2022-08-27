@@ -4,6 +4,8 @@ import com.winllc.acme.common.DirectoryDataSettings;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
+import com.winllc.acme.server.properties.AcmeDefaultProperties;
+import com.winllc.acme.server.properties.AcmeProperties;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,11 +26,13 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
 
     @Autowired
     private DirectoryDataSettingsPersistence persistence;
+    @Autowired
+    private AcmeProperties acmeProperties;
 
     private Map<String, DirectoryData> directoryDataMap;
 
     @PostConstruct
-    private void postConstruct(){
+    private void postConstruct() throws Exception {
         directoryDataMap = new ConcurrentHashMap<>();
 
         for(DirectoryDataSettings settings : persistence.findAll()){
@@ -38,6 +42,20 @@ public class DirectoryDataService implements SettingsService<DirectoryDataSettin
                 log.error("Could not load directory: "+settings, e);
             }
         }
+
+        if(!directoryDataMap.containsKey(acmeProperties.getDefaultDirectory().getName())){
+            AcmeDefaultProperties defaultProperties = acmeProperties.getDefaultDirectory();
+            DirectoryDataSettings directoryDataSettings = new DirectoryDataSettings();
+            directoryDataSettings.setName(defaultProperties.getName());
+            directoryDataSettings.setAllowPreAuthorization(defaultProperties.isAllowPreAuthorization());
+            directoryDataSettings.setExternalAccountProviderName(defaultProperties.getExternalAccountProviderName());
+            directoryDataSettings.setMetaExternalAccountRequired(defaultProperties.isMetaExternalAccountRequired());
+            directoryDataSettings.setMetaTermsOfService(defaultProperties.getMetaTermsOfService());
+            directoryDataSettings.setMetaWebsite(defaultProperties.getMetaWebsite());
+            directoryDataSettings.setMapsToCertificateAuthorityName(defaultProperties.getMapsToCertificateAuthorityName());
+            save(directoryDataSettings);
+        }
+
     }
 
 

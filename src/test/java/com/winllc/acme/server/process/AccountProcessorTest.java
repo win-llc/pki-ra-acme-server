@@ -48,9 +48,6 @@ deactiv.|                revoke |
         V                       V
    deactivated               revoked
  */
-@SpringBootTest(classes = AppConfig.class)
-@ActiveProfiles("test")
-@AutoConfigureMockMvc
 public class AccountProcessorTest extends AbstractServiceTest {
 
     @Autowired

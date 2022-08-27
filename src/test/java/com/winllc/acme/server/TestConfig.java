@@ -1,6 +1,8 @@
-package com.winllc.acme.server.configuration;
+package com.winllc.acme.server;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.winllc.acme.server.configuration.AppConfig;
+import com.winllc.acme.server.service.AbstractServiceTest;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration;
@@ -16,10 +18,12 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication(exclude = {
@@ -30,19 +34,24 @@ import java.util.concurrent.TimeUnit;
         ElasticsearchDataAutoConfiguration.class,
         LdapAutoConfiguration.class
 })
-@ComponentScan("com.winllc.acme.server")
+@ComponentScan(basePackages = {"com.winllc.acme.server"},
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = {AppConfig.class}
+        ))
 @EnableMongoRepositories(basePackages = "com.winllc.acme.server.persistence")
 @EnableConfigurationProperties
 @ConfigurationPropertiesScan("com.winllc.acme.server.properties")
 //@PropertySource(value = "classpath:application-local.properties")
 @EnableCaching
-public class AppConfig {
+public class TestConfig {
 
     //@Value("${spring.data.mongodb.uri}")
     // String uri;
 
     public static void main(String[] args){
-        SpringApplication.run(AppConfig.class, args);
+        SpringApplication application = new SpringApplication(TestConfig.class);
+        application.run(args);
     }
 
     @Bean(name = "appTaskExecutor")
@@ -55,21 +64,6 @@ public class AppConfig {
         return poolTaskExecutor;
     }
 
-    /*
-    @Bean
-    public MongoDbFactory mongoDbFactory() {
-        return new SimpleMongoDbFactory(new MongoClientURI(uri));
-    }
-
-    @Bean
-    public MongoTemplate mongoTemplate() {
-        MongoTemplate mongoTemplate = new MongoTemplate(mongoDbFactory());
-
-        return mongoTemplate;
-
-    }
-
-     */
 
     @Bean
     public Caffeine caffeineConfig() {

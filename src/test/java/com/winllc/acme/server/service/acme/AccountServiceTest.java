@@ -11,6 +11,7 @@ import com.winllc.acme.common.model.requestresponse.KeyChangeRequest;
 import com.winllc.acme.server.Application;
 import com.winllc.acme.server.MockExternalAccountProvider;
 import com.winllc.acme.server.MockUtils;
+import com.winllc.acme.server.TestConfig;
 import com.winllc.acme.server.configuration.AppConfig;
 import com.winllc.acme.server.persistence.AccountPersistence;
 import com.winllc.acme.server.persistence.internal.DirectoryDataSettingsPersistence;
@@ -41,9 +42,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
-@SpringBootTest(classes = AppConfig.class)
-@ActiveProfiles("test")
-@AutoConfigureMockMvc
+
 public class AccountServiceTest extends AbstractServiceTest {
 
     private static String newAccountRequest = "{\n" +

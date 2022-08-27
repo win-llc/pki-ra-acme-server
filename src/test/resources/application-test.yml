@@ -1,0 +1,43 @@
+server:
+  port: 8181
+
+app:
+  baseUrl: http://localhost/acme
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/acme
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  health:
+    elasticsearch:
+      enabled: false
+
+accountprovider:
+  default-provider:
+    name: winllc
+    type:
+    baseUrl:
+
+acme:
+  default-directory:
+    name: acme
+    allowPreAuthorization: true
+    mapsToCertificateAuthorityName:
+    externalAccountProviderName: winllc
+    termsOfServiceLastUpdatedOn:
+    termsOfServiceHistory:
+    metaTermsOfService:
+    metaWebsite:
+    metaCaaIdentities:
+    metaExternalAccountRequired: false
+
+reverseproxy:
+  enabled: false
+  url: http://localhost
+  basepath: /acme

@@ -1,36 +1,55 @@
 package com.winllc.acme.server.service;
 
-import com.mongodb.client.MongoClient;
-import de.flapdoodle.embed.mongo.MongodExecutable;
-import de.flapdoodle.embed.mongo.MongodProcess;
-import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.IMongodConfig;
-import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
-import de.flapdoodle.embed.mongo.config.Net;
-import de.flapdoodle.embed.mongo.distribution.Version;
-import de.flapdoodle.embed.process.runtime.Network;
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports;
+import com.winllc.acme.server.TestConfig;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.springframework.boot.autoconfigure.mongo.embedded.EmbeddedMongoAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.Base58;
+import org.testcontainers.utility.DockerImageName;
 
-public abstract class AbstractServiceTest {
+@Testcontainers
+@SpringBootTest(classes = TestConfig.class)
+@ActiveProfiles("test")
+@AutoConfigureMockMvc
+public class AbstractServiceTest {
 
-    private static final MongodStarter starter = MongodStarter.getDefaultInstance();
-    private static MongodExecutable _mongodExe;
-    private static MongodProcess _mongod;
+    public static final MongoDBContainer test = new MongoDBContainer(DockerImageName.parse("mongo:4.0.10"))
+            //.withCreateContainerCmdModifier(cmd -> cmd.withHostConfig(
+           //         new HostConfig().withPortBindings(new PortBinding(Ports.Binding.bindPort(1389), new ExposedPort(1389)))
+           // ))
+            .withEnv("MONGO_INITDB_DATABASE", "acme")
+            ;
+
+    public static GenericContainer mongoDBContainer = new GenericContainer<>(DockerImageName.parse("mongo:4.0.10")
+            .asCompatibleSubstituteFor("mongo"))
+            .withExposedPorts(27017)
+            .withCreateContainerCmdModifier(cmd -> cmd.withHostConfig(
+                    new HostConfig().withPortBindings(new PortBinding(Ports.Binding.bindPort(27017), new ExposedPort(27017)))
+            ))
+            .withEnv("MONGO_INITDB_DATABASE", "acme")
+            //.withCommand("--replSet", "docker-rs")
+            .waitingFor(Wait.forLogMessage("(?i).*waiting for connections.*", 1));
 
     @BeforeAll
     static void beforeAll() throws Exception {
-        _mongodExe = starter.prepare(new MongodConfigBuilder()
-                .version(Version.Main.PRODUCTION)
-                .net(new Net(12345, Network.localhostIsIPv6()))
-                .build());
-        _mongod = _mongodExe.start();
+        mongoDBContainer.start();
     }
 
     @AfterAll
     static void afterAll(){
-        _mongod.stop();
-        _mongodExe.stop();
+        mongoDBContainer.stop();
     }
 
 }

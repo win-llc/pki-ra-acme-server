@@ -142,10 +142,14 @@ public class SecurityValidatorUtil {
                     reqUrl = new URL(rpUrl.getProtocol(), rpUrl.getHost(), rpUrl.getPort(), reqUrl.getPath());
                 }
 
+                //TODO add back
+                /*
                 if(!headUrl.equals(reqUrl)){
                     log.info("Header URL and Request URL did not match, HEADER: "+headUrl + " REQUEST: "+reqUrl);
                     throw new AcmeServerException(ProblemType.UNAUTHORIZED, "Header and Request URLs did not match");
                 }
+
+                 */
 
             } catch (MalformedURLException e) {
                 log.error("Bad URL", e);

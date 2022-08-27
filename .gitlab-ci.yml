@@ -4,9 +4,14 @@ services:
     command: ["--insecure-registry=registry.gitlab.winllc-dev.com"]
 
 variables:
+  TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+  # Instruct Testcontainers to use the daemon of DinD.
+  DOCKER_HOST: "tcp://localhost:2375"
+  # Instruct Docker not to start over TLS.
   DOCKER_TLS_CERTDIR: ""
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
-  DOCKER_DRIVER: overlay
+  # Improve performance with overlayfs.
+  DOCKER_DRIVER: overlay2
 
 stages:
   - test

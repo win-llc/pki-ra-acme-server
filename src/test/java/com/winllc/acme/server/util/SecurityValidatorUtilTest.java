@@ -33,9 +33,6 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest(classes = AppConfig.class)
-@ActiveProfiles("test")
-@AutoConfigureMockMvc
 public class SecurityValidatorUtilTest extends AbstractServiceTest {
 
     private static String newAccountRequest = "{\n" +
