@@ -1,7 +1,7 @@
 image: docker:latest
 services:
   - name: docker:dind
-    command: ["--insecure-registry=registry.gitlab.winllc-dev.com", "--tls=false"]
+    command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
     alias: docker
 
 variables:
@@ -46,7 +46,7 @@ package:
   services:
     - name: docker:dind
       alias: thedockerhost
-      command: ["--insecure-registry=registry.gitlab.winllc-dev.com", "--tls=false"]
+      command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
 
   variables:
     # Tell docker CLI how to talk to Docker daemon; see
@@ -57,6 +57,6 @@ package:
     DOCKER_TLS_CERTDIR: ""
 
   script:
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.winllc-dev.com
-    - docker build -t registry.gitlab.winllc-dev.com/root/acme-server:latest .
-    - docker push registry.gitlab.winllc-dev.com/root/acme-server:latest
+    - docker login -u gitlab-deploy-token -p $CI_BUILD_TOKEN $REGISTRY_FQDN
+    - docker build -t $REGISTRY_FQDN/win-ra/winllc-ra-acme-server:latest .
+    - docker push $REGISTRY_FQDN/win-ra/winllc-ra-acme-server:latest
