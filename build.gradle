@@ -77,6 +77,7 @@ dependencies {
     // https://mvnrepository.com/artifact/com.google.guava/guava
     implementation group: 'com.google.guava', name: 'guava', version: '30.0-android'
 
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
 
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'junit', module: 'junit'

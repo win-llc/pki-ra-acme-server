@@ -57,7 +57,7 @@ package:
     DOCKER_TLS_CERTDIR: ""
 
   before_script:
-    - echo "$CI_BUILD_TOKEN" | docker login $REGISTRY_FQDN --username gitlab-deploy-token --password-stdin
+    - echo "$gitlab-deploy-token" | docker login $REGISTRY_FQDN --username gitlab-deploy-token --password-stdin
 
   script:
     - docker build -t $REGISTRY_FQDN/win-ra/winllc-ra-acme-server:latest .
