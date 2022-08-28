@@ -46,7 +46,7 @@ package:
   services:
     - name: docker:dind
       alias: thedockerhost
-      command: ["--tls=false"]
+      command: ["--insecure-registry=registry.gitlab.winllc-dev.com", "--tls=false"]
 
   variables:
     # Tell docker CLI how to talk to Docker daemon; see
