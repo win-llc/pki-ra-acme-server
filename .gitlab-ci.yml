@@ -5,11 +5,11 @@ stages:
   - build
   - package
 
-test:
-  image: openjdk:14
-  stage: test
-  script:
-    - ./gradlew test
+#test:
+#  image: openjdk:14
+#  stage: test
+#  script:
+#    - ./gradlew test
 
 build:
   image: openjdk:14
