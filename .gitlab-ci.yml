@@ -3,6 +3,10 @@ services:
   - name: docker:dind
     #command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
     alias: docker
+    command:
+      - /bin/sh
+      - -c
+      - cp /etc/gitlab-runner/certs/ca.crt /usr/local/share/ca-certificates/ca.crt && update-ca-certificates --fresh > /dev/null && dockerd-entrypoint.sh || exit
 
 variables:
   TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
