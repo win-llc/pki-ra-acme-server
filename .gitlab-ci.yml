@@ -39,7 +39,7 @@ package:
   stage: package
 
   before_script:
-    - echo "$gitlab-deploy-token" | docker login $REGISTRY_FQDN --username gitlab-deploy-token --password-stdin
+    - echo "$CI_BUILD_TOKEN" | docker login $REGISTRY_FQDN --username gitlab-deploy-token --password-stdin
 
   script:
     - docker build -t $REGISTRY_FQDN/win-ra/winllc-ra-acme-server:latest .
