@@ -23,6 +23,7 @@ build:
 
 package:
   stage: package
+  image: docker:20-dind
   services:
     - name: docker:dind
       #command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
