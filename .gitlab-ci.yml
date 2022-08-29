@@ -39,7 +39,7 @@ package:
     # Instruct Testcontainers to use the daemon of DinD.
     DOCKER_HOST: "tcp://docker:2375"
     # Instruct Docker not to start over TLS.
-    DOCKER_TLS_CERTDIR: ""
+    DOCKER_TLS_CERTDIR: "/certs"
     # Improve performance with overlayfs.
     DOCKER_DRIVER: overlay2
 
