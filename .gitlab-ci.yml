@@ -1,7 +1,7 @@
 image: docker:latest
 services:
   - name: docker:dind
-    command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
+    #command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
     alias: docker
 
 variables:
@@ -10,7 +10,7 @@ variables:
   # Instruct Testcontainers to use the daemon of DinD.
   DOCKER_HOST: "tcp://localhost:2375"
   # Instruct Docker not to start over TLS.
-  DOCKER_TLS_CERTDIR: ""
+  DOCKER_TLS_CERTDIR: "/certs"
   # Improve performance with overlayfs.
   DOCKER_DRIVER: overlay2
 
@@ -46,7 +46,7 @@ package:
   services:
     - name: docker:dind
       alias: thedockerhost
-      command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
+      #command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
 
   variables:
     # Tell docker CLI how to talk to Docker daemon; see
@@ -54,7 +54,7 @@ package:
     DOCKER_HOST: tcp://thedockerhost:2375/
     # Use the overlayfs driver for improved performance:
     DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: ""
+    DOCKER_TLS_CERTDIR: "/certs"
 
   before_script:
     - echo "$gitlab-deploy-token" | docker login $REGISTRY_FQDN --username gitlab-deploy-token --password-stdin
