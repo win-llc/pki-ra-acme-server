@@ -1,7 +1,7 @@
 image: docker:latest
 
 stages:
-  - test
+  #- test
   - build
   - package
 
@@ -24,14 +24,6 @@ build:
 package:
   stage: package
   image: docker:latest
-  services:
-    - name: docker:dind
-      #command: ["--insecure-registry=$REGISTRY_FQDN", "--tls=false"]
-      alias: docker
-      command:
-        - /bin/sh
-        - -c
-        - cp /etc/gitlab-runner/certs/ca.crt /usr/local/share/ca-certificates/ca.crt && update-ca-certificates --fresh > /dev/null
 
   variables:
     TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
