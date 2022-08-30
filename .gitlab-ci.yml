@@ -4,6 +4,7 @@ services:
   - name: docker:dind
     entrypoint: ["env", "-u", "DOCKER_HOST"]
     command: ["dockerd-entrypoint.sh"]
+    alias: docker
 
 variables:
   # Tell docker CLI how to talk to Docker daemon; see
@@ -11,7 +12,7 @@ variables:
   DOCKER_HOST: tcp://docker:2375/
   # Use the overlayfs driver for improved performance:
   DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_CERTDIR: ""
 
 stages:
   #- test
