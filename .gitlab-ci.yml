@@ -1,17 +1,14 @@
 image: docker:latest
 
 services:
-  - name: docker:dind
-    entrypoint: ["env", "-u", "DOCKER_HOST"]
-    command: ["dockerd-entrypoint.sh"]
-    alias: docker
+  - docker:20:10:16-dind
 
 variables:
   # Tell docker CLI how to talk to Docker daemon; see
   # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#use-docker-in-docker-executor
-  DOCKER_HOST: tcp://docker:2375/
+  #DOCKER_HOST: tcp://docker:2375/
   # Use the overlayfs driver for improved performance:
-  DOCKER_DRIVER: overlay2
+  #DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ""
 
 stages:
@@ -39,6 +36,7 @@ package:
   stage: package
 
   before_script:
+    - docker info
     - echo "$CI_BUILD_TOKEN" | docker login $REGISTRY_FQDN --username gitlab-deploy-token --password-stdin
 
   script:
