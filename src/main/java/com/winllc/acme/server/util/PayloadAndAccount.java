@@ -4,9 +4,9 @@ import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;
 
 public class PayloadAndAccount<T> {
-    private T payload;
-    private AccountData accountData;
-    private DirectoryData directoryData;
+    private final T payload;
+    private final AccountData accountData;
+    private final DirectoryData directoryData;
 
     public PayloadAndAccount(T payload, AccountData accountData, DirectoryData directoryData) {
         this.payload = payload;

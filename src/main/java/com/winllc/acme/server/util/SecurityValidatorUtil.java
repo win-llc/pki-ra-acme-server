@@ -156,6 +156,7 @@ public class SecurityValidatorUtil {
                 throw new AcmeServerException(ProblemType.SERVER_INTERNAL, "Invalid URL");
             }
 
+            log.debug("Going to find account by ID: "+accountId);
             Optional<AccountData> optionalAccount = accountPersistence.findById(accountId);
             if (optionalAccount.isPresent()) {
                 AccountData accountData = optionalAccount.get();

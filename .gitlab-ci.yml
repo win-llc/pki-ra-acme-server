@@ -15,6 +15,7 @@ stages:
   - test
   - build
   - package
+  - package-dockerio
 
 test:
   image: openjdk:14
@@ -42,3 +43,14 @@ package:
   script:
     - docker build -t $REGISTRY_FQDN/win-ra/winllc-ra-acme-server:latest .
     - docker push $REGISTRY_FQDN/win-ra/winllc-ra-acme-server:latest
+
+package-dockerio:
+  stage: package
+
+  before_script:
+    - docker info
+    - echo "$DOCKERIO_API_TOKEN" | docker login $DOCKERIO_FQDN --username $DOCKERIO_USERNAME --password-stdin
+
+  script:
+    - docker build -t $DOCKERIO_FQDN/jrmints22/winllc-ra-acme-server:latest .
+    - docker push $DOCKERIO_FQDN/jrmints22/winllc-ra-acme-server:latest
