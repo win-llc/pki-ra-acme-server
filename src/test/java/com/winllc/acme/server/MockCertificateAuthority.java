@@ -9,6 +9,7 @@ import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.common.util.CertUtil;
 import com.winllc.acme.server.exceptions.AcmeServerException;
 import com.winllc.acme.server.external.CertificateAuthority;
+import com.winllc.ra.integration.ca.CertificateDetails;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.security.cert.Certificate;

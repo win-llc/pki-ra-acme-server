@@ -11,4 +11,8 @@ include(":pki-ra-common")
 if (new File("../pki-ra-common").with{exists() && isDirectory()}) {
     project(":pki-ra-common").projectDir = file("../pki-ra-common")
 }
-//project(":pki-ra-common").projectDir = file("../pki-ra-common")
+
+include(":winllc-ra-integration-lib")
+if (new File("../winllc-ra-integration-lib").with{exists() && isDirectory()}) {
+    project(":winllc-ra-integration-lib").projectDir = file("../winllc-ra-integration-lib")
+}

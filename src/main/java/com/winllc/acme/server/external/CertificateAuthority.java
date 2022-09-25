@@ -3,12 +3,12 @@ package com.winllc.acme.server.external;
 import com.winllc.acme.common.AcmeCertAuthorityType;
 import com.winllc.acme.common.CertIssuanceValidationResponse;
 import com.winllc.acme.common.CertRevocationStatus;
-import com.winllc.acme.common.CertificateDetails;
 import com.winllc.acme.common.constants.ChallengeType;
 import com.winllc.acme.common.model.acme.Identifier;
 import com.winllc.acme.common.model.data.AccountData;
 import com.winllc.acme.common.model.data.DirectoryData;
 import com.winllc.acme.server.exceptions.AcmeServerException;
+import com.winllc.ra.integration.ca.CertificateDetails;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
 import java.security.cert.Certificate;

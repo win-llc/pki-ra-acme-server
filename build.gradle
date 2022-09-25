@@ -30,6 +30,11 @@ configurations {
             if (proj1 != null && proj1.buildFile.exists()) {
                 substitute module('com.winllc.acme.common:pki-ra-common') with project(':pki-ra-common')
             }
+
+            def proj2 = findProject(":winllc-ra-integration-lib")
+            if (proj2 != null && proj2.buildFile.exists()) {
+                substitute module('com.winllc.ra.integration:pki-ra-integration') using project(':winllc-ra-integration-lib')
+            }
         }
     }
 }

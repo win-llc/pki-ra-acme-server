@@ -8,6 +8,7 @@ spring:
   data:
     mongodb:
       uri: mongodb://192.168.1.190:27017/acme
+      #uri: mongodb://localhost:27017/acme
 
 management:
   endpoints:
