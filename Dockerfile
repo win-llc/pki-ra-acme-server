@@ -1,4 +1,4 @@
-FROM openjdk:14-ea-jdk-slim
+FROM openjdk:17-oracle
 ENV ENV=dev
 VOLUME /tmp
 COPY build/libs/pki-ra-acme-server-1.0-SNAPSHOT.jar app.jar

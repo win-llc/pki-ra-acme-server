@@ -1,5 +1,6 @@
 package com.winllc.acme.server.process;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSObject;
 import com.winllc.acme.common.DirectoryDataSettings;
@@ -90,7 +91,7 @@ public class AccountProcessorTest extends AbstractServiceTest {
     }
 
     @Test
-    public void request() throws Exception {
+    public void request() throws Exception, JOSEException {
         DirectoryData directoryData = directoryDataService.findByName("acme-test");
 
         AccountData accountData = MockUtils.buildMockAccountData();

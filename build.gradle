@@ -3,6 +3,7 @@ plugins {
     id 'idea'
     id 'org.springframework.boot'
     id 'io.spring.dependency-management'
+    id "io.freefair.lombok"
 }
 
 group 'com.winllc.acme.server'
@@ -40,6 +41,9 @@ configurations {
 }
 
 dependencies {
+    // https://mvnrepository.com/artifact/org.projectlombok/lombok
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.24'
+    
     implementation group: 'com.winllc.acme.common', name: 'pki-ra-common', version: '1.0-SNAPSHOT'
 
     // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-web
