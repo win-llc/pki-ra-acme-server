@@ -51,16 +51,19 @@ deactiv.|                revoke |
 public class AccountProcessor implements AcmeDataProcessor<AccountData> {
     private static final Logger log = LogManager.getLogger(AccountProcessor.class);
 
-    @Autowired
-    private AccountPersistence accountPersistence;
-    @Autowired
-    private OrderPersistence orderPersistence;
-    @Autowired
-    private OrderListPersistence orderListPersistence;
-    @Autowired
-    private ExternalAccountProviderService externalAccountProviderService;
-    @Autowired
-    private AcmeTransactionManagement acmeTransactionManagement;
+    private final AccountPersistence accountPersistence;
+    private final OrderPersistence orderPersistence;
+    private final OrderListPersistence orderListPersistence;
+    private final ExternalAccountProviderService externalAccountProviderService;
+    private final AcmeTransactionManagement acmeTransactionManagement;
+
+    public AccountProcessor(AccountPersistence accountPersistence, OrderPersistence orderPersistence, OrderListPersistence orderListPersistence, ExternalAccountProviderService externalAccountProviderService, AcmeTransactionManagement acmeTransactionManagement) {
+        this.accountPersistence = accountPersistence;
+        this.orderPersistence = orderPersistence;
+        this.orderListPersistence = orderListPersistence;
+        this.externalAccountProviderService = externalAccountProviderService;
+        this.acmeTransactionManagement = acmeTransactionManagement;
+    }
 
 
     public AccountData processCreateNewAccount(AccountRequest accountRequest, DirectoryData directoryData,
