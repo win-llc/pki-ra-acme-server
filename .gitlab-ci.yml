@@ -18,13 +18,13 @@ stages:
   - package-dockerio
 
 test:
-  image: openjdk:14
+  image: openjdk:17
   stage: test
   script:
     - ./gradlew test
 
 build:
-  image: openjdk:14
+  image: openjdk:17
   stage: build
   script:
     - ./gradlew bootJar
